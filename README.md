@@ -89,5 +89,5 @@ This is a portfolio project created to demonstrate mobile development capabiliti
 
 [Your Name]
 - Portfolio: 
-- LinkedIn: [[Your LinkedIn URL]](https://www.linkedin.com/in/lucassong0603/)
+- LinkedIn: https://www.linkedin.com/in/lucassong0603/
 - Email: lucassong63@gmail.com
