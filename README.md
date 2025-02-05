@@ -9,7 +9,7 @@ MyTuition is a portfolio project that demonstrates the implementation of:
 - BLoC Pattern for state management
 - OpenAI Assistant API integration
 - Firebase backend services
-- Offline-first capabilities
+- Offline capabilities
 - Modern UI/UX practices
 
 ## ✨ Key Features
@@ -87,7 +87,7 @@ This is a portfolio project created to demonstrate mobile development capabiliti
 
 ## 👨‍💻 Developer
 
-[Your Name]
+Lucas Song
 - Portfolio: 
 - LinkedIn: https://www.linkedin.com/in/lucassong0603/
 - Email: lucassong63@gmail.com
