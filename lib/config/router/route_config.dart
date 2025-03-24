@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mytuition/features/auth/presentation/pages/login_page.dart';
 import 'route_names.dart';
-
-// Import your screens here as you create them
-// import 'package:mytuition/presentation/pages/auth/login_page.dart';
-// import 'package:mytuition/presentation/pages/auth/register_page.dart';
-// etc.
 
 /// App router configuration using GoRouter
 class AppRouter {
@@ -14,7 +10,7 @@ class AppRouter {
 
   // Router instance
   static final _router = GoRouter(
-    initialLocation: '/',
+    initialLocation: '/login',
     debugLogDiagnostics: true,
     redirect: _guardRoutes,
     routes: _buildRoutes(),
@@ -69,9 +65,7 @@ class AppRouter {
       GoRoute(
         path: '/login',
         name: RouteNames.login,
-        builder: (context, state) => const Scaffold(
-          body: Center(child: Text('Login Screen')),
-        ),
+        builder: (context, state) => const LoginPage(),
       ),
       GoRoute(
         path: '/register',
@@ -97,10 +91,13 @@ class AppRouter {
             bottomNavigationBar: BottomNavigationBar(
               items: const [
                 BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-                BottomNavigationBarItem(icon: Icon(Icons.book), label: 'Courses'),
-                BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'AI Chat'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.book), label: 'Courses'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.chat), label: 'AI Chat'),
                 BottomNavigationBarItem(icon: Icon(Icons.task), label: 'Tasks'),
-                BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.person), label: 'Profile'),
               ],
               currentIndex: _calculateSelectedIndex(state),
               onTap: (index) => _onItemTapped(index, context),
@@ -195,10 +192,13 @@ class AppRouter {
             bottomNavigationBar: BottomNavigationBar(
               items: const [
                 BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-                BottomNavigationBarItem(icon: Icon(Icons.class_), label: 'Classes'),
-                BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Students'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.class_), label: 'Classes'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.people), label: 'Students'),
                 BottomNavigationBarItem(icon: Icon(Icons.task), label: 'Tasks'),
-                BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.person), label: 'Profile'),
               ],
               currentIndex: _calculateSelectedTutorIndex(state),
               onTap: (index) => _onTutorItemTapped(index, context),
@@ -233,7 +233,8 @@ class AppRouter {
                     builder: (context, state) {
                       final subjectId = state.pathParameters['subjectId'] ?? '';
                       return Scaffold(
-                        body: Center(child: Text('Subject Details: $subjectId')),
+                        body:
+                            Center(child: Text('Subject Details: $subjectId')),
                       );
                     },
                   ),
@@ -252,7 +253,8 @@ class AppRouter {
                     builder: (context, state) {
                       final studentId = state.pathParameters['studentId'] ?? '';
                       return Scaffold(
-                        body: Center(child: Text('Student Details: $studentId')),
+                        body:
+                            Center(child: Text('Student Details: $studentId')),
                       );
                     },
                   ),

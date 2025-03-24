@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../../../core/constants/app_colors.dart';
+import 'package:mytuition/config/theme/app_colors.dart';
 
 class FloatingEducationalElements extends StatefulWidget {
   final int numberOfElements;
