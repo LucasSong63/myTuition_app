@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "666215676304",
+    "project_id": "mytuition-fyp",
+    "storage_bucket": "mytuition-fyp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:666215676304:android:0b9b3ba8a1a92333011b15",
+        "android_client_info": {
+          "package_name": "com.lucas.song.mytuition"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAVSpPnArIx5Zb4X0aITzBLcn0KDTAauww"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
