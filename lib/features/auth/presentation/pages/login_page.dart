@@ -118,7 +118,7 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Your Personal AI Tutor',
+                                'Classroom Management Platform',
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   color: AppColors.textMedium,
                                 ),

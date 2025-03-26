@@ -32,10 +32,19 @@ class AuthRepositoryImpl implements AuthRepository {
       final userId = userCredential.user!.uid;
 
       // Determine the collection based on role
-      final collectionPath = isTutor ? 'users/tutors' : 'users/students';
+      final collectionPath = 'users';
 
       final docSnapshot =
           await _firestore.collection(collectionPath).doc(userId).get();
+      if (docSnapshot.exists) {
+        final userData = docSnapshot.data() as Map<String, dynamic>;
+        final userRole = userData['role'] as String;
+        // Verify the role matches what was requested
+        if ((isTutor && userRole != 'tutor') ||
+            (!isTutor && userRole != 'student')) {
+          throw Exception('Invalid user role');
+        }
+      }
 
       if (!docSnapshot.exists) {
         throw Exception('User profile not found');
@@ -87,7 +96,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
       // Determine the collection based on role
       final role = isTutor ? 'tutor' : 'student';
-      final collectionPath = isTutor ? 'users/tutors' : 'users/students';
+      final collectionPath = 'users';
 
       // Create user profile in Firestore
       final userData = {
@@ -144,34 +153,13 @@ class AuthRepositoryImpl implements AuthRepository {
         return null;
       }
 
-      // First check if user is in tutors collection
-      var docSnapshot = await _firestore
-          .collection('users/tutors')
-          .doc(firebaseUser.uid)
-          .get();
-
+      var docSnapshot =
+          await _firestore.collection('users').doc(firebaseUser.uid).get();
       if (docSnapshot.exists) {
         final userData = docSnapshot.data() as Map<String, dynamic>;
         return UserModel.fromMap({
           'id': firebaseUser.uid,
           'email': firebaseUser.email ?? '',
-          'role': 'tutor',
-          ...userData,
-        });
-      }
-
-      // If not in tutors, check students collection
-      docSnapshot = await _firestore
-          .collection('users/students')
-          .doc(firebaseUser.uid)
-          .get();
-
-      if (docSnapshot.exists) {
-        final userData = docSnapshot.data() as Map<String, dynamic>;
-        return UserModel.fromMap({
-          'id': firebaseUser.uid,
-          'email': firebaseUser.email ?? '',
-          'role': 'student',
           ...userData,
         });
       }
@@ -183,6 +171,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  @override
   Stream<User?> get authStateChanges {
     return _authService.authStateChanges.asyncMap((firebaseUser) async {
       if (firebaseUser == null) {
@@ -190,34 +179,15 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       try {
-        // First check if user is in tutors collection
-        var docSnapshot = await _firestore
-            .collection('users/tutors')
-            .doc(firebaseUser.uid)
-            .get();
+        // Get user data from Firestore
+        var docSnapshot =
+            await _firestore.collection('users').doc(firebaseUser.uid).get();
 
         if (docSnapshot.exists) {
           final userData = docSnapshot.data() as Map<String, dynamic>;
           return UserModel.fromMap({
             'id': firebaseUser.uid,
             'email': firebaseUser.email ?? '',
-            'role': 'tutor',
-            ...userData,
-          });
-        }
-
-        // If not in tutors, check students collection
-        docSnapshot = await _firestore
-            .collection('users/students')
-            .doc(firebaseUser.uid)
-            .get();
-
-        if (docSnapshot.exists) {
-          final userData = docSnapshot.data() as Map<String, dynamic>;
-          return UserModel.fromMap({
-            'id': firebaseUser.uid,
-            'email': firebaseUser.email ?? '',
-            'role': 'student',
             ...userData,
           });
         }
@@ -225,7 +195,6 @@ class AuthRepositoryImpl implements AuthRepository {
         return null;
       } catch (e) {
         throw _handleAuthException(e);
-        return null;
       }
     });
   }

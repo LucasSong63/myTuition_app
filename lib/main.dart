@@ -45,9 +45,9 @@ Future<void> initDependencies() async {
     () => LoginUseCase(getIt<AuthRepository>()),
   );
 
-  // getIt.registerLazySingleton(
-  //   // () => LogoutUseCase(getIt<AuthRepository>()),
-  // );
+  getIt.registerLazySingleton(
+    () => LogoutUseCase(getIt<AuthRepository>()),
+  );
 
   getIt.registerLazySingleton(
     () => RegisterUseCase(getIt<AuthRepository>()),
@@ -65,7 +65,7 @@ Future<void> initDependencies() async {
   getIt.registerFactory(
     () => AuthBloc(
       loginUseCase: getIt<LoginUseCase>(),
-      // logoutUseCase: getIt<LogoutUseCase>(),
+      logoutUseCase: getIt<LogoutUseCase>(),
       registerUseCase: getIt<RegisterUseCase>(),
       forgotPasswordUseCase: getIt<ForgotPasswordUseCase>(),
       getCurrentUserUseCase: getIt<GetCurrentUserUseCase>(),

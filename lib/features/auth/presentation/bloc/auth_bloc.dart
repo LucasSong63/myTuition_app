@@ -11,7 +11,7 @@ import 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LoginUseCase loginUseCase;
-  // final LogoutUseCase logoutUseCase;
+  final LogoutUseCase logoutUseCase;
   final RegisterUseCase registerUseCase;
   final ForgotPasswordUseCase forgotPasswordUseCase;
   final GetCurrentUserUseCase getCurrentUserUseCase;
@@ -20,7 +20,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   AuthBloc({
     required this.loginUseCase,
-    // required this.logoutUseCase,
+    required this.logoutUseCase,
     required this.registerUseCase,
     required this.forgotPasswordUseCase,
     required this.getCurrentUserUseCase,
@@ -98,8 +98,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      // await logoutUseCase.execute();
-
+      await logoutUseCase.execute();
       emit(Unauthenticated());
     } catch (e) {
       emit(AuthError(message: 'Logout failed: ${e.toString()}'));

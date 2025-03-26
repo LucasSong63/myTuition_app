@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mytuition/features/auth/presentation/pages/demo_home_screen.dart';
 import 'package:mytuition/features/auth/presentation/pages/login_page.dart';
 import 'route_names.dart';
 
@@ -108,9 +109,7 @@ class AppRouter {
           GoRoute(
             path: '/student',
             name: RouteNames.studentRoot,
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('Student Dashboard')),
-            ),
+            builder: (context, state) => const DemoHomeScreen(isTutor: false),
             routes: [
               GoRoute(
                 path: 'profile',
@@ -209,9 +208,7 @@ class AppRouter {
           GoRoute(
             path: '/tutor',
             name: RouteNames.tutorRoot,
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('Tutor Dashboard')),
-            ),
+            builder: (context, state) => const DemoHomeScreen(isTutor: true),
             routes: [
               GoRoute(
                 path: 'profile',
