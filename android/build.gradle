@@ -9,6 +9,32 @@ allprojects {
         google()
         mavenCentral()
     }
+
+    // Modified Java compatibility settings
+    tasks.withType(JavaCompile) {
+        options.encoding = "UTF-8"
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    // Move the Android-specific configuration here
+    project.plugins.withId('com.android.library') {
+        android {
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+        }
+    }
+
+    project.plugins.withId('com.android.application') {
+        android {
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+        }
+    }
 }
 
 rootProject.buildDir = "../build"
@@ -17,6 +43,7 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+    // Remove the problematic afterEvaluate block
 }
 
 tasks.register("clean", Delete) {
