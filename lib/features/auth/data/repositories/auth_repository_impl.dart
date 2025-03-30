@@ -18,6 +18,17 @@ class AuthRepositoryImpl implements AuthRepository {
     bool isTutor = false,
   }) async {
     try {
+      // First check if email has a pending registration
+      final pendingQuery = await _firestore
+          .collection('registration_requests')
+          .where('email', isEqualTo: email)
+          .where('status', isEqualTo: 'pending')
+          .get();
+
+      if (pendingQuery.docs.isNotEmpty) {
+        throw Exception('Your registration is pending approval. Please wait for the tutor to review your application.');
+      }
+
       // Sign in with Firebase Auth
       final userCredential = await _authService.signInWithEmailAndPassword(
         email,
@@ -35,7 +46,7 @@ class AuthRepositoryImpl implements AuthRepository {
       final collectionPath = 'users';
 
       final docSnapshot =
-          await _firestore.collection(collectionPath).doc(userId).get();
+      await _firestore.collection(collectionPath).doc(userId).get();
       if (docSnapshot.exists) {
         final userData = docSnapshot.data() as Map<String, dynamic>;
         final userRole = userData['role'] as String;

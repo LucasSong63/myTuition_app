@@ -37,3 +37,41 @@ class AuthError extends AuthState {
 }
 
 class PasswordResetSent extends AuthState {}
+
+// State when a user tries to log in but their registration is pending
+class RegistrationPending extends AuthState {
+  final String message;
+
+  const RegistrationPending({required this.message});
+
+  @override
+  List<Object> get props => [message];
+}
+
+// New states for registration
+class RegistrationSubmitted extends AuthState {
+  final String email;
+
+  const RegistrationSubmitted({required this.email});
+
+  @override
+  List<Object> get props => [email];
+}
+
+class RegistrationApproved extends AuthState {
+  final User user;
+
+  const RegistrationApproved({required this.user});
+
+  @override
+  List<Object> get props => [user];
+}
+
+class RegistrationRejected extends AuthState {
+  final String reason;
+
+  const RegistrationRejected({required this.reason});
+
+  @override
+  List<Object> get props => [reason];
+}

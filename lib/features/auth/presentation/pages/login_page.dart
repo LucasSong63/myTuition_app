@@ -38,12 +38,12 @@ class _LoginPageState extends State<LoginPage> {
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
       context.read<AuthBloc>().add(
-            LoginEvent(
-              email: _emailController.text.trim(),
-              password: _passwordController.text.trim(),
-              isTutor: _selectedRole == 'tutor',
-            ),
-          );
+        LoginEvent(
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
+          isTutor: _selectedRole == 'tutor',
+        ),
+      );
     }
   }
 
@@ -61,6 +61,68 @@ class _LoginPageState extends State<LoginPage> {
               SnackBar(
                 content: Text(state.message),
                 backgroundColor: AppColors.error,
+              ),
+            );
+          }
+
+          // Add handler for pending registration
+          if (state is RegistrationPending) {
+            // Show a nicer dialog instead of a snackbar
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => AlertDialog(
+                title: Row(
+                  children: [
+                    Icon(
+                      Icons.pending_actions,
+                      color: AppColors.primaryBlue,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 12),
+                    const Text('Registration Pending'),
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Your registration is pending approval.',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Please wait for the tutor to review your application. You\'ll be able to login once approved.',
+                      style: TextStyle(
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'If you have any questions, please contact the tutor directly.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontStyle: FontStyle.italic,
+                        color: AppColors.textMedium,
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryBlue,
+                    ),
+                    child: const Text('OK'),
+                  ),
+                ],
               ),
             );
           }
@@ -101,7 +163,7 @@ class _LoginPageState extends State<LoginPage> {
                               CircleAvatar(
                                 radius: 48,
                                 backgroundColor:
-                                    AppColors.primaryBlue.withOpacity(0.1),
+                                AppColors.primaryBlue.withOpacity(0.1),
                                 child: Icon(
                                   Icons.school,
                                   size: 48,
@@ -140,7 +202,7 @@ class _LoginPageState extends State<LoginPage> {
                                 key: _formKey,
                                 child: Column(
                                   crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
+                                  CrossAxisAlignment.stretch,
                                   children: [
                                     Text(
                                       'Login',
@@ -167,22 +229,22 @@ class _LoginPageState extends State<LoginPage> {
                                               },
                                               child: Container(
                                                 padding:
-                                                    const EdgeInsets.symmetric(
-                                                        vertical: 12),
+                                                const EdgeInsets.symmetric(
+                                                    vertical: 12),
                                                 decoration: BoxDecoration(
                                                   color: _selectedRole ==
-                                                          'student'
+                                                      'student'
                                                       ? AppColors.primaryBlue
                                                       : Colors.transparent,
                                                   borderRadius:
-                                                      BorderRadius.circular(8),
+                                                  BorderRadius.circular(8),
                                                 ),
                                                 child: Text(
                                                   'Student',
                                                   textAlign: TextAlign.center,
                                                   style: TextStyle(
                                                     color: _selectedRole ==
-                                                            'student'
+                                                        'student'
                                                         ? Colors.white
                                                         : AppColors.textMedium,
                                                     fontWeight: FontWeight.w600,
@@ -200,22 +262,22 @@ class _LoginPageState extends State<LoginPage> {
                                               },
                                               child: Container(
                                                 padding:
-                                                    const EdgeInsets.symmetric(
-                                                        vertical: 12),
+                                                const EdgeInsets.symmetric(
+                                                    vertical: 12),
                                                 decoration: BoxDecoration(
                                                   color: _selectedRole ==
-                                                          'tutor'
+                                                      'tutor'
                                                       ? AppColors.primaryBlue
                                                       : Colors.transparent,
                                                   borderRadius:
-                                                      BorderRadius.circular(8),
+                                                  BorderRadius.circular(8),
                                                 ),
                                                 child: Text(
                                                   'Tutor',
                                                   textAlign: TextAlign.center,
                                                   style: TextStyle(
                                                     color: _selectedRole ==
-                                                            'tutor'
+                                                        'tutor'
                                                         ? Colors.white
                                                         : AppColors.textMedium,
                                                     fontWeight: FontWeight.w600,
@@ -307,13 +369,13 @@ class _LoginPageState extends State<LoginPage> {
                                       ),
                                       child: state is AuthLoading
                                           ? const SizedBox(
-                                              height: 20,
-                                              width: 20,
-                                              child: CircularProgressIndicator(
-                                                color: Colors.white,
-                                                strokeWidth: 2,
-                                              ),
-                                            )
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
                                           : const Text('Login'),
                                     ),
                                   ],

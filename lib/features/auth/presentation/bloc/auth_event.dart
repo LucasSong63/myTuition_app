@@ -31,6 +31,9 @@ class RegisterEvent extends AuthEvent {
   final bool isTutor;
   final int? grade;
   final List<String>? subjects;
+  // Added fields for registration
+  final String phone;
+  final bool hasConsulted;
 
   const RegisterEvent({
     required this.email,
@@ -39,10 +42,21 @@ class RegisterEvent extends AuthEvent {
     required this.isTutor,
     this.grade,
     this.subjects,
+    required this.phone,
+    required this.hasConsulted,
   });
 
   @override
-  List<Object?> get props => [email, password, name, isTutor, grade, subjects];
+  List<Object?> get props => [
+    email,
+    password,
+    name,
+    isTutor,
+    grade,
+    subjects,
+    phone,
+    hasConsulted,
+  ];
 }
 
 class LogoutEvent extends AuthEvent {}
