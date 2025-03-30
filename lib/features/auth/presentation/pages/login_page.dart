@@ -127,6 +127,13 @@ class _LoginPageState extends State<LoginPage> {
             );
           }
 
+          if (state is EmailVerificationRequired) {
+            context.goNamed(
+              RouteNames.verifyEmail,
+              extra: state.email,
+            );
+          }
+
           if (state is Authenticated) {
             // Navigate based on user role
             if (state.isTutor) {

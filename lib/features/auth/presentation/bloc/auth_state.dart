@@ -75,3 +75,16 @@ class RegistrationRejected extends AuthState {
   @override
   List<Object> get props => [reason];
 }
+
+class EmailVerificationRequired extends AuthState {
+  final String email;
+
+  const EmailVerificationRequired({required this.email});
+
+  @override
+  List<Object> get props => [email];
+}
+
+class EmailVerificationSent extends AuthState {
+  const EmailVerificationSent();
+}

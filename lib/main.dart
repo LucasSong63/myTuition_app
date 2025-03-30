@@ -11,7 +11,11 @@ import 'package:go_router/go_router.dart';
 import 'config/router/route_config.dart';
 import 'config/theme/app_theme.dart';
 
+// Core services import
+import 'core/services/auth_state_observer.dart';
+
 // Feature imports
+import 'features/auth/data/datasources/remote/email_service.dart';
 import 'features/auth/data/datasources/remote/firebase_auth_service.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/data/repositories/registration_repository_impl.dart';
@@ -35,9 +39,20 @@ final getIt = GetIt.instance;
 
 // Initialize dependencies
 Future<void> initDependencies() async {
+  // Core Services
+  final authStateObserver = AuthStateObserver(
+    FirebaseAuth.instance,
+    FirebaseFirestore.instance,
+  );
+  authStateObserver.initialize();
+
   // Services
   getIt.registerLazySingleton(
         () => FirebaseAuthService(),
+  );
+
+  getIt.registerLazySingleton(
+        () => EmailService(FirebaseFirestore.instance),
   );
 
   final firebaseAuth = FirebaseAuth.instance;
@@ -55,6 +70,7 @@ Future<void> initDependencies() async {
         () => RegistrationRepositoryImpl(
       firestore,
       firebaseAuth,
+      getIt<EmailService>(),
     ),
   );
 

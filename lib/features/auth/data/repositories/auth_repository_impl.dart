@@ -39,6 +39,11 @@ class AuthRepositoryImpl implements AuthRepository {
         throw Exception('Authentication failed');
       }
 
+      // Check if email is verified for students (not for tutors)
+      if (!isTutor && !userCredential.user!.emailVerified) {
+        throw Exception('email_not_verified');
+      }
+
       // Get user data from Firestore
       final userId = userCredential.user!.uid;
 

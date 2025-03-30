@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mytuition/features/auth/presentation/bloc/registration_bloc.dart';
 import 'package:mytuition/features/auth/presentation/pages/demo_home_screen.dart';
+import 'package:mytuition/features/auth/presentation/pages/email_verification_page.dart';
 import 'package:mytuition/features/auth/presentation/pages/login_page.dart';
 import 'package:mytuition/features/auth/presentation/pages/register_page.dart';
 import 'package:mytuition/features/auth/presentation/pages/registration_details_page.dart';
@@ -84,6 +85,14 @@ class AppRouter {
         path: '/login',
         name: RouteNames.login,
         builder: (context, state) => const LoginPage(),
+      ),
+      GoRoute(
+        path: '/verify-email',
+        name: RouteNames.verifyEmail,
+        builder: (context, state) {
+          final email = state.extra as String;
+          return EmailVerificationPage(email: email);
+        },
       ),
       GoRoute(
         path: '/register',

@@ -1,18 +1,24 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../../domain/repositories/registration_repository.dart';
+import '../datasources/remote/email_service.dart';
 import '../models/registration_model.dart';
 
 class RegistrationRepositoryImpl implements RegistrationRepository {
   final FirebaseFirestore _firestore;
   final firebase_auth.FirebaseAuth _firebaseAuth;
+  final EmailService _emailService;
 
   // Collection reference for registration requests
   final CollectionReference _registrationsCollection;
 
   // Constructor
-  RegistrationRepositoryImpl(this._firestore, this._firebaseAuth)
-      : _registrationsCollection = _firestore.collection('registration_requests');
+  RegistrationRepositoryImpl(
+      this._firestore,
+      this._firebaseAuth,
+      this._emailService,
+      ) : _registrationsCollection = _firestore.collection('registration_requests');
 
   @override
   Future<void> submitRegistration({
@@ -32,7 +38,9 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
         throw Exception('Email is already in use or has a pending request');
       }
 
-      // Store request in Firestore
+      // We'll store the password more securely
+      final securePassword = _encryptPassword(password);
+
       await _registrationsCollection.add({
         'email': email,
         'name': name,
@@ -42,8 +50,7 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
         'hasConsulted': hasConsulted,
         'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
-        // Store password securely (in a real app, consider more secure options)
-        'password': _encryptPassword(password), // This is a placeholder
+        'securePassword': securePassword,
       });
     } catch (e) {
       throw _handleException(e);
@@ -86,19 +93,25 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
 
       // Begin a transaction
       return await _firestore.runTransaction((transaction) async {
-        // Get the document data including password
+        // Get the document data including encrypted password
         final docSnapshot = await transaction.get(_registrationsCollection.doc(id));
         final data = docSnapshot.data() as Map<String, dynamic>;
+
+        // Decrypt the password
+        final password = _decryptPassword(data['securePassword']);
 
         // Create user in Firebase Auth
         final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
           email: request.email,
-          password: _decryptPassword(data['password']), // Decrypt password
+          password: password,
         );
 
         if (userCredential.user == null) {
           throw Exception('Failed to create user account');
         }
+
+        // Send email verification
+        await userCredential.user!.sendEmailVerification();
 
         final userId = userCredential.user!.uid;
 
@@ -109,18 +122,19 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
           'name': request.name,
           'email': request.email,
           'phone': request.phone,
-          'role': 'student', // Always student for registration
+          'role': 'student',
           'grade': request.grade,
           'subjects': request.subjects,
+          'emailVerified': false,
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
         });
 
-        // Update request status to approved
-        transaction.update(_registrationsCollection.doc(id), {
-          'status': 'approved',
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+        // Send approval notification email
+        await _emailService.sendApprovalEmail(request.email, request.name);
+
+        // Delete the registration document after approval
+        transaction.delete(_registrationsCollection.doc(id));
       });
     } catch (e) {
       throw _handleException(e);
@@ -130,11 +144,21 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
   @override
   Future<void> rejectRegistration(String id, String reason) async {
     try {
+      // Get the registration request first to get email and name
+      final request = await getRegistrationById(id);
+
+      // Update status to rejected
       await _registrationsCollection.doc(id).update({
         'status': 'rejected',
         'rejectReason': reason,
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
+      // Send rejection notification email
+      await _emailService.sendRejectionEmail(request.email, request.name, reason);
+
+      // Delete the registration document after rejection
+      await _registrationsCollection.doc(id).delete();
     } catch (e) {
       throw _handleException(e);
     }
@@ -162,17 +186,79 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
     }
   }
 
-  // Placeholder for password encryption (in a real app, use secure methods)
-  String _encryptPassword(String password) {
-    // Warning: This is NOT secure and just for demo purposes
-    // In a real app, consider more secure options or let Firebase handle it
-    return password; // Do NOT do this in production
+  @override
+  Future<bool> isEmailVerified(String userId) async {
+    try {
+      // First check Firebase Auth
+      final currentUser = _firebaseAuth.currentUser;
+      if (currentUser != null && currentUser.uid == userId) {
+        // If this is the currently signed in user, reload to get latest status
+        await currentUser.reload();
+        return currentUser.emailVerified;
+      }
+
+      // Otherwise check Firestore (as a fallback)
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      if (userDoc.exists) {
+        final userData = userDoc.data() as Map<String, dynamic>;
+        return userData['emailVerified'] ?? false;
+      }
+
+      return false;
+    } catch (e) {
+      throw _handleException(e);
+    }
   }
 
-  // Placeholder for password decryption
+  @override
+  Future<void> resendVerificationEmail(String userId) async {
+    try {
+      // Get the current user
+      final currentUser = _firebaseAuth.currentUser;
+
+      if (currentUser != null && currentUser.uid == userId) {
+        await currentUser.sendEmailVerification();
+      } else {
+        throw Exception('Cannot resend verification email. User not logged in.');
+      }
+    } catch (e) {
+      throw _handleException(e);
+    }
+  }
+
+  // Password encryption - replace with a more secure method in production
+  String _encryptPassword(String password) {
+    // This is a simple implementation for demo purposes
+    // In production, use a proper encryption library like encrypt package
+
+    // For now, we'll use a simple encoding method
+    // WARNING: This is NOT secure for production!
+    final key = 'mytuition_secret_key';
+    final bytes = utf8.encode(password);
+    final keyBytes = utf8.encode(key);
+
+    // XOR each byte with the corresponding byte from the key
+    final encrypted = List<int>.generate(
+      bytes.length,
+          (i) => bytes[i] ^ keyBytes[i % keyBytes.length],
+    );
+
+    return base64.encode(encrypted);
+  }
+
+  // Password decryption
   String _decryptPassword(String encryptedPassword) {
-    // Warning: This is NOT secure and just for demo purposes
-    return encryptedPassword; // Do NOT do this in production
+    // Reverse of the encryption method
+    final key = 'mytuition_secret_key';
+    final bytes = base64.decode(encryptedPassword);
+    final keyBytes = utf8.encode(key);
+
+    final decrypted = List<int>.generate(
+      bytes.length,
+          (i) => bytes[i] ^ keyBytes[i % keyBytes.length],
+    );
+
+    return utf8.decode(decrypted);
   }
 
   // Helper method to handle exceptions

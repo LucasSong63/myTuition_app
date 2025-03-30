@@ -11,10 +11,18 @@ class LoginUseCase {
     required String password,
     required bool isTutor,
   }) async {
-    return await repository.login(
-      email: email,
-      password: password,
-      isTutor: isTutor,
-    );
+    try {
+      return await repository.login(
+        email: email,
+        password: password,
+        isTutor: isTutor,
+      );
+    } catch (e) {
+      if (e.toString().contains('email_not_verified')) {
+        // Handle this special case in your BLoC
+        throw Exception('email_not_verified');
+      }
+      rethrow;
+    }
   }
 }
