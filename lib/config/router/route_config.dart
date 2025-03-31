@@ -9,6 +9,8 @@ import 'package:mytuition/features/auth/presentation/pages/register_page.dart';
 import 'package:mytuition/features/auth/presentation/pages/registration_details_page.dart';
 import 'package:mytuition/features/auth/presentation/pages/registration_list_page.dart';
 import 'package:get_it/get_it.dart';
+import 'package:mytuition/features/profile/presentation/bloc/profile_bloc.dart';
+import 'package:mytuition/features/profile/presentation/pages/profile_page.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
 import 'route_names.dart';
@@ -37,7 +39,6 @@ class AppRouter {
   // Getter for the router instance
   static GoRouter get router => _router;
 
-  // Auth guard for routes
   // Auth guard for routes
   static String? _guardRoutes(BuildContext context, GoRouterState state) {
     final authBloc = context.read<AuthBloc>();
@@ -135,7 +136,16 @@ class AppRouter {
             name: RouteNames.studentRoot,
             builder: (context, state) => const DemoHomeScreen(isTutor: false),
             routes: [
-              // Student routes (unchanged from original)...
+              // Add profile route
+              GoRoute(
+                path: 'profile',
+                name: RouteNames.studentProfile,
+                builder: (context, state) => BlocProvider<ProfileBloc>(
+                  create: (context) => getIt<ProfileBloc>(),
+                  child: const ProfilePage(),
+                ),
+              ),
+              // Student routes (add others as needed)...
             ],
           ),
         ],
@@ -169,9 +179,17 @@ class AppRouter {
             name: RouteNames.tutorRoot,
             builder: (context, state) => const DemoHomeScreen(isTutor: true),
             routes: [
-              // Tutor routes (unchanged from original)...
+              // Add profile route
+              GoRoute(
+                path: 'profile',
+                name: RouteNames.tutorProfile,
+                builder: (context, state) => BlocProvider<ProfileBloc>(
+                  create: (context) => getIt<ProfileBloc>(),
+                  child: const ProfilePage(),
+                ),
+              ),
 
-              // Add route for managing registration requests
+              // Route for managing registration requests
               GoRoute(
                 path: 'registrations',
                 name: 'tutorRegistrations',
@@ -184,15 +202,19 @@ class AppRouter {
                     path: ':registrationId',
                     name: 'registrationDetails',
                     builder: (context, state) {
-                      final registrationId = state.pathParameters['registrationId'] ?? '';
+                      final registrationId =
+                          state.pathParameters['registrationId'] ?? '';
                       return BlocProvider<RegistrationBloc>(
                         create: (context) => getIt<RegistrationBloc>(),
-                        child: RegistrationDetailsPage(registrationId: registrationId),
+                        child: RegistrationDetailsPage(
+                            registrationId: registrationId),
                       );
                     },
                   ),
                 ],
               ),
+
+              // Other tutor routes...
             ],
           ),
         ],

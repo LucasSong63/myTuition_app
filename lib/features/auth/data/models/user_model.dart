@@ -10,6 +10,9 @@ class UserModel extends User {
     required String role,
     int? grade,
     List<String>? subjects,
+    String? studentId,
+    String? phone,
+    String? profilePictureUrl,
     required DateTime createdAt,
     required DateTime updatedAt,
   }) : super(
@@ -19,6 +22,9 @@ class UserModel extends User {
           role: role,
           grade: grade,
           subjects: subjects,
+          studentId: studentId,
+          phone: phone,
+          profilePictureUrl: profilePictureUrl,
           createdAt: createdAt,
           updatedAt: updatedAt,
         );
@@ -57,6 +63,9 @@ class UserModel extends User {
       role: map['role'] ?? 'student',
       grade: map['grade'],
       subjects: subjects,
+      studentId: map['studentId'],
+      phone: map['phone'],
+      profilePictureUrl: map['profilePictureUrl'],
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
@@ -71,6 +80,9 @@ class UserModel extends User {
       'role': role,
       'grade': grade,
       'subjects': subjects,
+      'studentId': studentId,
+      'phone': phone,
+      'profilePictureUrl': profilePictureUrl,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
     };

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -31,6 +32,15 @@ import 'features/auth/domain/usecases/forgot_password_usecase.dart';
 import 'features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'features/auth/domain/usecases/submit_registration_usecase.dart';
 
+// Profile features
+import 'features/profile/data/datasources/remote/storage_service.dart';
+import 'features/profile/data/repositories/profile_repository_impl.dart';
+import 'features/profile/domain/repositories/profile_repository.dart';
+import 'features/profile/domain/usecases/update_profile_usecase.dart';
+import 'features/profile/domain/usecases/update_profile_picture_usecase.dart';
+import 'features/profile/domain/usecases/remove_profile_picture_usecase.dart';
+import 'features/profile/presentation/bloc/profile_bloc.dart';
+
 // Firebase config
 import 'firebase_option.dart';
 
@@ -46,63 +56,89 @@ Future<void> initDependencies() async {
   );
   authStateObserver.initialize();
 
-  // Services
-  getIt.registerLazySingleton(
-        () => FirebaseAuthService(),
-  );
-
-  getIt.registerLazySingleton(
-        () => EmailService(FirebaseFirestore.instance),
-  );
-
+  // Firebase instances
   final firebaseAuth = FirebaseAuth.instance;
   final firestore = FirebaseFirestore.instance;
+  final firebaseStorage = FirebaseStorage.instance;
+
+  // Services
+  getIt.registerLazySingleton(
+    () => FirebaseAuthService(),
+  );
+
+  getIt.registerLazySingleton(
+    () => EmailService(FirebaseFirestore.instance),
+  );
+
+  getIt.registerLazySingleton(
+    () => StorageService(firebaseStorage),
+  );
 
   // Repositories
   getIt.registerLazySingleton<AuthRepository>(
-        () => AuthRepositoryImpl(
+    () => AuthRepositoryImpl(
       getIt<FirebaseAuthService>(),
       firestore,
     ),
   );
 
   getIt.registerLazySingleton<RegistrationRepository>(
-        () => RegistrationRepositoryImpl(
+    () => RegistrationRepositoryImpl(
       firestore,
       firebaseAuth,
       getIt<EmailService>(),
     ),
   );
 
-  // Use cases
+  getIt.registerLazySingleton<ProfileRepository>(
+    () => ProfileRepositoryImpl(
+      firestore,
+      getIt<StorageService>(),
+    ),
+  );
+
+  // Auth use cases
   getIt.registerLazySingleton(
-        () => LoginUseCase(getIt<AuthRepository>()),
+    () => LoginUseCase(getIt<AuthRepository>()),
   );
 
   getIt.registerLazySingleton(
-        () => LogoutUseCase(getIt<AuthRepository>()),
+    () => LogoutUseCase(getIt<AuthRepository>()),
   );
 
   getIt.registerLazySingleton(
-        () => RegisterUseCase(getIt<AuthRepository>()),
+    () => RegisterUseCase(getIt<AuthRepository>()),
   );
 
   getIt.registerLazySingleton(
-        () => ForgotPasswordUseCase(getIt<AuthRepository>()),
+    () => ForgotPasswordUseCase(getIt<AuthRepository>()),
   );
 
   getIt.registerLazySingleton(
-        () => GetCurrentUserUseCase(getIt<AuthRepository>()),
+    () => GetCurrentUserUseCase(getIt<AuthRepository>()),
   );
 
   // Registration use case
   getIt.registerLazySingleton(
-        () => SubmitRegistrationUseCase(getIt<RegistrationRepository>()),
+    () => SubmitRegistrationUseCase(getIt<RegistrationRepository>()),
+  );
+
+  // Profile use cases
+  getIt.registerLazySingleton(
+    () => UpdateProfileUseCase(getIt<ProfileRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => UpdateProfilePictureUseCase(getIt<ProfileRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => RemoveProfilePictureUseCase(getIt<ProfileRepository>()),
   );
 
   // BLoCs
   getIt.registerFactory(
-        () => AuthBloc(
+    () => AuthBloc(
       loginUseCase: getIt<LoginUseCase>(),
       logoutUseCase: getIt<LogoutUseCase>(),
       registerUseCase: getIt<RegisterUseCase>(),
@@ -114,8 +150,17 @@ Future<void> initDependencies() async {
 
   // Registration BLoC
   getIt.registerFactory(
-        () => RegistrationBloc(
+    () => RegistrationBloc(
       registrationRepository: getIt<RegistrationRepository>(),
+    ),
+  );
+
+  // Profile BLoC
+  getIt.registerFactory(
+    () => ProfileBloc(
+      updateProfileUseCase: getIt<UpdateProfileUseCase>(),
+      updateProfilePictureUseCase: getIt<UpdateProfilePictureUseCase>(),
+      removeProfilePictureUseCase: getIt<RemoveProfilePictureUseCase>(),
     ),
   );
 }
@@ -166,7 +211,8 @@ class MyTuitionApp extends StatelessWidget {
         title: 'myTuition',
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.light, // Default to light theme
+        themeMode: ThemeMode.light,
+        // Default to light theme
         debugShowCheckedModeBanner: false,
         routerDelegate: AppRouter.router.routerDelegate,
         routeInformationParser: AppRouter.router.routeInformationParser,

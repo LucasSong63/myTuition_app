@@ -53,6 +53,7 @@ dependencies:
   flutter_svg: ^2.0.17
   cached_network_image: ^3.4.1
   connectivity_plus: ^5.0.2
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:

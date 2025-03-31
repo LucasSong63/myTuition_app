@@ -22,7 +22,7 @@ dependencies {
 
 android {
     namespace = "com.lucas.song.mytuition"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 35
     ndkVersion = flutter.ndkVersion
 
 

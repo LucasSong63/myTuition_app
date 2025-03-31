@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../../domain/repositories/registration_repository.dart';
@@ -19,6 +20,19 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
       this._firebaseAuth,
       this._emailService,
       ) : _registrationsCollection = _firestore.collection('registration_requests');
+
+  // Generate a unique student ID
+  String _generateStudentId() {
+    // Get current year's last two digits
+    final year = DateTime.now().year.toString().substring(2);
+
+    // Generate a random 4-digit number
+    final random = Random();
+    final uniqueNumber = random.nextInt(9000) + 1000; // 1000-9999 range
+
+    // Format: MT + year + sequence number
+    return 'MT$year-$uniqueNumber';
+  }
 
   @override
   Future<void> submitRegistration({
@@ -85,11 +99,54 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
     }
   }
 
+// Generate a unique student ID with collision checking
+  Future<String> _generateUniqueStudentId() async {
+    // Maximum number of attempts to avoid infinite loops
+    final maxAttempts = 10;
+    int attempts = 0;
+
+    while (attempts < maxAttempts) {
+      // Get current year's last two digits
+      final year = DateTime.now().year.toString().substring(2);
+
+      // Generate a random 4-digit number
+      final random = Random();
+      final uniqueNumber = random.nextInt(9000) + 1000; // 1000-9999 range
+
+      // Format: MT + year + sequence number
+      final studentId = 'MT$year-$uniqueNumber';
+
+      // Check if this ID already exists
+      final query = await _firestore
+          .collection('users')
+          .where('studentId', isEqualTo: studentId)
+          .limit(1)
+          .get();
+
+      // If no document found with this ID, it's unique
+      if (query.docs.isEmpty) {
+        return studentId;
+      }
+
+      // Increment attempt counter
+      attempts++;
+    }
+
+    // If we reach here, we've tried multiple times and still have collisions
+    // Generate a more complex ID with milliseconds to ensure uniqueness
+    final timestamp = DateTime.now().millisecondsSinceEpoch % 10000;
+    final year = DateTime.now().year.toString().substring(2);
+    return 'MT$year-$timestamp';
+  }
+
   @override
   Future<void> approveRegistration(String id) async {
     try {
       // Get the registration request
       final request = await getRegistrationById(id);
+
+      // Generate a unique student ID (outside the transaction)
+      final studentId = await _generateUniqueStudentId();
 
       // Begin a transaction
       return await _firestore.runTransaction((transaction) async {
@@ -125,6 +182,7 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
           'role': 'student',
           'grade': request.grade,
           'subjects': request.subjects,
+          'studentId': studentId,
           'emailVerified': false,
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),

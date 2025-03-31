@@ -7,6 +7,9 @@ class User extends Equatable {
   final String role;
   final int? grade;
   final List<String>? subjects;
+  final String? studentId;
+  final String? phone;
+  final String? profilePictureUrl;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -17,11 +20,15 @@ class User extends Equatable {
     required this.role,
     this.grade,
     this.subjects,
+    this.studentId,
+    this.phone,
+    this.profilePictureUrl,
     required this.createdAt,
     required this.updatedAt,
   });
 
   bool get isStudent => role == 'student';
+
   bool get isTutor => role == 'tutor';
 
   @override
@@ -32,6 +39,9 @@ class User extends Equatable {
         role,
         grade,
         subjects,
+        studentId,
+        phone,
+        profilePictureUrl,
         createdAt,
         updatedAt,
       ];
