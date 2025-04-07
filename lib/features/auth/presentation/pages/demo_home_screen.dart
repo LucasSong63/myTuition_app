@@ -89,8 +89,7 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
     );
   }
 
-
-Widget _buildTutorDashboard(BuildContext context) {
+  Widget _buildTutorDashboard(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -129,7 +128,45 @@ Widget _buildTutorDashboard(BuildContext context) {
                   icon: const Icon(Icons.app_registration),
                   label: const Text('View Pending Registrations'),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 12, horizontal: 16),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Admin tools card - Add this new card
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Admin Tools',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Setup and configuration tools',
+                  style: TextStyle(color: AppColors.textMedium),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    context.push('/admin/setup');
+                  },
+                  icon: const Icon(Icons.settings),
+                  label: const Text('Database Setup'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 12, horizontal: 16),
+                    backgroundColor: AppColors.warningLight,
+                    foregroundColor: Colors.black87,
                   ),
                 ),
               ],

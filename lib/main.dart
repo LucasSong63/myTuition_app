@@ -7,6 +7,12 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mytuition/features/courses/data/repositories/course_repository_impl.dart';
+import 'package:mytuition/features/courses/domain/repositories/course_repository.dart';
+import 'package:mytuition/features/courses/domain/usecases/get_course_by_id_usecase.dart';
+import 'package:mytuition/features/courses/domain/usecases/get_enrolled_courses_usecase.dart';
+import 'package:mytuition/features/courses/domain/usecases/get_upcoming_schedules_usecase.dart';
+import 'package:mytuition/features/courses/presentation/bloc/course_bloc.dart';
 
 // Config imports
 import 'config/router/route_config.dart';
@@ -161,6 +167,35 @@ Future<void> initDependencies() async {
       updateProfileUseCase: getIt<UpdateProfileUseCase>(),
       updateProfilePictureUseCase: getIt<UpdateProfilePictureUseCase>(),
       removeProfilePictureUseCase: getIt<RemoveProfilePictureUseCase>(),
+    ),
+  );
+
+  // Repositories
+  getIt.registerLazySingleton<CourseRepository>(
+    () => CourseRepositoryImpl(
+      FirebaseFirestore.instance,
+    ),
+  );
+
+// Course use cases
+  getIt.registerLazySingleton(
+    () => GetEnrolledCoursesUseCase(getIt<CourseRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => GetCourseByIdUseCase(getIt<CourseRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => GetUpcomingSchedulesUseCase(getIt<CourseRepository>()),
+  );
+
+// Course BLoC
+  getIt.registerFactory(
+    () => CourseBloc(
+      getEnrolledCoursesUseCase: getIt<GetEnrolledCoursesUseCase>(),
+      getCourseByIdUseCase: getIt<GetCourseByIdUseCase>(),
+      getUpcomingSchedulesUseCase: getIt<GetUpcomingSchedulesUseCase>(),
     ),
   );
 }

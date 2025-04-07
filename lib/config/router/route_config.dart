@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mytuition/features/admin/setup_screen.dart';
 import 'package:mytuition/features/auth/presentation/bloc/registration_bloc.dart';
 import 'package:mytuition/features/auth/presentation/pages/demo_home_screen.dart';
 import 'package:mytuition/features/auth/presentation/pages/email_verification_page.dart';
@@ -9,6 +10,9 @@ import 'package:mytuition/features/auth/presentation/pages/register_page.dart';
 import 'package:mytuition/features/auth/presentation/pages/registration_details_page.dart';
 import 'package:mytuition/features/auth/presentation/pages/registration_list_page.dart';
 import 'package:get_it/get_it.dart';
+import 'package:mytuition/features/courses/presentation/bloc/course_bloc.dart';
+import 'package:mytuition/features/courses/presentation/pages/course_detail_page.dart';
+import 'package:mytuition/features/courses/presentation/pages/courses_page.dart';
 import 'package:mytuition/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:mytuition/features/profile/presentation/pages/profile_page.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
@@ -107,6 +111,10 @@ class AppRouter {
           body: Center(child: Text('Forgot Password Screen')),
         ),
       ),
+      GoRoute(
+        path: '/admin/setup',
+        builder: (context, state) => const SetupScreen(),
+      ),
 
       // Student routes - organized as a ShellRoute for nested navigation
       ShellRoute(
@@ -145,7 +153,59 @@ class AppRouter {
                   child: const ProfilePage(),
                 ),
               ),
-              // Student routes (add others as needed)...
+
+              // Add courses route
+              GoRoute(
+                path: 'courses',
+                name: RouteNames.studentCourses,
+                builder: (context, state) => BlocProvider<CourseBloc>(
+                  create: (context) => getIt<CourseBloc>(),
+                  child: const CoursesPage(),
+                ),
+                routes: [
+                  GoRoute(
+                    path: ':courseId',
+                    name: RouteNames.studentCourseDetails,
+                    builder: (context, state) {
+                      final courseId = state.pathParameters['courseId'] ?? '';
+                      return BlocProvider<CourseBloc>(
+                        create: (context) => getIt<CourseBloc>(),
+                        child: CourseDetailPage(courseId: courseId),
+                      );
+                    },
+                  ),
+                ],
+              ),
+
+              // Add AI Chat route
+              GoRoute(
+                path: 'ai-chat',
+                name: RouteNames.studentAiChat,
+                builder: (context, state) => const Scaffold(
+                  body: Center(child: Text('AI Chat Coming Soon')),
+                ),
+              ),
+
+              // Add Tasks route
+              GoRoute(
+                path: 'tasks',
+                name: RouteNames.studentTasks,
+                builder: (context, state) => const Scaffold(
+                  body: Center(child: Text('Tasks Coming Soon')),
+                ),
+                routes: [
+                  GoRoute(
+                    path: ':taskId',
+                    name: RouteNames.studentTaskDetails,
+                    builder: (context, state) {
+                      final taskId = state.pathParameters['taskId'] ?? '';
+                      return Scaffold(
+                        body: Center(child: Text('Task Details for $taskId')),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ],
           ),
         ],
@@ -189,6 +249,33 @@ class AppRouter {
                 ),
               ),
 
+              // Add classes route
+              GoRoute(
+                path: 'classes',
+                name: RouteNames.tutorClasses,
+                builder: (context, state) => const Scaffold(
+                  body: Center(child: Text('Classes Coming Soon')),
+                ),
+              ),
+
+              // Add students route
+              GoRoute(
+                path: 'students',
+                name: RouteNames.tutorStudents,
+                builder: (context, state) => const Scaffold(
+                  body: Center(child: Text('Students Coming Soon')),
+                ),
+              ),
+
+              // Add tasks route
+              GoRoute(
+                path: 'tasks',
+                name: RouteNames.tutorTasks,
+                builder: (context, state) => const Scaffold(
+                  body: Center(child: Text('Tasks Coming Soon')),
+                ),
+              ),
+
               // Route for managing registration requests
               GoRoute(
                 path: 'registrations',
@@ -213,8 +300,6 @@ class AppRouter {
                   ),
                 ],
               ),
-
-              // Other tutor routes...
             ],
           ),
         ],
