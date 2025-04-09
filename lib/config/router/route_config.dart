@@ -13,8 +13,14 @@ import 'package:get_it/get_it.dart';
 import 'package:mytuition/features/courses/presentation/bloc/course_bloc.dart';
 import 'package:mytuition/features/courses/presentation/pages/course_detail_page.dart';
 import 'package:mytuition/features/courses/presentation/pages/courses_page.dart';
+import 'package:mytuition/features/courses/presentation/pages/tutor_courses_page.dart';
 import 'package:mytuition/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:mytuition/features/profile/presentation/pages/profile_page.dart';
+import 'package:mytuition/features/tasks/presentation/pages/tutor_task_management_page.dart';
+import 'package:mytuition/features/tasks/presentation/pages/task_progress_page.dart';
+import 'package:mytuition/features/tasks/presentation/pages/student_tasks_page.dart';
+import 'package:mytuition/features/tasks/presentation/pages/student_task_detail_page.dart';
+import 'package:mytuition/features/tasks/presentation/bloc/task_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
 import 'route_names.dart';
@@ -190,8 +196,9 @@ class AppRouter {
               GoRoute(
                 path: 'tasks',
                 name: RouteNames.studentTasks,
-                builder: (context, state) => const Scaffold(
-                  body: Center(child: Text('Tasks Coming Soon')),
+                builder: (context, state) => BlocProvider<TaskBloc>(
+                  create: (context) => getIt<TaskBloc>(),
+                  child: const StudentTasksPage(),
                 ),
                 routes: [
                   GoRoute(
@@ -199,8 +206,9 @@ class AppRouter {
                     name: RouteNames.studentTaskDetails,
                     builder: (context, state) {
                       final taskId = state.pathParameters['taskId'] ?? '';
-                      return Scaffold(
-                        body: Center(child: Text('Task Details for $taskId')),
+                      return BlocProvider<TaskBloc>(
+                        create: (context) => getIt<TaskBloc>(),
+                        child: StudentTaskDetailPage(taskId: taskId),
                       );
                     },
                   ),
@@ -224,7 +232,6 @@ class AppRouter {
                     icon: Icon(Icons.class_), label: 'Classes'),
                 BottomNavigationBarItem(
                     icon: Icon(Icons.people), label: 'Students'),
-                BottomNavigationBarItem(icon: Icon(Icons.task), label: 'Tasks'),
                 BottomNavigationBarItem(
                     icon: Icon(Icons.person), label: 'Profile'),
               ],
@@ -249,15 +256,6 @@ class AppRouter {
                 ),
               ),
 
-              // Add classes route
-              GoRoute(
-                path: 'classes',
-                name: RouteNames.tutorClasses,
-                builder: (context, state) => const Scaffold(
-                  body: Center(child: Text('Classes Coming Soon')),
-                ),
-              ),
-
               // Add students route
               GoRoute(
                 path: 'students',
@@ -274,6 +272,36 @@ class AppRouter {
                 builder: (context, state) => const Scaffold(
                   body: Center(child: Text('Tasks Coming Soon')),
                 ),
+              ),
+
+              // Route for course task management
+              GoRoute(
+                path: 'courses/:courseId/tasks',
+                name: 'tutorCourseTaskManagement',
+                builder: (context, state) {
+                  final courseId = state.pathParameters['courseId'] ?? '';
+                  final courseName = state.extra as String? ?? 'Course';
+                  return BlocProvider<TaskBloc>(
+                    create: (context) => getIt<TaskBloc>(),
+                    child: TutorTaskManagementPage(
+                      courseId: courseId,
+                      courseName: courseName,
+                    ),
+                  );
+                },
+              ),
+
+              // Route for task progress view
+              GoRoute(
+                path: 'tasks/:taskId',
+                name: 'tutorTaskProgress',
+                builder: (context, state) {
+                  final taskId = state.pathParameters['taskId'] ?? '';
+                  return BlocProvider<TaskBloc>(
+                    create: (context) => getIt<TaskBloc>(),
+                    child: TaskProgressPage(taskId: taskId),
+                  );
+                },
               ),
 
               // Route for managing registration requests
@@ -295,6 +323,27 @@ class AppRouter {
                         create: (context) => getIt<RegistrationBloc>(),
                         child: RegistrationDetailsPage(
                             registrationId: registrationId),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              GoRoute(
+                path: 'classes',
+                name: RouteNames.tutorClasses,
+                builder: (context, state) => BlocProvider<CourseBloc>(
+                  create: (context) => getIt<CourseBloc>(),
+                  child: const TutorCoursesPage(),
+                ),
+                routes: [
+                  GoRoute(
+                    path: ':courseId',
+                    name: RouteNames.tutorCourseDetails,
+                    builder: (context, state) {
+                      final courseId = state.pathParameters['courseId'] ?? '';
+                      return BlocProvider<CourseBloc>(
+                        create: (context) => getIt<CourseBloc>(),
+                        child: CourseDetailPage(courseId: courseId),
                       );
                     },
                   ),
@@ -341,10 +390,9 @@ class AppRouter {
   // Helper method to calculate the selected index for tutor bottom navigation
   static int _calculateSelectedTutorIndex(GoRouterState state) {
     final location = state.uri.toString();
-    if (location.startsWith('/tutor/profile')) return 4;
+    if (location.startsWith('/tutor/profile')) return 3;
     if (location.startsWith('/tutor/classes')) return 1;
     if (location.startsWith('/tutor/students')) return 2;
-    if (location.startsWith('/tutor/tasks')) return 3;
     return 0; // Default to home/dashboard
   }
 
@@ -360,10 +408,7 @@ class AppRouter {
       case 2:
         GoRouter.of(context).goNamed(RouteNames.tutorStudents);
         break;
-      case 3:
-        GoRouter.of(context).goNamed(RouteNames.tutorTasks);
-        break;
-      case 4:
+      case 3: // Updated index
         GoRouter.of(context).goNamed(RouteNames.tutorProfile);
         break;
     }

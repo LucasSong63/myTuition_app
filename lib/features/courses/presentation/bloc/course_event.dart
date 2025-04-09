@@ -34,3 +34,12 @@ class LoadUpcomingSchedulesEvent extends CourseEvent {
   @override
   List<Object?> get props => [studentId];
 }
+
+class LoadTutorCoursesEvent extends CourseEvent {
+  final String tutorId;
+
+  const LoadTutorCoursesEvent({required this.tutorId});
+
+  @override
+  List<Object?> get props => [tutorId];
+}

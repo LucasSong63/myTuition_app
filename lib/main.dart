@@ -37,6 +37,20 @@ import 'features/auth/domain/usecases/register_usecase.dart';
 import 'features/auth/domain/usecases/forgot_password_usecase.dart';
 import 'features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'features/auth/domain/usecases/submit_registration_usecase.dart';
+import 'features/courses/domain/usecases/get_tutor_courses_usecase.dart';
+import 'features/tasks/data/repositories/task_repository_impl.dart';
+import 'features/tasks/domain/repositories/task_repository.dart';
+import 'features/tasks/domain/usecases/get_tasks_by_course_usecase.dart';
+import 'features/tasks/domain/usecases/get_tasks_for_student_usecase.dart';
+import 'features/tasks/domain/usecases/get_student_task_usecase.dart';
+import 'features/tasks/domain/usecases/create_task_usecase.dart';
+import 'features/tasks/domain/usecases/update_task_usecase.dart';
+import 'features/tasks/domain/usecases/delete_task_usecase.dart';
+import 'features/tasks/domain/usecases/mark_task_as_completed_usecase.dart';
+import 'features/tasks/domain/usecases/mark_task_as_incomplete_usecase.dart';
+import 'features/tasks/domain/usecases/add_task_remarks_usecase.dart';
+import 'features/tasks/domain/usecases/get_task_completion_status_usecase.dart';
+import 'features/tasks/presentation/bloc/task_bloc.dart';
 
 // Profile features
 import 'features/profile/data/datasources/remote/storage_service.dart';
@@ -189,6 +203,9 @@ Future<void> initDependencies() async {
   getIt.registerLazySingleton(
     () => GetUpcomingSchedulesUseCase(getIt<CourseRepository>()),
   );
+  getIt.registerLazySingleton(
+    () => GetTutorCoursesUseCase(getIt<CourseRepository>()),
+  );
 
 // Course BLoC
   getIt.registerFactory(
@@ -196,6 +213,71 @@ Future<void> initDependencies() async {
       getEnrolledCoursesUseCase: getIt<GetEnrolledCoursesUseCase>(),
       getCourseByIdUseCase: getIt<GetCourseByIdUseCase>(),
       getUpcomingSchedulesUseCase: getIt<GetUpcomingSchedulesUseCase>(),
+      getTutorCoursesUseCase: getIt<GetTutorCoursesUseCase>(),
+    ),
+  );
+
+  // Task Repository
+  getIt.registerLazySingleton<TaskRepository>(
+    () => TaskRepositoryImpl(
+      FirebaseFirestore.instance,
+    ),
+  );
+
+  // Task Use Cases
+  getIt.registerLazySingleton(
+    () => GetTasksByCourseUseCase(getIt<TaskRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => GetTasksForStudentUseCase(getIt<TaskRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => GetStudentTaskUseCase(getIt<TaskRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => CreateTaskUseCase(getIt<TaskRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => UpdateTaskUseCase(getIt<TaskRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => DeleteTaskUseCase(getIt<TaskRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => MarkTaskAsCompletedUseCase(getIt<TaskRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => MarkTaskAsIncompleteUseCase(getIt<TaskRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => AddTaskRemarksUseCase(getIt<TaskRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => GetTaskCompletionStatusUseCase(getIt<TaskRepository>()),
+  );
+
+  // Task BLoC
+  getIt.registerFactory(
+    () => TaskBloc(
+      getTasksByCourseUseCase: getIt<GetTasksByCourseUseCase>(),
+      getTasksForStudentUseCase: getIt<GetTasksForStudentUseCase>(),
+      getStudentTaskUseCase: getIt<GetStudentTaskUseCase>(),
+      createTaskUseCase: getIt<CreateTaskUseCase>(),
+      updateTaskUseCase: getIt<UpdateTaskUseCase>(),
+      deleteTaskUseCase: getIt<DeleteTaskUseCase>(),
+      markTaskAsCompletedUseCase: getIt<MarkTaskAsCompletedUseCase>(),
+      markTaskAsIncompleteUseCase: getIt<MarkTaskAsIncompleteUseCase>(),
+      addTaskRemarksUseCase: getIt<AddTaskRemarksUseCase>(),
+      getTaskCompletionStatusUseCase: getIt<GetTaskCompletionStatusUseCase>(),
     ),
   );
 }

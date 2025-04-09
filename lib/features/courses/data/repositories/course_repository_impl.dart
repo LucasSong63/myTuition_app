@@ -122,4 +122,20 @@ class CourseRepositoryImpl implements CourseRepository {
     ];
     return days.indexOf(day.trim());
   }
+
+  @override
+  Future<List<Course>> getTutorCourses(String tutorId) async {
+    try {
+      print("Fetching all classes for tutor access");
+      final snapshot = await _firestore.collection('classes').get();
+
+      print("Query returned ${snapshot.docs.length} classes");
+      return snapshot.docs
+          .map((doc) => CourseModel.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      print("Error in getTutorCourses: $e");
+      throw Exception('Failed to get tutor courses: $e');
+    }
+  }
 }

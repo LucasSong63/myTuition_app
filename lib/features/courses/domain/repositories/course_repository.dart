@@ -10,4 +10,6 @@ abstract class CourseRepository {
 
   // Get upcoming schedules for a student
   Future<List<Schedule>> getUpcomingSchedules(String studentId);
+
+  Future<List<Course>> getTutorCourses(String tutorId);
 }

@@ -1,7 +1,11 @@
+// lib/features/courses/presentation/pages/course_detail_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
+import 'package:mytuition/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:mytuition/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mytuition/features/courses/presentation/bloc/course_state.dart';
 import '../../domain/entities/course.dart';
 import '../../domain/entities/schedule.dart';
@@ -18,11 +22,14 @@ class CourseDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Check if user is a tutor
+    final authState = context.read<AuthBloc>().state;
+    final isTutor = authState is Authenticated && authState.isTutor;
+
     return BlocBuilder<CourseBloc, CourseState>(
       builder: (context, state) {
         // First check for error state
         if (state is CourseError) {
-          // Use the correct state class name
           return Scaffold(
             appBar: AppBar(
               title: const Text('Course Details'),
@@ -74,14 +81,44 @@ class CourseDetailPage extends StatelessWidget {
         }
 
         // Now handle the course details state
-        final course = state.course; // No need for cast since we checked above
+        final course = state.course;
 
         return Scaffold(
           appBar: AppBar(
             title: Text(course.subject),
             backgroundColor: _getSubjectColor(course.subject),
           ),
-          // Rest of your UI...
+          body: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Hero banner
+                _buildHeroBanner(context, course),
+
+                // Content
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Course info card
+                      _buildCourseInfoCard(context, course),
+
+                      const SizedBox(height: 24),
+
+                      // Tutor actions section (only for tutors)
+                      if (isTutor) _buildTutorActionsSection(context, course),
+
+                      const SizedBox(height: 24),
+
+                      // Schedule section
+                      _buildScheduleSection(context, course),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -170,6 +207,53 @@ class CourseDetailPage extends StatelessWidget {
     );
   }
 
+  Widget _buildTutorActionsSection(BuildContext context, Course course) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Tutor Actions',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  context.push('/tutor/courses/${course.id}/tasks',
+                      extra: course.subject);
+                },
+                icon: const Icon(Icons.assignment),
+                label: const Text('Manage Tasks'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  // Navigate to attendance screen
+                },
+                icon: const Icon(Icons.people),
+                label: const Text('Attendance'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildScheduleSection(BuildContext context, Course course) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -190,7 +274,6 @@ class CourseDetailPage extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Center(
-                // Continuing _buildScheduleSection method in course_detail_page.dart
                 child: Text(
                   'No scheduled classes yet',
                   style: TextStyle(
