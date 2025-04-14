@@ -54,10 +54,13 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   ) async {
     emit(TaskLoading());
     try {
+      // Add a small delay before loading tasks to ensure Firestore has time to process any recent changes
+      await Future.delayed(const Duration(milliseconds: 300));
+
       final tasks = await getTasksByCourseUseCase.execute(event.courseId);
       emit(TasksLoaded(tasks: tasks));
     } catch (e) {
-      emit(TaskError(message: e.toString()));
+      emit(TaskError(message: 'Failed to load tasks: ${e.toString()}'));
     }
   }
 
@@ -140,14 +143,18 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   ) async {
     emit(TaskLoading());
     try {
+      // Delete the task
       await deleteTaskUseCase.execute(event.taskId);
 
+      // Emit success state
       emit(const TaskActionSuccess(message: 'Task deleted successfully'));
 
-      // Note: We can't reload tasks by course here because we don't have the courseId
-      // The calling component should reload tasks if needed
+      // Automatically reload the tasks after deletion
+      final updatedTasks =
+          await getTasksByCourseUseCase.execute(event.courseId);
+      emit(TasksLoaded(tasks: updatedTasks));
     } catch (e) {
-      emit(TaskError(message: e.toString()));
+      emit(TaskError(message: 'Failed to delete task: ${e.toString()}'));
     }
   }
 

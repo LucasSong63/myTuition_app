@@ -67,11 +67,15 @@ class UpdateTaskEvent extends TaskEvent {
 
 class DeleteTaskEvent extends TaskEvent {
   final String taskId;
+  final String courseId; // Add courseId parameter
 
-  const DeleteTaskEvent({required this.taskId});
+  const DeleteTaskEvent({
+    required this.taskId,
+    required this.courseId, // Make it required
+  });
 
   @override
-  List<Object?> get props => [taskId];
+  List<Object?> get props => [taskId, courseId];
 }
 
 class MarkTaskAsCompletedEvent extends TaskEvent {

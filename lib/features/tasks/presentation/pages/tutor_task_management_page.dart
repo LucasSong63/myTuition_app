@@ -9,7 +9,7 @@ import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
 import '../widgets/add_task_dialog.dart';
 
-class TutorTaskManagementPage extends StatelessWidget {
+class TutorTaskManagementPage extends StatefulWidget {
   final String courseId;
   final String courseName;
 
@@ -18,6 +18,32 @@ class TutorTaskManagementPage extends StatelessWidget {
     required this.courseId,
     required this.courseName,
   }) : super(key: key);
+
+  @override
+  State<TutorTaskManagementPage> createState() =>
+      _TutorTaskManagementPageState();
+}
+
+class _TutorTaskManagementPageState extends State<TutorTaskManagementPage> {
+  late String courseId;
+  late String courseName;
+
+  @override
+  void initState() {
+    super.initState();
+    courseId = widget.courseId;
+    courseName = widget.courseName;
+
+    // Use a small delay to ensure the BLoC is properly initialized before loading tasks
+    // This helps with the initial navigation to the page
+    Future.microtask(() {
+      if (mounted) {
+        context.read<TaskBloc>().add(
+              LoadTasksByCourseEvent(courseId: courseId),
+            );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +61,6 @@ class TutorTaskManagementPage extends StatelessWidget {
               ),
             );
           }
-
           if (state is TaskError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -46,21 +71,16 @@ class TutorTaskManagementPage extends StatelessWidget {
           }
         },
         builder: (context, state) {
-          // Load tasks if not already loaded
-          if (state is TaskInitial) {
-            context.read<TaskBloc>().add(
-                  LoadTasksByCourseEvent(courseId: courseId),
-                );
-            return const Center(child: CircularProgressIndicator());
+          // Show loading indicator for initial load and explicit loading state
+          if (state is TaskInitial || state is TaskLoading) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
           }
 
-          if (state is TaskLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
+          // Show tasks if loaded successfully
           if (state is TasksLoaded) {
             final tasks = state.tasks;
-
             return Column(
               children: [
                 Padding(
@@ -76,11 +96,30 @@ class TutorTaskManagementPage extends StatelessWidget {
             );
           }
 
-          // Default or error state
-          return const Center(
-            child: Text('Failed to load tasks. Please try again.'),
+          // Handle error state with retry button
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('Failed to load tasks. Please try again.'),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    context.read<TaskBloc>().add(
+                          LoadTasksByCourseEvent(courseId: courseId),
+                        );
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddTaskDialog(context),
+        child: const Icon(Icons.add),
+        tooltip: 'Add New Task',
       ),
     );
   }
@@ -230,31 +269,38 @@ class TutorTaskManagementPage extends StatelessWidget {
   }
 
   void _confirmDeleteTask(BuildContext context, Task task) {
+    // Store a reference to the TaskBloc before showing the dialog
+    final taskBloc = context.read<TaskBloc>();
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Task'),
         content: Text(
           'Are you sure you want to delete "${task.title}"? This action cannot be undone and all student progress will be lost.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
-              context.read<TaskBloc>().add(
-                    DeleteTaskEvent(taskId: task.id),
-                  );
+              Navigator.pop(dialogContext);
 
-              // Reload tasks after deletion
-              Future.delayed(const Duration(milliseconds: 500), () {
-                context.read<TaskBloc>().add(
-                      LoadTasksByCourseEvent(courseId: courseId),
-                    );
-              });
+              // Show loading indicator
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Deleting task...'),
+                  duration: Duration(seconds: 1),
+                ),
+              );
+
+              // Use the stored taskBloc reference
+              taskBloc.add(DeleteTaskEvent(
+                taskId: task.id,
+                courseId: task.courseId,
+              ));
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
