@@ -32,7 +32,12 @@ class _StudentTaskDetailPageState extends State<StudentTaskDetailPage> {
     // Get student ID from auth state
     final authState = context.read<AuthBloc>().state;
     if (authState is Authenticated) {
-      _studentId = authState.user.id;
+      _studentId = authState.user.studentId ?? authState.user.id;
+
+      // Add debug info
+      print('Loading task detail page for:');
+      print('Task ID: ${widget.taskId}');
+      print('Student ID: $_studentId');
 
       // Load student-specific task details
       context.read<TaskBloc>().add(
@@ -46,29 +51,17 @@ class _StudentTaskDetailPageState extends State<StudentTaskDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Check if user is a tutor
+    final authState = context.read<AuthBloc>().state;
+    final isTutor = authState is Authenticated && authState.isTutor;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Task Details'),
       ),
       body: BlocConsumer<TaskBloc, TaskState>(
         listener: (context, state) {
-          if (state is TaskActionSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: AppColors.success,
-              ),
-            );
-          }
-
-          if (state is TaskError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: AppColors.error,
-              ),
-            );
-          }
+          // Your existing listener code
         },
         builder: (context, state) {
           if (state is TaskLoading) {
@@ -85,7 +78,8 @@ class _StudentTaskDetailPageState extends State<StudentTaskDetailPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Task title and completion status
-                  _buildTaskHeader(task, studentTask),
+                  _buildTaskHeader(task, studentTask, isTutor),
+                  // Pass isTutor parameter
 
                   const SizedBox(height: 24),
 
@@ -110,7 +104,7 @@ class _StudentTaskDetailPageState extends State<StudentTaskDetailPage> {
     );
   }
 
-  Widget _buildTaskHeader(Task task, StudentTask? studentTask) {
+  Widget _buildTaskHeader(Task task, StudentTask? studentTask, bool isTutor) {
     final isCompleted = studentTask?.isCompleted ?? false;
 
     return Row(
@@ -148,15 +142,17 @@ class _StudentTaskDetailPageState extends State<StudentTaskDetailPage> {
             ],
           ),
         ),
-        // Toggle completion status button
-        ElevatedButton.icon(
-          onPressed: () => _toggleCompletionStatus(studentTask),
-          icon: Icon(isCompleted ? Icons.close : Icons.check),
-          label: Text(isCompleted ? 'Mark Incomplete' : 'Mark Complete'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: isCompleted ? AppColors.error : AppColors.success,
+        // Only show the toggle completion button for tutors
+        if (isTutor)
+          ElevatedButton.icon(
+            onPressed: () => _toggleCompletionStatus(studentTask),
+            icon: Icon(isCompleted ? Icons.close : Icons.check),
+            label: Text(isCompleted ? 'Mark Incomplete' : 'Mark Complete'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  isCompleted ? AppColors.error : AppColors.success,
+            ),
           ),
-        ),
       ],
     );
   }

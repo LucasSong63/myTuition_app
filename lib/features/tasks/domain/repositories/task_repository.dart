@@ -33,4 +33,6 @@ abstract class TaskRepository {
 
   // Get all students' completion status for a task
   Future<List<StudentTask>> getTaskCompletionStatus(String taskId);
+
+  Future<Task?> getTaskById(String taskId);
 }

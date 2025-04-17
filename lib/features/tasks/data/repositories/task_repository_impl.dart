@@ -59,17 +59,37 @@ class TaskRepositoryImpl implements TaskRepository {
   }
 
   @override
+  Future<Task?> getTaskById(String taskId) async {
+    try {
+      final docSnapshot =
+          await _firestore.collection('tasks').doc(taskId).get();
+      if (!docSnapshot.exists) {
+        return null;
+      }
+      return TaskModel.fromMap(docSnapshot.data()!, docSnapshot.id);
+    } catch (e) {
+      print('Error getting task by ID: $e');
+      throw Exception('Failed to get task: $e');
+    }
+  }
+
+  @override
   Future<StudentTask?> getStudentTask(String taskId, String studentId) async {
     try {
-      final docId = '$taskId-$studentId';
-      final doc = await _firestore.collection('student_tasks').doc(docId).get();
+      final studentTaskId = '$taskId-$studentId';
+      print('Looking for student task with ID: $studentTaskId');
 
-      if (!doc.exists) {
+      final docSnapshot =
+          await _firestore.collection('student_tasks').doc(studentTaskId).get();
+
+      if (!docSnapshot.exists) {
+        print('No existing student task found, returning null');
         return null;
       }
 
-      return StudentTaskModel.fromMap(doc.data()!, doc.id);
+      return StudentTaskModel.fromMap(docSnapshot.data()!, docSnapshot.id);
     } catch (e) {
+      print('Error getting student task: $e');
       throw Exception('Failed to get student task: $e');
     }
   }
