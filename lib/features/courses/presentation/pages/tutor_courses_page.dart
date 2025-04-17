@@ -10,8 +10,34 @@ import '../bloc/course_bloc.dart';
 import '../bloc/course_event.dart';
 import '../bloc/course_state.dart';
 
-class TutorCoursesPage extends StatelessWidget {
+class TutorCoursesPage extends StatefulWidget {
   const TutorCoursesPage({Key? key}) : super(key: key);
+
+  @override
+  State<TutorCoursesPage> createState() => _TutorCoursesPageState();
+}
+
+class _TutorCoursesPageState extends State<TutorCoursesPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Schedule the loading after the widget is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadCourses();
+    });
+  }
+
+  void _loadCourses() {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated) {
+      String tutorId = authState.user.id;
+      if (tutorId.isNotEmpty) {
+        context.read<CourseBloc>().add(
+              LoadTutorCoursesEvent(tutorId: tutorId),
+            );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,81 +52,89 @@ class TutorCoursesPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('My Classes'),
       ),
-      body: BlocBuilder<CourseBloc, CourseState>(
-        builder: (context, state) {
-          // Load tutor's courses if not already loaded
-          if (state is CourseInitial && tutorId.isNotEmpty) {
-            context.read<CourseBloc>().add(
-                  LoadTutorCoursesEvent(tutorId: tutorId),
-                );
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (state is CourseLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (state is CoursesLoaded) {
-            final courses = state.courses;
-
-            if (courses.isEmpty) {
-              return _buildEmptyState();
-            }
-
-            // Group courses by grade
-            final Map<int, List<Course>> coursesByGrade = {};
-            for (var course in courses) {
-              if (!coursesByGrade.containsKey(course.grade)) {
-                coursesByGrade[course.grade] = [];
-              }
-              coursesByGrade[course.grade]!.add(course);
-            }
-
-            // Sort grades
-            final sortedGrades = coursesByGrade.keys.toList()..sort();
-
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: sortedGrades.length,
-              itemBuilder: (context, index) {
-                final grade = sortedGrades[index];
-                final gradeCourses = coursesByGrade[grade]!;
-
-                return _buildGradeSection(context, grade, gradeCourses);
-              },
-            );
-          }
-
-          // Error state
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: AppColors.error,
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Failed to load courses',
-                  style: TextStyle(fontSize: 18),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    if (tutorId.isNotEmpty) {
-                      context.read<CourseBloc>().add(
-                            LoadTutorCoursesEvent(tutorId: tutorId),
-                          );
-                    }
-                  },
-                  child: const Text('Try Again'),
-                ),
-              ],
-            ),
-          );
+      body: RefreshIndicator(
+        onRefresh: () async {
+          // Reload the courses when the user pulls down
+          _loadCourses();
+          // Wait a short time to ensure the refresh indicator is shown
+          return await Future.delayed(const Duration(milliseconds: 800));
         },
+        child: BlocBuilder<CourseBloc, CourseState>(
+          builder: (context, state) {
+            // Loading state
+            if (state is CourseLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            // Loaded state
+            if (state is CoursesLoaded) {
+              final courses = state.courses;
+
+              if (courses.isEmpty) {
+                return _buildEmptyState();
+              }
+
+              // Group courses by grade
+              final Map<int, List<Course>> coursesByGrade = {};
+              for (var course in courses) {
+                if (!coursesByGrade.containsKey(course.grade)) {
+                  coursesByGrade[course.grade] = [];
+                }
+                coursesByGrade[course.grade]!.add(course);
+              }
+
+              // Sort grades
+              final sortedGrades = coursesByGrade.keys.toList()..sort();
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: sortedGrades.length,
+                itemBuilder: (context, index) {
+                  final grade = sortedGrades[index];
+                  final gradeCourses = coursesByGrade[grade]!;
+
+                  return _buildGradeSection(context, grade, gradeCourses);
+                },
+              );
+            }
+
+            // Error or other states - The RefreshIndicator will still work here
+            return RefreshIndicator(
+              onRefresh: () async {
+                _loadCourses();
+                // Add a delay to show the refresh indicator
+                return await Future.delayed(const Duration(milliseconds: 800));
+              },
+              child: ListView(
+                children: [
+                  SizedBox(height: MediaQuery.of(context).size.height / 3),
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: AppColors.error,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Failed to load courses',
+                          style: TextStyle(fontSize: 18),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _loadCourses,
+                          child: const Text('Try Again'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -114,29 +148,34 @@ class TutorCoursesPage extends StatelessWidget {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.class_outlined,
-            size: 64,
-            color: AppColors.textLight,
+    return ListView(
+      children: [
+        SizedBox(height: MediaQuery.of(context).size.height / 3),
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.class_outlined,
+                size: 64,
+                color: AppColors.textLight,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'No classes found',
+                style: TextStyle(fontSize: 18),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Tap the + button to add your first class',
+                style: TextStyle(
+                  color: AppColors.textMedium,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'No classes found',
-            style: TextStyle(fontSize: 18),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Tap the + button to add your first class',
-            style: TextStyle(
-              color: AppColors.textMedium,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -194,16 +233,43 @@ class TutorCoursesPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      course.subject,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            course.subject,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        // Add status indicator
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: course.isActive
+                                ? AppColors.success.withOpacity(0.2)
+                                : AppColors.error.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            course.isActive ? 'Active' : 'Inactive',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: course.isActive
+                                  ? AppColors.success
+                                  : AppColors.error,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Students: ${course.schedules.isNotEmpty ? course.schedules.length : 0}',
+                      'Grade ${course.grade}',
                       style: TextStyle(
                         color: AppColors.textMedium,
                       ),

@@ -12,6 +12,7 @@ class CourseModel extends Course {
     required String tutorId,
     required String tutorName,
     List<Schedule> schedules = const [],
+    bool isActive = true,
   }) : super(
           id: id,
           subject: subject,
@@ -19,6 +20,7 @@ class CourseModel extends Course {
           tutorId: tutorId,
           tutorName: tutorName,
           schedules: schedules,
+          isActive: isActive,
         );
 
   factory CourseModel.fromMap(Map<String, dynamic> map, String docId) {
@@ -47,6 +49,7 @@ class CourseModel extends Course {
       tutorId: map['tutorId'] ?? '',
       tutorName: map['tutorName'] ?? '',
       schedules: schedules,
+      isActive: map['isActive'] ?? true,
     );
   }
 
@@ -62,6 +65,7 @@ class CourseModel extends Course {
         }
         return {};
       }).toList(),
+      'isActive': isActive,
     };
   }
 }

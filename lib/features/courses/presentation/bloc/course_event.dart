@@ -1,6 +1,8 @@
 // lib/features/courses/presentation/bloc/course_event.dart
 import 'package:equatable/equatable.dart';
 
+import '../../domain/entities/schedule.dart';
+
 abstract class CourseEvent extends Equatable {
   const CourseEvent();
 
@@ -42,4 +44,58 @@ class LoadTutorCoursesEvent extends CourseEvent {
 
   @override
   List<Object?> get props => [tutorId];
+}
+
+class AddScheduleEvent extends CourseEvent {
+  final String courseId;
+  final Schedule schedule;
+
+  const AddScheduleEvent({
+    required this.courseId,
+    required this.schedule,
+  });
+
+  @override
+  List<Object?> get props => [courseId, schedule];
+}
+
+class UpdateScheduleEvent extends CourseEvent {
+  final String courseId;
+  final String scheduleId;
+  final Schedule updatedSchedule;
+
+  const UpdateScheduleEvent({
+    required this.courseId,
+    required this.scheduleId,
+    required this.updatedSchedule,
+  });
+
+  @override
+  List<Object?> get props => [courseId, scheduleId, updatedSchedule];
+}
+
+class DeleteScheduleEvent extends CourseEvent {
+  final String courseId;
+  final String scheduleId;
+
+  const DeleteScheduleEvent({
+    required this.courseId,
+    required this.scheduleId,
+  });
+
+  @override
+  List<Object?> get props => [courseId, scheduleId];
+}
+
+class UpdateCourseActiveStatusEvent extends CourseEvent {
+  final String courseId;
+  final bool isActive;
+
+  const UpdateCourseActiveStatusEvent({
+    required this.courseId,
+    required this.isActive,
+  });
+
+  @override
+  List<Object?> get props => [courseId, isActive];
 }

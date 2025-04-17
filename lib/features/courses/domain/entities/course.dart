@@ -8,6 +8,7 @@ class Course extends Equatable {
   final String tutorId;
   final String tutorName;
   final List<Schedule> schedules;
+  final bool isActive;
 
   const Course({
     required this.id,
@@ -16,9 +17,10 @@ class Course extends Equatable {
     required this.tutorId,
     required this.tutorName,
     this.schedules = const [],
+    this.isActive = true,
   });
 
   @override
   List<Object?> get props =>
-      [id, subject, grade, tutorId, tutorName, schedules];
+      [id, subject, grade, tutorId, tutorName, schedules, isActive];
 }

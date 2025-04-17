@@ -14,6 +14,7 @@ class CoursesPage extends StatelessWidget {
   const CoursesPage({super.key});
 
   @override
+  @override
   Widget build(BuildContext context) {
     // Get user ID from auth state
     final authState = context.read<AuthBloc>().state;
@@ -27,95 +28,121 @@ class CoursesPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('My Courses'),
       ),
-      body: BlocBuilder<CourseBloc, CourseState>(
-        builder: (context, state) {
-          // Load courses if not already loaded
-          if (state is CourseInitial && studentId.isNotEmpty) {
+      body: RefreshIndicator(
+        onRefresh: () async {
+          // Reload the courses when the user pulls down
+          if (studentId.isNotEmpty) {
             context.read<CourseBloc>().add(
                   LoadEnrolledCoursesEvent(studentId: studentId),
                 );
           }
+          // Wait a short time to ensure the refresh indicator is shown
+          return await Future.delayed(const Duration(milliseconds: 800));
+        },
+        child: BlocBuilder<CourseBloc, CourseState>(
+          builder: (context, state) {
+            // Load courses if not already loaded
+            if (state is CourseInitial && studentId.isNotEmpty) {
+              context.read<CourseBloc>().add(
+                    LoadEnrolledCoursesEvent(studentId: studentId),
+                  );
+            }
 
-          if (state is CourseLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+            if (state is CourseLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-          if (state is CoursesLoaded) {
-            if (state.courses.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+            if (state is CoursesLoaded) {
+              if (state.courses.isEmpty) {
+                // Use the ListView and SingleChildScrollView to ensure pull-to-refresh works with empty state
+                return ListView(
                   children: [
-                    Icon(
-                      Icons.school_outlined,
-                      size: 64,
-                      color: AppColors.textLight,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'You are not enrolled in any courses yet',
-                      style: TextStyle(fontSize: 16),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Contact your tutor to get enrolled',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textMedium,
+                    Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(height: 100),
+                          // Push content down for visibility
+                          Icon(
+                            Icons.school_outlined,
+                            size: 64,
+                            color: AppColors.textLight,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'You are not enrolled in any courses yet',
+                            style: TextStyle(fontSize: 16),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Contact your tutor to get enrolled',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.textMedium,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
-                ),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16.0),
+                itemCount: state.courses.length,
+                itemBuilder: (context, index) {
+                  final course = state.courses[index];
+                  return _buildCourseCard(context, course);
+                },
               );
             }
 
-            return ListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              itemCount: state.courses.length,
-              itemBuilder: (context, index) {
-                final course = state.courses[index];
-                return _buildCourseCard(context, course);
-              },
-            );
-          }
-
-          if (state is CourseError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+            if (state is CourseError) {
+              // Similar to the empty state, wrap in ListView for pull-to-refresh
+              return ListView(
                 children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: AppColors.error,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Error: ${state.message}',
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      if (studentId.isNotEmpty) {
-                        context.read<CourseBloc>().add(
-                              LoadEnrolledCoursesEvent(studentId: studentId),
-                            );
-                      }
-                    },
-                    child: const Text('Retry'),
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 100),
+                        Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: AppColors.error,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Error: ${state.message}',
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () {
+                            if (studentId.isNotEmpty) {
+                              context.read<CourseBloc>().add(
+                                    LoadEnrolledCoursesEvent(
+                                        studentId: studentId),
+                                  );
+                            }
+                          },
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
-              ),
-            );
-          }
+              );
+            }
 
-          // Default state
-          return const Center(
-            child: Text('Loading courses...'),
-          );
-        },
+            // Default state
+            return const Center(
+              child: Text('Loading courses...'),
+            );
+          },
+        ),
       ),
     );
   }

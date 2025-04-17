@@ -138,4 +138,122 @@ class CourseRepositoryImpl implements CourseRepository {
       throw Exception('Failed to get tutor courses: $e');
     }
   }
+
+  @override
+  Future<void> addSchedule(String courseId, Schedule schedule) async {
+    try {
+      final courseDoc =
+          await _firestore.collection('classes').doc(courseId).get();
+
+      if (!courseDoc.exists) {
+        throw Exception('Course not found');
+      }
+
+      final List<dynamic> existingSchedules =
+          courseDoc.data()?['schedules'] ?? [];
+
+      // Convert Schedule to Map
+      final scheduleMap = {
+        'day': schedule.day,
+        'startTime': schedule.startTime,
+        'endTime': schedule.endTime,
+        'location': schedule.location,
+      };
+
+      existingSchedules.add(scheduleMap);
+
+      await _firestore.collection('classes').doc(courseId).update({
+        'schedules': existingSchedules,
+      });
+    } catch (e) {
+      throw Exception('Failed to add schedule: $e');
+    }
+  }
+
+  @override
+  Future<void> updateSchedule(
+      String courseId, String scheduleId, Schedule updatedSchedule) async {
+    try {
+      final courseDoc =
+          await _firestore.collection('classes').doc(courseId).get();
+
+      if (!courseDoc.exists) {
+        throw Exception('Course not found');
+      }
+
+      final List<dynamic> existingSchedules =
+          courseDoc.data()?['schedules'] ?? [];
+
+      // Extract the index from the scheduleId (e.g., courseId-schedule-1 -> index 1)
+      final idParts = scheduleId.split('-');
+      if (idParts.length < 3) {
+        throw Exception('Invalid schedule ID format');
+      }
+
+      final scheduleIndex = int.tryParse(idParts.last);
+      if (scheduleIndex == null || scheduleIndex >= existingSchedules.length) {
+        throw Exception('Schedule not found');
+      }
+
+      // Update the schedule at the specified index
+      existingSchedules[scheduleIndex] = {
+        'day': updatedSchedule.day,
+        'startTime': updatedSchedule.startTime,
+        'endTime': updatedSchedule.endTime,
+        'location': updatedSchedule.location,
+      };
+
+      await _firestore.collection('classes').doc(courseId).update({
+        'schedules': existingSchedules,
+      });
+    } catch (e) {
+      throw Exception('Failed to update schedule: $e');
+    }
+  }
+
+  @override
+  Future<void> deleteSchedule(String courseId, String scheduleId) async {
+    try {
+      final courseDoc =
+          await _firestore.collection('classes').doc(courseId).get();
+
+      if (!courseDoc.exists) {
+        throw Exception('Course not found');
+      }
+
+      final List<dynamic> existingSchedules =
+          courseDoc.data()?['schedules'] ?? [];
+
+      // Extract the index from the scheduleId
+      final idParts = scheduleId.split('-');
+      if (idParts.length < 3) {
+        throw Exception('Invalid schedule ID format');
+      }
+
+      final scheduleIndex = int.tryParse(idParts.last);
+      if (scheduleIndex == null || scheduleIndex >= existingSchedules.length) {
+        throw Exception('Schedule not found');
+      }
+
+      // Remove the schedule at the specified index
+      existingSchedules.removeAt(scheduleIndex);
+
+      await _firestore.collection('classes').doc(courseId).update({
+        'schedules': existingSchedules,
+      });
+    } catch (e) {
+      throw Exception('Failed to delete schedule: $e');
+    }
+  }
+
+  @override
+  Future<void> updateCourseActiveStatus(String courseId, bool isActive) async {
+    try {
+      await _firestore.collection('classes').doc(courseId).update({
+        'isActive': isActive,
+      });
+    } catch (e) {
+      throw Exception('Failed to update course active status: $e');
+    }
+  }
 }

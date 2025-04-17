@@ -49,3 +49,12 @@ class CourseError extends CourseState {
   @override
   List<Object?> get props => [message];
 }
+
+class CourseActionSuccess extends CourseState {
+  final String message;
+
+  const CourseActionSuccess({required this.message});
+
+  @override
+  List<Object?> get props => [message];
+}
