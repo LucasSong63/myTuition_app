@@ -503,9 +503,17 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
 
   Widget _buildCourseCard(Map<String, dynamic> course, bool isSelected) {
     final courseId = course['id'] as String;
+    final capacity = course['capacity'] as int? ?? 20;
+    final currentEnrollment = course['currentEnrollment'] as int? ?? 0;
+    final hasCapacity =
+        course['hasCapacity'] as bool? ?? (currentEnrollment < capacity);
+    final isFull = currentEnrollment >= capacity;
 
     return InkWell(
       onTap: () {
+        // Don't allow selection of full courses
+        if (isFull) return;
+
         setState(() {
           // Toggle selection
           if (isSelected) {
@@ -524,7 +532,9 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: _getSubjectColor(course['subject']).withOpacity(0.2),
+                color: isFull
+                    ? AppColors.backgroundDark
+                    : _getSubjectColor(course['subject']).withOpacity(0.2),
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -533,14 +543,19 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
                         Icons.check,
                         color: _getSubjectColor(course['subject']),
                       )
-                    : Text(
-                        course['subject'].toString()[0].toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: _getSubjectColor(course['subject']),
-                        ),
-                      ),
+                    : isFull
+                        ? Icon(
+                            Icons.block,
+                            color: AppColors.textMedium,
+                          )
+                        : Text(
+                            course['subject'].toString()[0].toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: _getSubjectColor(course['subject']),
+                            ),
+                          ),
               ),
             ),
             const SizedBox(width: 16),
@@ -554,6 +569,7 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
                       fontWeight:
                           isSelected ? FontWeight.bold : FontWeight.normal,
                       fontSize: 16,
+                      color: isFull ? AppColors.textMedium : null,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -587,23 +603,52 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
                         ),
                     ],
                   ),
+                  const SizedBox(height: 4),
+                  // Show capacity information
+                  Text(
+                    'Enrollment: $currentEnrollment/$capacity',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isFull ? AppColors.error : AppColors.textMedium,
+                      fontWeight: isFull ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  if (isFull)
+                    Text(
+                      'Class is full',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.error,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                 ],
               ),
             ),
             // Use Checkbox instead of Radio
-            Checkbox(
-              value: isSelected,
-              onChanged: (_) {
-                setState(() {
-                  if (isSelected) {
-                    _selectedCourseIds.remove(courseId);
-                  } else {
-                    _selectedCourseIds.add(courseId);
-                  }
-                });
-              },
-              activeColor: AppColors.primaryBlue,
-            ),
+            if (!isFull)
+              Checkbox(
+                value: isSelected,
+                onChanged: (_) {
+                  setState(() {
+                    if (isSelected) {
+                      _selectedCourseIds.remove(courseId);
+                    } else {
+                      _selectedCourseIds.add(courseId);
+                    }
+                  });
+                },
+                activeColor: AppColors.primaryBlue,
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Icon(
+                  Icons.do_not_disturb,
+                  color: AppColors.textLight,
+                  size: 20,
+                ),
+              ),
           ],
         ),
       ),

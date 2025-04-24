@@ -386,6 +386,10 @@ class _StudentDetailPageState extends State<StudentDetailPage>
 
   Widget _buildCourseCard(
       BuildContext context, Map<String, dynamic> course, String studentId) {
+    // Extract capacity information if available
+    final int capacity = course['capacity'] ?? 20;
+    final int currentEnrollment = course['currentEnrollment'] ?? 0;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
@@ -422,6 +426,17 @@ class _StudentDetailPageState extends State<StudentDetailPage>
                         'Grade ${course['grade']}',
                         style: TextStyle(
                           color: AppColors.textMedium,
+                        ),
+                      ),
+                      // Add capacity info
+                      const SizedBox(height: 4),
+                      Text(
+                        'Enrollment: $currentEnrollment/$capacity',
+                        style: TextStyle(
+                          color: currentEnrollment >= capacity
+                              ? AppColors.error
+                              : AppColors.success,
+                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -498,34 +513,6 @@ class _StudentDetailPageState extends State<StudentDetailPage>
       ),
     );
   }
-
-  // void _showEnrollmentBottomSheet(BuildContext context, Student student) {
-  //   // Prevent opening multiple dialogs
-  //   if (_dialogIsOpen) return;
-  //   _dialogIsOpen = true;
-  //
-  //   // Create a separate bloc instance just for the dialog
-  //   final GetIt getIt = GetIt.instance;
-  //   _dialogBloc = getIt<StudentManagementBloc>();
-  //
-  //   // Pre-load available courses
-  //   _dialogBloc!.add(LoadAvailableCoursesEvent(studentId: student.studentId));
-  //
-  //   // Show the new bottom sheet instead of the dialog
-  //   CourseEnrollmentBottomSheet.show(
-  //     context: context,
-  //     studentId: student.studentId,
-  //     studentName: student.name,
-  //   ).then((_) {
-  //     // When bottom sheet closes
-  //     _dialogIsOpen = false;
-  //
-  //     // Refresh the enrolled courses list
-  //     context.read<StudentManagementBloc>().add(
-  //           LoadEnrolledCoursesEvent(studentId: student.studentId),
-  //         );
-  //   });
-  // }
 
   void _showEnrollmentBottomSheet(BuildContext context, Student student) {
     // Prevent opening multiple dialogs

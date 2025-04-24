@@ -34,6 +34,7 @@ import 'features/student_management/domain/usecases/get_student_by_id_usecase.da
 import 'features/student_management/domain/usecases/get_enrolled_courses_usecase.dart'
     as student_management_get_enrolled_courses_usecase;
 import 'features/student_management/domain/usecases/get_available_courses_usecase.dart';
+import 'features/student_management/domain/usecases/check_course_capacity_usecase.dart';
 import 'features/student_management/domain/usecases/enroll_student_in_course_usecase.dart';
 import 'features/student_management/domain/usecases/remove_student_from_course_usecase.dart';
 import 'features/student_management/domain/usecases/update_student_profile_usecase.dart';
@@ -391,6 +392,10 @@ Future<void> initDependencies() async {
   );
 
   getIt.registerLazySingleton(
+    () => CheckCourseCapacityUseCase(getIt<StudentManagementRepository>()),
+  );
+
+  getIt.registerLazySingleton(
     () => EnrollStudentInCourseUseCase(getIt<StudentManagementRepository>()),
   );
 
@@ -411,6 +416,7 @@ Future<void> initDependencies() async {
           student_management_get_enrolled_courses_usecase
           .GetEnrolledCoursesUseCase>(),
       getAvailableCoursesUseCase: getIt<GetAvailableCoursesUseCase>(),
+      checkCourseCapacityUseCase: getIt<CheckCourseCapacityUseCase>(),
       enrollStudentInCourseUseCase: getIt<EnrollStudentInCourseUseCase>(),
       removeStudentFromCourseUseCase: getIt<RemoveStudentFromCourseUseCase>(),
       updateStudentProfileUseCase: getIt<UpdateStudentProfileUseCase>(),

@@ -42,13 +42,27 @@ class _SetupScreenState extends State<SetupScreen> {
               if (_isLoading)
                 const CircularProgressIndicator()
               else
-                ElevatedButton(
-                  onPressed: _initializeClassData,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
-                  ),
-                  child: const Text('Initialize Class Data'),
+                Column(
+                  children: [
+                    ElevatedButton(
+                      onPressed: _initializeClassData,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                      ),
+                      child: const Text('Initialize Class Data'),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _updateCapacityForExistingClasses,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                        backgroundColor: AppColors.accentOrange,
+                      ),
+                      child: const Text('Update Capacity for Existing Classes'),
+                    ),
+                  ],
                 ),
               const SizedBox(height: 24),
               if (_status.isNotEmpty)
@@ -74,6 +88,40 @@ class _SetupScreenState extends State<SetupScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _updateCapacityForExistingClasses() async {
+    setState(() {
+      _isLoading = true;
+      _status = 'Updating capacity for existing classes...';
+    });
+
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance.collection('classes').get();
+
+      final batch = FirebaseFirestore.instance.batch();
+
+      for (var doc in snapshot.docs) {
+        // Add 'capacity' field with value 20 for each class
+        batch.update(doc.reference, {'capacity': 20});
+      }
+
+      await batch.commit();
+
+      setState(() {
+        _status =
+            'Successfully updated capacity for ${snapshot.docs.length} classes!';
+      });
+    } catch (e) {
+      setState(() {
+        _status = 'Error updating capacity: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _initializeClassData() async {
@@ -135,6 +183,7 @@ class _SetupScreenState extends State<SetupScreen> {
           'tutorId': 'tutor-leong',
           'tutorName': 'Mr. Leong',
           'students': [],
+          'capacity': 20, // Adding capacity field with default value
           'schedules': [
             // Default schedule - you can customize this
             {

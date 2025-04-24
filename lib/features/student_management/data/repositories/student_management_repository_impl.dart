@@ -70,6 +70,8 @@ class StudentManagementRepositoryImpl implements StudentManagementRepository {
           'subject': data['subject'] ?? '',
           'grade': data['grade'] ?? 0,
           'tutorName': data['tutorName'] ?? '',
+          'capacity': data['capacity'] ?? 20,
+          'currentEnrollment': data['students']?.length ?? 0,
           // Add other fields as needed
         };
       }).toList();
@@ -100,16 +102,43 @@ class StudentManagementRepositoryImpl implements StudentManagementRepository {
           .where((doc) => !enrolledCourseIds.contains(doc.id))
           .map((doc) {
         final data = doc.data();
+        final students = data['students'] as List<dynamic>? ?? [];
+        final capacity = data['capacity'] as int? ?? 20;
+        final hasCapacity = students.length < capacity;
+
         return {
           'id': doc.id,
           'subject': data['subject'] ?? '',
           'grade': data['grade'] ?? 0,
           'tutorName': data['tutorName'] ?? '',
+          'capacity': capacity,
+          'currentEnrollment': students.length,
+          'hasCapacity': hasCapacity,
           // Add other fields as needed
         };
       }).toList();
     } catch (e) {
       throw Exception('Failed to get available courses: $e');
+    }
+  }
+
+  @override
+  Future<bool> checkCourseCapacity(String courseId) async {
+    try {
+      final classDoc =
+          await _firestore.collection('classes').doc(courseId).get();
+
+      if (!classDoc.exists) {
+        throw Exception('Course not found');
+      }
+
+      final data = classDoc.data()!;
+      final List<dynamic> students = data['students'] ?? [];
+      final int capacity = data['capacity'] ?? 20;
+
+      return students.length < capacity;
+    } catch (e) {
+      throw Exception('Failed to check course capacity: $e');
     }
   }
 
@@ -127,10 +156,16 @@ class StudentManagementRepositoryImpl implements StudentManagementRepository {
       // Get current list of students
       final data = classDoc.data()!;
       List<dynamic> students = data['students'] ?? [];
+      final int capacity = data['capacity'] ?? 20;
 
       // Check if student is already enrolled
       if (students.contains(studentId)) {
         return; // Already enrolled, no need to do anything
+      }
+
+      // Check if the class is at capacity
+      if (students.length >= capacity) {
+        throw Exception('Class is at full capacity');
       }
 
       // Add student to the course

@@ -5,6 +5,7 @@ import '../../domain/usecases/get_all_students_usecase.dart';
 import '../../domain/usecases/get_student_by_id_usecase.dart';
 import '../../domain/usecases/get_enrolled_courses_usecase.dart';
 import '../../domain/usecases/get_available_courses_usecase.dart';
+import '../../domain/usecases/check_course_capacity_usecase.dart';
 import '../../domain/usecases/enroll_student_in_course_usecase.dart';
 import '../../domain/usecases/remove_student_from_course_usecase.dart';
 import '../../domain/usecases/update_student_profile_usecase.dart';
@@ -15,6 +16,7 @@ class StudentManagementBloc
   final GetStudentByIdUseCase getStudentByIdUseCase;
   final GetEnrolledCoursesUseCase getEnrolledCoursesUseCase;
   final GetAvailableCoursesUseCase getAvailableCoursesUseCase;
+  final CheckCourseCapacityUseCase checkCourseCapacityUseCase;
   final EnrollStudentInCourseUseCase enrollStudentInCourseUseCase;
   final RemoveStudentFromCourseUseCase removeStudentFromCourseUseCase;
   final UpdateStudentProfileUseCase updateStudentProfileUseCase;
@@ -24,6 +26,7 @@ class StudentManagementBloc
     required this.getStudentByIdUseCase,
     required this.getEnrolledCoursesUseCase,
     required this.getAvailableCoursesUseCase,
+    required this.checkCourseCapacityUseCase,
     required this.enrollStudentInCourseUseCase,
     required this.removeStudentFromCourseUseCase,
     required this.updateStudentProfileUseCase,
@@ -134,6 +137,18 @@ class StudentManagementBloc
     emit(StudentManagementLoading(operation: 'enrolling'));
 
     try {
+      // Check if the course has capacity before enrolling
+      final hasCapacity =
+          await checkCourseCapacityUseCase.execute(event.courseId);
+
+      if (!hasCapacity) {
+        emit(const StudentManagementError(
+          message: 'Unable to enroll: This class is at full capacity',
+        ));
+        return;
+      }
+
+      // If there's capacity, proceed with enrollment
       await enrollStudentInCourseUseCase.execute(
         event.studentId,
         event.courseId,

@@ -13,7 +13,11 @@ abstract class StudentManagementRepository {
   /// Get courses available for enrollment
   Future<List<Map<String, dynamic>>> getAvailableCourses(String studentId);
 
+  /// Check if a course has capacity for enrollment
+  Future<bool> checkCourseCapacity(String courseId);
+
   /// Enroll a student in a course
+  /// Throws an exception if the course is at capacity
   Future<void> enrollStudentInCourse(String studentId, String courseId);
 
   /// Remove a student from a course
