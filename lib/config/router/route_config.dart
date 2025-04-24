@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mytuition/features/admin/setup_screen.dart';
+import 'package:mytuition/features/attendance/presentation/bloc/attendance_event.dart';
 import 'package:mytuition/features/auth/presentation/bloc/registration_bloc.dart';
 import 'package:mytuition/features/auth/presentation/pages/demo_home_screen.dart';
 import 'package:mytuition/features/auth/presentation/pages/email_verification_page.dart';
@@ -16,11 +17,17 @@ import 'package:mytuition/features/courses/presentation/pages/courses_page.dart'
 import 'package:mytuition/features/courses/presentation/pages/tutor_courses_page.dart';
 import 'package:mytuition/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:mytuition/features/profile/presentation/pages/profile_page.dart';
+import 'package:mytuition/features/student_management/presentation/bloc/student_management_bloc.dart';
+import 'package:mytuition/features/student_management/presentation/pages/student_detail_page.dart';
+import 'package:mytuition/features/student_management/presentation/pages/students_page.dart';
 import 'package:mytuition/features/tasks/presentation/pages/tutor_task_management_page.dart';
 import 'package:mytuition/features/tasks/presentation/pages/task_progress_page.dart';
 import 'package:mytuition/features/tasks/presentation/pages/student_tasks_page.dart';
 import 'package:mytuition/features/tasks/presentation/pages/student_task_detail_page.dart';
 import 'package:mytuition/features/tasks/presentation/bloc/task_bloc.dart';
+import 'package:mytuition/features/attendance/presentation/bloc/attendance_bloc.dart';
+import 'package:mytuition/features/attendance/presentation/pages/attendance_history_page.dart';
+import 'package:mytuition/features/attendance/presentation/pages/take_attendance_page.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
 import 'route_names.dart';
@@ -260,9 +267,24 @@ class AppRouter {
               GoRoute(
                 path: 'students',
                 name: RouteNames.tutorStudents,
-                builder: (context, state) => const Scaffold(
-                  body: Center(child: Text('Students Coming Soon')),
+                builder: (context, state) =>
+                    BlocProvider<StudentManagementBloc>(
+                  create: (context) => getIt<StudentManagementBloc>(),
+                  child: const StudentsPage(),
                 ),
+                routes: [
+                  GoRoute(
+                    path: ':studentId',
+                    name: 'tutorStudentDetails',
+                    builder: (context, state) {
+                      final studentId = state.pathParameters['studentId'] ?? '';
+                      return BlocProvider<StudentManagementBloc>(
+                        create: (context) => getIt<StudentManagementBloc>(),
+                        child: StudentDetailPage(studentId: studentId),
+                      );
+                    },
+                  ),
+                ],
               ),
 
               // Add tasks route
@@ -300,6 +322,49 @@ class AppRouter {
                   return BlocProvider<TaskBloc>(
                     create: (context) => getIt<TaskBloc>(),
                     child: TaskProgressPage(taskId: taskId),
+                  );
+                },
+              ),
+
+              // Route for course attendance management
+              GoRoute(
+                path: 'courses/:courseId/attendance',
+                name: 'courseAttendance',
+                builder: (context, state) {
+                  final courseId = state.pathParameters['courseId'] ?? '';
+                  final courseName = state.extra as String? ?? 'Course';
+
+                  return BlocProvider(
+                    create: (context) => getIt<AttendanceBloc>()
+                      ..add(LoadEnrolledStudentsEvent(courseId: courseId))
+                      ..add(LoadCourseAttendanceStatsEvent(courseId: courseId)),
+                    child: AttendanceHistoryPage(
+                      courseId: courseId,
+                      courseName: courseName,
+                    ),
+                  );
+                },
+              ),
+
+              // Route for taking attendance
+              GoRoute(
+                path: 'courses/:courseId/attendance/take',
+                name: 'takeAttendance',
+                builder: (context, state) {
+                  final courseId = state.pathParameters['courseId'] ?? '';
+                  final courseName = state.extra as String? ?? 'Course';
+
+                  return BlocProvider(
+                    create: (context) => getIt<AttendanceBloc>()
+                      ..add(LoadEnrolledStudentsEvent(courseId: courseId))
+                      ..add(LoadAttendanceByDateEvent(
+                        courseId: courseId,
+                        date: DateTime.now(),
+                      )),
+                    child: TakeAttendancePage(
+                      courseId: courseId,
+                      courseName: courseName,
+                    ),
                   );
                 },
               ),

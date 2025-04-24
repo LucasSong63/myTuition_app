@@ -7,12 +7,37 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mytuition/features/attendance/data/repositories/attendance_repository_impl.dart';
+import 'package:mytuition/features/attendance/domain/repositories/attendance_repository.dart';
+import 'package:mytuition/features/attendance/domain/usecases/get_attendance_by_date_usecase.dart';
+import 'package:mytuition/features/attendance/domain/usecases/get_course_attendance_stats_usecase.dart';
+import 'package:mytuition/features/attendance/domain/usecases/get_enrolled_students_usecase.dart';
+import 'package:mytuition/features/attendance/domain/usecases/get_student_attendance_usecase.dart';
+import 'package:mytuition/features/attendance/domain/usecases/record_bulk_attendance_usecase.dart';
+import 'package:mytuition/features/attendance/presentation/bloc/attendance_bloc.dart';
 import 'package:mytuition/features/courses/data/repositories/course_repository_impl.dart';
 import 'package:mytuition/features/courses/domain/repositories/course_repository.dart';
+import 'package:mytuition/features/courses/domain/usecases/add_schedule_usecase.dart';
+import 'package:mytuition/features/courses/domain/usecases/delete_schedule_usecase.dart';
 import 'package:mytuition/features/courses/domain/usecases/get_course_by_id_usecase.dart';
-import 'package:mytuition/features/courses/domain/usecases/get_enrolled_courses_usecase.dart';
+import 'package:mytuition/features/courses/domain/usecases/get_enrolled_courses_usecase.dart'
+    as courses_get_enrolled_courses_usecase;
 import 'package:mytuition/features/courses/domain/usecases/get_upcoming_schedules_usecase.dart';
+import 'package:mytuition/features/courses/domain/usecases/update_course_active_status_usecase.dart';
 import 'package:mytuition/features/courses/presentation/bloc/course_bloc.dart';
+
+// Student Management imports
+import 'features/student_management/data/repositories/student_management_repository_impl.dart';
+import 'features/student_management/domain/repositories/student_management_repository.dart';
+import 'features/student_management/domain/usecases/get_all_students_usecase.dart';
+import 'features/student_management/domain/usecases/get_student_by_id_usecase.dart';
+import 'features/student_management/domain/usecases/get_enrolled_courses_usecase.dart'
+    as student_management_get_enrolled_courses_usecase;
+import 'features/student_management/domain/usecases/get_available_courses_usecase.dart';
+import 'features/student_management/domain/usecases/enroll_student_in_course_usecase.dart';
+import 'features/student_management/domain/usecases/remove_student_from_course_usecase.dart';
+import 'features/student_management/domain/usecases/update_student_profile_usecase.dart';
+import 'features/student_management/presentation/bloc/student_management_bloc.dart';
 
 // Config imports
 import 'config/router/route_config.dart';
@@ -38,6 +63,7 @@ import 'features/auth/domain/usecases/forgot_password_usecase.dart';
 import 'features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'features/auth/domain/usecases/submit_registration_usecase.dart';
 import 'features/courses/domain/usecases/get_tutor_courses_usecase.dart';
+import 'features/courses/domain/usecases/update_schedule_usecase.dart';
 import 'features/tasks/data/repositories/task_repository_impl.dart';
 import 'features/tasks/domain/repositories/task_repository.dart';
 import 'features/tasks/domain/usecases/get_tasks_by_course_usecase.dart';
@@ -193,7 +219,8 @@ Future<void> initDependencies() async {
 
 // Course use cases
   getIt.registerLazySingleton(
-    () => GetEnrolledCoursesUseCase(getIt<CourseRepository>()),
+    () => courses_get_enrolled_courses_usecase.GetEnrolledCoursesUseCase(
+        getIt<CourseRepository>()),
   );
 
   getIt.registerLazySingleton(
@@ -206,14 +233,34 @@ Future<void> initDependencies() async {
   getIt.registerLazySingleton(
     () => GetTutorCoursesUseCase(getIt<CourseRepository>()),
   );
+  getIt.registerLazySingleton(
+    () => AddScheduleUseCase(getIt<CourseRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => UpdateScheduleUseCase(getIt<CourseRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => DeleteScheduleUseCase(getIt<CourseRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => UpdateCourseActiveStatusUseCase(getIt<CourseRepository>()),
+  );
 
 // Course BLoC
   getIt.registerFactory(
     () => CourseBloc(
-      getEnrolledCoursesUseCase: getIt<GetEnrolledCoursesUseCase>(),
+      getEnrolledCoursesUseCase: getIt<
+          courses_get_enrolled_courses_usecase.GetEnrolledCoursesUseCase>(),
       getCourseByIdUseCase: getIt<GetCourseByIdUseCase>(),
       getUpcomingSchedulesUseCase: getIt<GetUpcomingSchedulesUseCase>(),
       getTutorCoursesUseCase: getIt<GetTutorCoursesUseCase>(),
+      addScheduleUseCase: getIt<AddScheduleUseCase>(),
+      updateScheduleUseCase: getIt<UpdateScheduleUseCase>(),
+      deleteScheduleUseCase: getIt<DeleteScheduleUseCase>(),
+      updateCourseActiveStatusUseCase: getIt<UpdateCourseActiveStatusUseCase>(),
     ),
   );
 
@@ -278,6 +325,95 @@ Future<void> initDependencies() async {
       markTaskAsIncompleteUseCase: getIt<MarkTaskAsIncompleteUseCase>(),
       addTaskRemarksUseCase: getIt<AddTaskRemarksUseCase>(),
       getTaskCompletionStatusUseCase: getIt<GetTaskCompletionStatusUseCase>(),
+    ),
+  );
+
+  // Attendance Repository
+  getIt.registerLazySingleton<AttendanceRepository>(
+    () => AttendanceRepositoryImpl(FirebaseFirestore.instance),
+  );
+
+  // Attendance Use Cases
+  getIt.registerLazySingleton(
+    () => GetAttendanceByDateUseCase(getIt<AttendanceRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => GetEnrolledStudentsUseCase(getIt<AttendanceRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => RecordBulkAttendanceUseCase(getIt<AttendanceRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => GetStudentAttendanceUseCase(getIt<AttendanceRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => GetCourseAttendanceStatsUseCase(getIt<AttendanceRepository>()),
+  );
+
+  // Attendance BLoC
+  getIt.registerFactory(
+    () => AttendanceBloc(
+      getAttendanceByDateUseCase: getIt<GetAttendanceByDateUseCase>(),
+      getEnrolledStudentsUseCase: getIt<GetEnrolledStudentsUseCase>(),
+      recordBulkAttendanceUseCase: getIt<RecordBulkAttendanceUseCase>(),
+      getStudentAttendanceUseCase: getIt<GetStudentAttendanceUseCase>(),
+      getCourseAttendanceStatsUseCase: getIt<GetCourseAttendanceStatsUseCase>(),
+    ),
+  );
+
+  // Student Management Repository
+  getIt.registerLazySingleton<StudentManagementRepository>(
+    () => StudentManagementRepositoryImpl(
+      FirebaseFirestore.instance,
+    ),
+  );
+
+  // Student Management Use Cases
+  getIt.registerLazySingleton(
+    () => GetAllStudentsUseCase(getIt<StudentManagementRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => GetStudentByIdUseCase(getIt<StudentManagementRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => student_management_get_enrolled_courses_usecase
+        .GetEnrolledCoursesUseCase(getIt<StudentManagementRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => GetAvailableCoursesUseCase(getIt<StudentManagementRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => EnrollStudentInCourseUseCase(getIt<StudentManagementRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => RemoveStudentFromCourseUseCase(getIt<StudentManagementRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => UpdateStudentProfileUseCase(getIt<StudentManagementRepository>()),
+  );
+
+  // Student Management BLoC
+  getIt.registerFactory(
+    () => StudentManagementBloc(
+      getAllStudentsUseCase: getIt<GetAllStudentsUseCase>(),
+      getStudentByIdUseCase: getIt<GetStudentByIdUseCase>(),
+      getEnrolledCoursesUseCase: getIt<
+          student_management_get_enrolled_courses_usecase
+          .GetEnrolledCoursesUseCase>(),
+      getAvailableCoursesUseCase: getIt<GetAvailableCoursesUseCase>(),
+      enrollStudentInCourseUseCase: getIt<EnrollStudentInCourseUseCase>(),
+      removeStudentFromCourseUseCase: getIt<RemoveStudentFromCourseUseCase>(),
+      updateStudentProfileUseCase: getIt<UpdateStudentProfileUseCase>(),
     ),
   );
 }

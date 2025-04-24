@@ -54,6 +54,8 @@ dependencies:
   cached_network_image: ^3.4.1
   connectivity_plus: ^5.0.2
   image_picker: ^1.1.2
+  flutter_launcher_icons: ^0.14.3
+  wolt_modal_sheet: ^0.11.0
 
 dev_dependencies:
   flutter_test:

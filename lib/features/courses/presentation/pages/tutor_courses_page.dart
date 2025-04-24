@@ -136,14 +136,6 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
           },
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Navigate to add new course/class
-          // context.push('/tutor/classes/new');
-        },
-        child: const Icon(Icons.add),
-        tooltip: 'Add New Class',
-      ),
     );
   }
 
