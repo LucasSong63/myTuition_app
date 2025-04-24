@@ -3,6 +3,7 @@ import 'package:mytuition/features/courses/domain/usecases/add_schedule_usecase.
 import 'package:mytuition/features/courses/domain/usecases/delete_schedule_usecase.dart';
 import 'package:mytuition/features/courses/domain/usecases/get_tutor_courses_usecase.dart';
 import 'package:mytuition/features/courses/domain/usecases/update_course_active_status_usecase.dart';
+import 'package:mytuition/features/courses/domain/usecases/update_course_capacity_usecase.dart';
 import 'package:mytuition/features/courses/domain/usecases/update_schedule_usecase.dart';
 import '../../domain/usecases/get_course_by_id_usecase.dart';
 import '../../domain/usecases/get_enrolled_courses_usecase.dart';
@@ -19,6 +20,7 @@ class CourseBloc extends Bloc<CourseEvent, CourseState> {
   final UpdateScheduleUseCase updateScheduleUseCase;
   final DeleteScheduleUseCase deleteScheduleUseCase;
   final UpdateCourseActiveStatusUseCase updateCourseActiveStatusUseCase;
+  final UpdateCourseCapacityUseCase updateCourseCapacityUseCase;
 
   CourseBloc({
     required this.getEnrolledCoursesUseCase,
@@ -29,6 +31,7 @@ class CourseBloc extends Bloc<CourseEvent, CourseState> {
     required this.updateScheduleUseCase,
     required this.deleteScheduleUseCase,
     required this.updateCourseActiveStatusUseCase,
+    required this.updateCourseCapacityUseCase,
   }) : super(CourseInitial()) {
     on<LoadEnrolledCoursesEvent>(_onLoadEnrolledCourses);
     on<LoadCourseDetailsEvent>(_onLoadCourseDetails);
@@ -38,6 +41,7 @@ class CourseBloc extends Bloc<CourseEvent, CourseState> {
     on<UpdateScheduleEvent>(_onUpdateSchedule);
     on<DeleteScheduleEvent>(_onDeleteSchedule);
     on<UpdateCourseActiveStatusEvent>(_onUpdateCourseActiveStatus);
+    on<UpdateCourseCapacityEvent>(_onUpdateCourseCapacity);
   }
 
   Future<void> _onLoadEnrolledCourses(
@@ -154,6 +158,25 @@ class CourseBloc extends Bloc<CourseEvent, CourseState> {
         message: event.isActive
             ? 'Course activated successfully'
             : 'Course deactivated successfully',
+      ));
+      add(LoadCourseDetailsEvent(courseId: event.courseId));
+    } catch (e) {
+      emit(CourseError(message: e.toString()));
+    }
+  }
+
+  Future<void> _onUpdateCourseCapacity(
+    UpdateCourseCapacityEvent event,
+    Emitter<CourseState> emit,
+  ) async {
+    emit(CourseLoading());
+    try {
+      await updateCourseCapacityUseCase.execute(
+        event.courseId,
+        event.capacity,
+      );
+      emit(CourseActionSuccess(
+        message: 'Class capacity updated to ${event.capacity} students',
       ));
       add(LoadCourseDetailsEvent(courseId: event.courseId));
     } catch (e) {

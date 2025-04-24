@@ -24,6 +24,7 @@ import 'package:mytuition/features/courses/domain/usecases/get_enrolled_courses_
     as courses_get_enrolled_courses_usecase;
 import 'package:mytuition/features/courses/domain/usecases/get_upcoming_schedules_usecase.dart';
 import 'package:mytuition/features/courses/domain/usecases/update_course_active_status_usecase.dart';
+import 'package:mytuition/features/courses/domain/usecases/update_course_capacity_usecase.dart';
 import 'package:mytuition/features/courses/presentation/bloc/course_bloc.dart';
 
 // Student Management imports
@@ -250,6 +251,10 @@ Future<void> initDependencies() async {
     () => UpdateCourseActiveStatusUseCase(getIt<CourseRepository>()),
   );
 
+  getIt.registerLazySingleton(
+    () => UpdateCourseCapacityUseCase(getIt<CourseRepository>()),
+  );
+
 // Course BLoC
   getIt.registerFactory(
     () => CourseBloc(
@@ -262,6 +267,7 @@ Future<void> initDependencies() async {
       updateScheduleUseCase: getIt<UpdateScheduleUseCase>(),
       deleteScheduleUseCase: getIt<DeleteScheduleUseCase>(),
       updateCourseActiveStatusUseCase: getIt<UpdateCourseActiveStatusUseCase>(),
+      updateCourseCapacityUseCase: getIt<UpdateCourseCapacityUseCase>(),
     ),
   );
 

@@ -13,6 +13,8 @@ class CourseModel extends Course {
     required String tutorName,
     List<Schedule> schedules = const [],
     bool isActive = true,
+    int capacity = 20,
+    List<String> students = const [],
   }) : super(
           id: id,
           subject: subject,
@@ -21,6 +23,8 @@ class CourseModel extends Course {
           tutorName: tutorName,
           schedules: schedules,
           isActive: isActive,
+          capacity: capacity,
+          students: students,
         );
 
   factory CourseModel.fromMap(Map<String, dynamic> map, String docId) {
@@ -42,6 +46,12 @@ class CourseModel extends Course {
       }
     }
 
+    // Extract students list
+    List<String> students = [];
+    if (map['students'] != null) {
+      students = List<String>.from(map['students']);
+    }
+
     return CourseModel(
       id: docId,
       subject: map['subject'] ?? '',
@@ -50,6 +60,8 @@ class CourseModel extends Course {
       tutorName: map['tutorName'] ?? '',
       schedules: schedules,
       isActive: map['isActive'] ?? true,
+      capacity: map['capacity'] ?? 20,
+      students: students,
     );
   }
 
@@ -66,6 +78,8 @@ class CourseModel extends Course {
         return {};
       }).toList(),
       'isActive': isActive,
+      'capacity': capacity,
+      'students': students,
     };
   }
 }

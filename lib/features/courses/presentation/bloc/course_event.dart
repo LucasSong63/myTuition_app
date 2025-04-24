@@ -99,3 +99,16 @@ class UpdateCourseActiveStatusEvent extends CourseEvent {
   @override
   List<Object?> get props => [courseId, isActive];
 }
+
+class UpdateCourseCapacityEvent extends CourseEvent {
+  final String courseId;
+  final int capacity;
+
+  const UpdateCourseCapacityEvent({
+    required this.courseId,
+    required this.capacity,
+  });
+
+  @override
+  List<Object?> get props => [courseId, capacity];
+}

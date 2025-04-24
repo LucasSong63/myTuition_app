@@ -16,12 +16,15 @@ abstract class CourseRepository {
   // Add a new schedule to a course
   Future<void> addSchedule(String courseId, Schedule schedule);
 
-// Update an existing schedule
+  // Update an existing schedule
   Future<void> updateSchedule(
       String courseId, String scheduleId, Schedule updatedSchedule);
 
-// Delete a schedule
+  // Delete a schedule
   Future<void> deleteSchedule(String courseId, String scheduleId);
 
   Future<void> updateCourseActiveStatus(String courseId, bool isActive);
+
+  // Update course capacity
+  Future<void> updateCourseCapacity(String courseId, int capacity);
 }

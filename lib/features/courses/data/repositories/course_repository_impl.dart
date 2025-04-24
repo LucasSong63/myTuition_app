@@ -256,4 +256,44 @@ class CourseRepositoryImpl implements CourseRepository {
       throw Exception('Failed to update course active status: $e');
     }
   }
+
+  @override
+  @override
+  Future<void> updateCourseCapacity(String courseId, int capacity) async {
+    try {
+      if (capacity < 1) {
+        throw Exception('Capacity must be at least 1 student');
+      }
+
+      // First get the current course to check if the new capacity is valid
+      final courseDoc =
+          await _firestore.collection('classes').doc(courseId).get();
+
+      if (!courseDoc.exists) {
+        throw Exception('Course not found. Please refresh and try again.');
+      }
+
+      final data = courseDoc.data()!;
+      final currentStudents = (data['students'] as List<dynamic>? ?? []).length;
+
+      // Check if the new capacity is less than the current enrollment
+      if (capacity < currentStudents) {
+        throw Exception(
+            'Cannot set capacity below current enrollment ($currentStudents students). Please unenroll some students first.');
+      }
+
+      // Update the capacity field
+      await _firestore.collection('classes').doc(courseId).update({
+        'capacity': capacity,
+      });
+    } catch (e) {
+      if (e is Exception) {
+        // Pass through our custom exceptions
+        throw e;
+      }
+      // Handle Firebase exceptions separately
+      throw Exception(
+          'Network error while updating capacity. Please try again.');
+    }
+  }
 }

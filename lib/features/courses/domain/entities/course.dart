@@ -9,6 +9,8 @@ class Course extends Equatable {
   final String tutorName;
   final List<Schedule> schedules;
   final bool isActive;
+  final int capacity;
+  final List<String> students;
 
   const Course({
     required this.id,
@@ -18,9 +20,30 @@ class Course extends Equatable {
     required this.tutorName,
     this.schedules = const [],
     this.isActive = true,
+    this.capacity = 20,
+    this.students = const [],
   });
 
+  int get enrollmentCount => students.length;
+
+  double get enrollmentPercentage =>
+      capacity > 0 ? (students.length / capacity) * 100 : 0;
+
+  bool get isAtCapacity => students.length >= capacity;
+
+  bool get isNearCapacity =>
+      capacity > 0 && students.length >= (capacity * 0.8) && !isAtCapacity;
+
   @override
-  List<Object?> get props =>
-      [id, subject, grade, tutorId, tutorName, schedules, isActive];
+  List<Object?> get props => [
+        id,
+        subject,
+        grade,
+        tutorId,
+        tutorName,
+        schedules,
+        isActive,
+        capacity,
+        students
+      ];
 }

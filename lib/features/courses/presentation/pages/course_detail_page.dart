@@ -10,6 +10,8 @@ import 'package:mytuition/features/attendance/presentation/pages/attendance_hist
 import 'package:mytuition/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mytuition/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mytuition/features/courses/presentation/bloc/course_state.dart';
+import 'package:mytuition/features/courses/presentation/widgets/capacity_edit_bottom_sheet.dart';
+import 'package:mytuition/features/courses/presentation/widgets/capacity_indicator_widget.dart';
 import 'package:mytuition/features/courses/presentation/widgets/schedule_dialog.dart';
 import 'package:mytuition/features/tasks/domain/entities/task.dart';
 import 'package:mytuition/features/tasks/presentation/bloc/task_bloc.dart';
@@ -143,6 +145,11 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
 
                       // Tutor actions section (only for tutors)
                       if (isTutor) _buildTutorActionsSection(context, course),
+
+                      if (isTutor) const SizedBox(height: 24),
+
+                      // Capacity management section (only for tutors)
+                      if (isTutor) _buildCapacitySection(context, course),
 
                       if (isTutor) const SizedBox(height: 24),
 
@@ -285,6 +292,21 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
               'Sessions',
               '${course.schedules.length} per week',
             ),
+            const SizedBox(height: 8),
+            _buildInfoRow(
+              'Enrollment',
+              '${course.enrollmentCount} of ${course.capacity} students',
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                SizedBox(width: 100),
+                // Match the width of the label in _buildInfoRow
+                Expanded(
+                  child: CapacityIndicator(course: course),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -391,6 +413,204 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
       ],
     );
   }
+
+  Widget _buildCapacitySection(BuildContext context, Course course) {
+    final capacityPercentage = course.enrollmentPercentage;
+    final isNearCapacity = course.isNearCapacity;
+    final isAtCapacity = course.isAtCapacity;
+
+    // Determine the color based on capacity
+    Color capacityColor =
+        AppColors.success; // Default: Green for low enrollment
+    if (isAtCapacity) {
+      capacityColor = AppColors.error; // Red for at capacity
+    } else if (isNearCapacity) {
+      capacityColor = AppColors.warning; // Orange/yellow for near capacity
+    }
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Class Capacity',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  tooltip: 'Edit Capacity',
+                  onPressed: () => _showCapacityEditDialog(context, course),
+                  color: AppColors.primaryBlue,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Enrollment status
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Current Enrollment:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                Text(
+                  '${course.enrollmentCount} of ${course.capacity} students',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: capacityColor,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Capacity progress bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: capacityPercentage / 100,
+                minHeight: 10,
+                backgroundColor: AppColors.backgroundDark,
+                color: capacityColor,
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Status text
+            Text(
+              _getCapacityStatusText(course),
+              style: TextStyle(
+                color: capacityColor,
+                fontStyle: FontStyle.italic,
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.end,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getCapacityStatusText(Course course) {
+    if (course.isAtCapacity) {
+      return 'Class is at full capacity';
+    } else if (course.isNearCapacity) {
+      return 'Class is nearly full';
+    } else if (course.enrollmentCount > 0) {
+      return 'Class has space available';
+    } else {
+      return 'No students enrolled yet';
+    }
+  }
+
+  void _showCapacityEditDialog(BuildContext context, Course course) {
+    // Use our new bottom sheet component instead of a dialog
+    CapacityEditBottomSheet.show(
+      context: context,
+      course: course,
+    );
+  }
+
+  // void _showCapacityEditDialog(BuildContext context, Course course) {
+  //   final TextEditingController capacityController = TextEditingController();
+  //   capacityController.text = course.capacity.toString();
+  //   final formKey = GlobalKey<FormState>(); // Add a form key for validation
+  //
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) => AlertDialog(
+  //       title: const Text('Update Class Capacity'),
+  //       content: Form(
+  //         key: formKey,
+  //         child: Column(
+  //           mainAxisSize: MainAxisSize.min,
+  //           crossAxisAlignment: CrossAxisAlignment.start,
+  //           children: [
+  //             Text(
+  //               'Current enrollment: ${course.enrollmentCount} students',
+  //               style: TextStyle(color: AppColors.textMedium),
+  //             ),
+  //             const SizedBox(height: 16),
+  //             TextFormField(
+  //               controller: capacityController,
+  //               keyboardType: TextInputType.number,
+  //               decoration: const InputDecoration(
+  //                 labelText: 'New Capacity',
+  //                 hintText: 'Enter a number greater than current enrollment',
+  //                 border: OutlineInputBorder(),
+  //               ),
+  //               validator: (value) {
+  //                 if (value == null || value.isEmpty) {
+  //                   return 'Please enter a capacity value';
+  //                 }
+  //
+  //                 final int? capacity = int.tryParse(value);
+  //                 if (capacity == null) {
+  //                   return 'Please enter a valid number';
+  //                 }
+  //
+  //                 if (capacity < 1) {
+  //                   return 'Capacity must be at least 1';
+  //                 }
+  //
+  //                 if (capacity < course.enrollmentCount) {
+  //                   return 'Capacity cannot be less than current enrollment (${course.enrollmentCount})';
+  //                 }
+  //
+  //                 return null;
+  //               },
+  //             ),
+  //             const SizedBox(height: 8),
+  //             Text(
+  //               'Note: Capacity cannot be less than current enrollment.',
+  //               style: TextStyle(
+  //                 color: AppColors.textMedium,
+  //                 fontSize: 12,
+  //                 fontStyle: FontStyle.italic,
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       ),
+  //       actions: [
+  //         TextButton(
+  //           onPressed: () => Navigator.pop(context),
+  //           child: const Text('Cancel'),
+  //         ),
+  //         ElevatedButton(
+  //           onPressed: () {
+  //             // Use the form validation
+  //             if (formKey.currentState!.validate()) {
+  //               final int newCapacity = int.parse(capacityController.text);
+  //               Navigator.pop(context);
+  //               context.read<CourseBloc>().add(
+  //                     UpdateCourseCapacityEvent(
+  //                       courseId: course.id,
+  //                       capacity: newCapacity,
+  //                     ),
+  //                   );
+  //             }
+  //           },
+  //           child: const Text('Update'),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildScheduleSection(BuildContext context, Course course) {
     // Check if user is a tutor to show edit buttons
