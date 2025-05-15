@@ -1,3 +1,5 @@
+// Modified route_config.dart file with changes for CourseDetailPage split
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -13,7 +15,10 @@ import 'package:mytuition/features/auth/presentation/pages/registration_list_pag
 import 'package:get_it/get_it.dart';
 import 'package:mytuition/features/courses/presentation/bloc/course_bloc.dart';
 import 'package:mytuition/features/courses/presentation/bloc/subject_cost_bloc.dart';
-import 'package:mytuition/features/courses/presentation/pages/course_detail_page.dart';
+
+// import 'package:mytuition/features/courses/presentation/pages/course_detail_page.dart'; // Removed
+import 'package:mytuition/features/courses/presentation/pages/student_course_detail_page.dart'; // Added
+import 'package:mytuition/features/courses/presentation/pages/tutor_course_detail_page.dart'; // Added
 import 'package:mytuition/features/courses/presentation/pages/courses_page.dart';
 import 'package:mytuition/features/courses/presentation/pages/subject_cost_configuration_page.dart';
 import 'package:mytuition/features/courses/presentation/pages/tutor_courses_page.dart';
@@ -189,7 +194,8 @@ class AppRouter {
                       final courseId = state.pathParameters['courseId'] ?? '';
                       return BlocProvider<CourseBloc>(
                         create: (context) => getIt<CourseBloc>(),
-                        child: CourseDetailPage(courseId: courseId),
+                        // Replace with StudentCourseDetailPage
+                        child: StudentCourseDetailPage(courseId: courseId),
                       );
                     },
                   ),
@@ -450,7 +456,8 @@ class AppRouter {
                       final courseId = state.pathParameters['courseId'] ?? '';
                       return BlocProvider<CourseBloc>(
                         create: (context) => getIt<CourseBloc>(),
-                        child: CourseDetailPage(courseId: courseId),
+                        // Replace with TutorCourseDetailPage
+                        child: TutorCourseDetailPage(courseId: courseId),
                       );
                     },
                   ),
@@ -459,6 +466,24 @@ class AppRouter {
             ],
           ),
         ],
+      ),
+
+      // Legacy route for backward compatibility during transition
+      GoRoute(
+        path: '/courses/:courseId',
+        name: 'legacyCourseDetail',
+        builder: (context, state) {
+          final courseId = state.pathParameters['courseId'] ?? '';
+          final authState = context.read<AuthBloc>().state;
+          final isTutor = authState is Authenticated && authState.isTutor;
+
+          return BlocProvider<CourseBloc>(
+            create: (context) => getIt<CourseBloc>(),
+            child: isTutor
+                ? TutorCourseDetailPage(courseId: courseId)
+                : StudentCourseDetailPage(courseId: courseId),
+          );
+        },
       ),
     ];
   }
