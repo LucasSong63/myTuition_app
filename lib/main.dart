@@ -7,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sizer/sizer.dart'; // Added Sizer import
 import 'package:mytuition/features/attendance/data/repositories/attendance_repository_impl.dart';
 import 'package:mytuition/features/attendance/domain/repositories/attendance_repository.dart';
 import 'package:mytuition/features/attendance/domain/usecases/get_attendance_by_date_usecase.dart';
@@ -532,17 +533,21 @@ class MyTuitionApp extends StatelessWidget {
         ),
         // Other BLoCs can be added here as needed
       ],
-      // Remove the BlocListener and just return the MaterialApp.router directly
-      child: MaterialApp.router(
-        title: 'myTuition',
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.light,
-        // Default to light theme
-        debugShowCheckedModeBanner: false,
-        routerDelegate: AppRouter.router.routerDelegate,
-        routeInformationParser: AppRouter.router.routeInformationParser,
-        routeInformationProvider: AppRouter.router.routeInformationProvider,
+      // Wrap MaterialApp.router with Sizer widget
+      child: Sizer(
+        builder: (context, orientation, deviceType) {
+          return MaterialApp.router(
+            title: 'myTuition',
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: ThemeMode.light,
+            // Default to light theme
+            debugShowCheckedModeBanner: false,
+            routerDelegate: AppRouter.router.routerDelegate,
+            routeInformationParser: AppRouter.router.routeInformationParser,
+            routeInformationProvider: AppRouter.router.routeInformationProvider,
+          );
+        },
       ),
     );
   }
