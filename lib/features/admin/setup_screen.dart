@@ -62,6 +62,34 @@ class _SetupScreenState extends State<SetupScreen> {
                       ),
                       child: const Text('Update Capacity for Existing Classes'),
                     ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _initializeSubjectCosts,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                        backgroundColor: AppColors.accentTeal,
+                      ),
+                      child: const Text('Add Subject Cost Fields (RM100)'),
+                    ),
+                    ElevatedButton(
+                      onPressed: _migrateToSubjectCostsCollection,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                        backgroundColor: Colors.purple,
+                      ),
+                      child: const Text('Migrate to Subject Costs Collection'),
+                    ),
+                    ElevatedButton(
+                      onPressed: _setupSubjectCostsCollection,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                        backgroundColor: Colors.indigo,
+                      ),
+                      child: const Text('Setup Subject Costs Collection'),
+                    ),
                   ],
                 ),
               const SizedBox(height: 24),
@@ -147,6 +175,46 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
+  Future<void> _initializeSubjectCosts() async {
+    setState(() {
+      _isLoading = true;
+      _status = 'Adding subjectCost field to existing classes...';
+    });
+
+    try {
+      // Default cost for each subject
+      const defaultCost = 100.0;
+
+      // Get all class documents
+      final snapshot =
+          await FirebaseFirestore.instance.collection('classes').get();
+
+      // Create a batch write operation
+      final batch = FirebaseFirestore.instance.batch();
+
+      // For each class document, add the subjectCost field
+      for (var doc in snapshot.docs) {
+        batch.update(doc.reference, {'subjectCost': defaultCost});
+      }
+
+      // Execute the batch write
+      await batch.commit();
+
+      setState(() {
+        _status =
+            'Successfully added subjectCost field to ${snapshot.docs.length} classes!';
+      });
+    } catch (e) {
+      setState(() {
+        _status = 'Error adding subject costs: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   Future<void> setupInitialClassData(FirebaseFirestore firestore) async {
     // Define all subjects
     final subjects = [
@@ -184,6 +252,7 @@ class _SetupScreenState extends State<SetupScreen> {
           'tutorName': 'Mr. Leong',
           'students': [],
           'capacity': 20, // Adding capacity field with default value
+          'isActive': true, // Setting classes as active by default
           'schedules': [
             // Default schedule - you can customize this
             {
@@ -200,5 +269,155 @@ class _SetupScreenState extends State<SetupScreen> {
 
     // Execute the batch write
     await batch.commit();
+  }
+
+  Future<void> _migrateToSubjectCostsCollection() async {
+    setState(() {
+      _isLoading = true;
+      _status = 'Migrating subject costs to separate collection...';
+    });
+
+    try {
+      final firestore = FirebaseFirestore.instance;
+
+      // Step 1: Get all classes
+      final classesSnapshot = await firestore.collection('classes').get();
+
+      // Step 2: Extract unique subjects
+      final Map<String, String> uniqueSubjects = {};
+      for (var doc in classesSnapshot.docs) {
+        final data = doc.data();
+        final subject = data['subject'] as String;
+        final subjectId = subject.toLowerCase().replaceAll(' ', '_');
+        uniqueSubjects[subjectId] = subject;
+      }
+
+      // Step 3: Create entries in subject_costs collection
+      final batch = firestore.batch();
+
+      // Step 3a: First check if any subject costs already exist to avoid duplicates
+      final existingCostsSnapshot =
+          await firestore.collection('subject_costs').get();
+      final existingSubjectIds = existingCostsSnapshot.docs
+          .map((doc) => doc.data()['subjectId'] as String)
+          .toList();
+
+      // Step 3b: Create new subject cost documents
+      int createdCount = 0;
+      uniqueSubjects.forEach((subjectId, subjectName) {
+        if (!existingSubjectIds.contains(subjectId)) {
+          final docRef = firestore.collection('subject_costs').doc();
+          batch.set(docRef, {
+            'subjectId': subjectId,
+            'subjectName': subjectName,
+            'cost': 100.0, // Default cost
+            'lastUpdated': FieldValue.serverTimestamp(),
+          });
+          createdCount++;
+        }
+      });
+
+      // Step 4: Remove subjectCost field from class documents
+      int updatedCount = 0;
+      for (var doc in classesSnapshot.docs) {
+        final data = doc.data();
+        if (data.containsKey('subjectCost')) {
+          batch.update(doc.reference, {'subjectCost': FieldValue.delete()});
+          updatedCount++;
+        }
+      }
+
+      // Execute the batch
+      await batch.commit();
+
+      setState(() {
+        _status = 'Migration completed successfully!\n'
+            'Created $createdCount subject cost entries.\n'
+            'Removed subjectCost field from $updatedCount classes.';
+      });
+    } catch (e) {
+      setState(() {
+        _status = 'Error during migration: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _setupSubjectCostsCollection() async {
+    setState(() {
+      _isLoading = true;
+      _status = 'Setting up subject costs collection...';
+    });
+
+    try {
+      final firestore = FirebaseFirestore.instance;
+
+      // Define the subjects
+      final subjects = [
+        "Mathematics",
+        "English",
+        "Chinese",
+        "Bahasa Malaysia",
+        "Science"
+      ];
+
+      // Define grades
+      final grades = [1, 2, 3, 4, 5, 6];
+
+      // Create a batch operation
+      final batch = firestore.batch();
+
+      // Track count of created documents
+      int createdCount = 0;
+
+      // Create subject cost documents for each subject-grade combination
+      for (var subject in subjects) {
+        for (var grade in grades) {
+          final subjectId = subject.toLowerCase().replaceAll(' ', '-');
+          final docId = '$subjectId-grade$grade';
+
+          final docRef = firestore.collection('subject_costs').doc(docId);
+          batch.set(docRef, {
+            'subjectId': subjectId,
+            'subjectName': subject,
+            'grade': grade,
+            'cost': 100.0, // Default cost
+            'lastUpdated': FieldValue.serverTimestamp(),
+          });
+
+          createdCount++;
+        }
+      }
+
+      // Remove subjectCost field from all class documents
+      final classesSnapshot = await firestore.collection('classes').get();
+      int updatedCount = 0;
+      for (var doc in classesSnapshot.docs) {
+        if (doc.data().containsKey('subjectCost')) {
+          batch.update(doc.reference, {'subjectCost': FieldValue.delete()});
+          updatedCount++;
+        }
+      }
+
+      // Execute the batch
+      await batch.commit();
+
+      setState(() {
+        _status = 'Subject costs collection setup completed successfully!\n'
+            'Created $createdCount subject cost entries.\n'
+            'Removed subjectCost field from $updatedCount classes.';
+      });
+    } catch (e) {
+      setState(() {
+        _status = 'Error setting up subject costs: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 }

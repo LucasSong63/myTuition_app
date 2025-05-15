@@ -190,10 +190,41 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
         appBar: AppBar(
           title: const Text('My Classes'),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: 'Refresh',
-              onPressed: _loadCourses,
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              tooltip: 'More options',
+              onSelected: (value) {
+                switch (value) {
+                  case 'refresh':
+                    _loadCourses();
+                    break;
+                  case 'subject_costs':
+                    context.pushNamed(RouteNames.tutorSubjectCosts);
+                    break;
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem<String>(
+                  value: 'subject_costs',
+                  child: Row(
+                    children: [
+                      Icon(Icons.attach_money, color: AppColors.accentOrange),
+                      SizedBox(width: 12),
+                      Text('Manage Subject Costs'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'refresh',
+                  child: Row(
+                    children: [
+                      Icon(Icons.refresh, color: AppColors.primaryBlue),
+                      SizedBox(width: 12),
+                      Text('Refresh'),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),

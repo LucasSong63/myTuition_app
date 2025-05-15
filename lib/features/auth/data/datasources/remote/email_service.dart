@@ -31,7 +31,8 @@ class EmailService {
   }
 
   // Queue a rejection email
-  Future<void> sendRejectionEmail(String email, String name, String reason) async {
+  Future<void> sendRejectionEmail(
+      String email, String name, String reason) async {
     try {
       await _firestore.collection('mail').add({
         'to': email,
@@ -53,6 +54,31 @@ class EmailService {
       });
     } catch (e) {
       print('Error sending rejection email: $e');
+    }
+  }
+
+  Future<void> sendEmail({
+    required String to,
+    required String template,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      await _firestore.collection('mail').add({
+        'to': to,
+        'template': template,
+        'data': data,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // Log the email action
+      await _firestore.collection('email_logs').add({
+        'email': to,
+        'type': template,
+        'status': 'queued',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error sending email: $e');
     }
   }
 }

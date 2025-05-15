@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 class Student extends Equatable {
-  final String id;
+  final String documentId;
   final String name;
   final String email;
   final String studentId;
@@ -14,7 +14,7 @@ class Student extends Equatable {
   final DateTime updatedAt;
 
   const Student({
-    required this.id,
+    required this.documentId,
     required this.name,
     required this.email,
     required this.studentId,
@@ -29,7 +29,7 @@ class Student extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
+        documentId,
         name,
         email,
         studentId,
@@ -71,7 +71,7 @@ class Student extends Equatable {
     }
 
     return Student(
-      id: docId,
+      documentId: docId,
       name: map['name'] ?? '',
       email: map['email'] ?? '',
       studentId: map['studentId'] ?? '',

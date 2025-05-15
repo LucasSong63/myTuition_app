@@ -7,6 +7,7 @@ import 'package:mytuition/config/theme/app_colors.dart';
 import 'package:mytuition/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mytuition/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mytuition/features/courses/presentation/bloc/course_state.dart';
+import 'package:mytuition/features/courses/presentation/widgets/capacity_edit_bottom_sheet.dart';
 import 'package:mytuition/features/courses/presentation/widgets/schedule_dialog.dart';
 import 'package:mytuition/features/tasks/domain/entities/task.dart';
 import 'package:mytuition/features/tasks/presentation/bloc/task_bloc.dart';
@@ -246,7 +247,10 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
                 IconButton(
                   icon: const Icon(Icons.edit),
                   tooltip: 'Edit Capacity',
-                  onPressed: () => _showCapacityEditDialog(context, course),
+                  onPressed: () => CapacityEditBottomSheet.show(
+                    context: context,
+                    course: course,
+                  ),
                   color: AppColors.primaryBlue,
                 ),
               ],
@@ -310,90 +314,6 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
     } else {
       return 'No students enrolled yet';
     }
-  }
-
-  void _showCapacityEditDialog(BuildContext context, Course course) {
-    final TextEditingController capacityController = TextEditingController();
-    capacityController.text = course.capacity.toString();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Update Class Capacity'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Current enrollment: ${course.enrollmentCount} students',
-              style: TextStyle(color: AppColors.textMedium),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: capacityController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'New Capacity',
-                hintText: 'Enter a number greater than current enrollment',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Note: Capacity cannot be less than current enrollment.',
-              style: TextStyle(
-                color: AppColors.textMedium,
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              // Validate input
-              final int? newCapacity = int.tryParse(capacityController.text);
-
-              if (newCapacity == null || newCapacity < 1) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter a valid number')),
-                );
-                return;
-              }
-
-              if (newCapacity < course.enrollmentCount) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Capacity cannot be less than current enrollment (${course.enrollmentCount})',
-                    ),
-                    backgroundColor: AppColors.error,
-                  ),
-                );
-                return;
-              }
-
-              // Close dialog
-              Navigator.pop(context);
-
-              // Update capacity
-              context.read<CourseBloc>().add(
-                    UpdateCourseCapacityEvent(
-                      courseId: course.id,
-                      capacity: newCapacity,
-                    ),
-                  );
-            },
-            child: const Text('Update'),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildCourseInfoCard(BuildContext context, Course course) {
@@ -560,19 +480,8 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        ElevatedButton.icon(
-          onPressed: () {
-            // Navigate to manage enrollment screen
-          },
-          icon: const Icon(Icons.person_add),
-          label: const Text('Manage Enrollment'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.accentTeal,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            minimumSize: const Size(double.infinity, 48),
-          ),
-        ),
+        const SizedBox(height: 24),
+        _buildCapacitySection(context, course),
       ],
     );
   }

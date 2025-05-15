@@ -1,17 +1,19 @@
 // lib/features/student_management/presentation/widgets/student_list_item.dart
+
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
 import '../../domain/entities/student.dart';
 
 class StudentListItem extends StatelessWidget {
   final Student student;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   const StudentListItem({
     Key? key,
     required this.student,
     required this.onTap,
+    this.onLongPress,
   }) : super(key: key);
 
   @override
@@ -22,17 +24,18 @@ class StudentListItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(
-        onTap: onTap,
         borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        onLongPress: onLongPress,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
-              // Profile Picture
-              _buildProfilePicture(),
+              // Profile picture or avatar
+              _buildAvatar(student.name, student.profilePictureUrl),
               const SizedBox(width: 16),
 
-              // Student Info
+              // Student info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -40,34 +43,51 @@ class StudentListItem extends StatelessWidget {
                     Text(
                       student.name,
                       style: const TextStyle(
-                        fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      'ID: ${student.studentId}',
-                      style: TextStyle(
-                        color: AppColors.textMedium,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Grade: ${student.grade}',
-                      style: TextStyle(
-                        color: AppColors.textMedium,
-                        fontSize: 14,
-                      ),
+                    Row(
+                      children: [
+                        // Student ID
+                        Expanded(
+                          child: Text(
+                            'ID: ${student.studentId}',
+                            style: TextStyle(
+                              color: AppColors.textMedium,
+                              fontSize: 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+
+                        // Grade
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryBlueLight.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'Grade ${student.grade}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.primaryBlue,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ),
-
-              // Navigation Arrow
-              Icon(
-                Icons.chevron_right,
-                color: AppColors.textMedium,
               ),
             ],
           ),
@@ -76,33 +96,36 @@ class StudentListItem extends StatelessWidget {
     );
   }
 
-  Widget _buildProfilePicture() {
-    if (student.profilePictureUrl != null &&
-        student.profilePictureUrl!.isNotEmpty) {
-      return CircleAvatar(
-        radius: 30,
-        backgroundImage: CachedNetworkImageProvider(
-          student.profilePictureUrl!,
+  Widget _buildAvatar(String name, String? profilePictureUrl) {
+    // If there's a profile picture, show it
+    if (profilePictureUrl != null && profilePictureUrl.isNotEmpty) {
+      return Hero(
+        tag: 'student_avatar_${student.studentId}',
+        child: CircleAvatar(
+          radius: 24,
+          backgroundImage: NetworkImage(profilePictureUrl),
         ),
       );
     }
 
-    // Default profile picture with first letter of name
-    return CircleAvatar(
-      radius: 30,
-      backgroundColor: _getAvatarColor(student.name),
-      child: Text(
-        student.name.isNotEmpty ? student.name[0].toUpperCase() : '?',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
+    // Otherwise show initials
+    return Hero(
+      tag: 'student_avatar_${student.studentId}',
+      child: CircleAvatar(
+        radius: 24,
+        backgroundColor: _getAvatarColor(name),
+        child: Text(
+          name.isNotEmpty ? name[0].toUpperCase() : '?',
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
       ),
     );
   }
 
-  // Generate a consistent color based on the name
   Color _getAvatarColor(String name) {
     final List<Color> colors = [
       AppColors.primaryBlue,

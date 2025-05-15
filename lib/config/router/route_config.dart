@@ -12,9 +12,15 @@ import 'package:mytuition/features/auth/presentation/pages/registration_details_
 import 'package:mytuition/features/auth/presentation/pages/registration_list_page.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mytuition/features/courses/presentation/bloc/course_bloc.dart';
+import 'package:mytuition/features/courses/presentation/bloc/subject_cost_bloc.dart';
 import 'package:mytuition/features/courses/presentation/pages/course_detail_page.dart';
 import 'package:mytuition/features/courses/presentation/pages/courses_page.dart';
+import 'package:mytuition/features/courses/presentation/pages/subject_cost_configuration_page.dart';
 import 'package:mytuition/features/courses/presentation/pages/tutor_courses_page.dart';
+import 'package:mytuition/features/payments/presentation/bloc/payment_bloc.dart';
+import 'package:mytuition/features/payments/presentation/bloc/payment_info_bloc.dart';
+import 'package:mytuition/features/payments/presentation/pages/payment_info_page.dart';
+import 'package:mytuition/features/payments/presentation/pages/payment_management_page.dart';
 import 'package:mytuition/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:mytuition/features/profile/presentation/pages/profile_page.dart';
 import 'package:mytuition/features/student_management/presentation/bloc/student_management_bloc.dart';
@@ -285,6 +291,42 @@ class AppRouter {
                     },
                   ),
                 ],
+              ),
+
+              GoRoute(
+                path: 'payments',
+                name: RouteNames.tutorPayments,
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>?;
+                  final month = extra?['month'] as int? ?? DateTime.now().month;
+                  final year = extra?['year'] as int? ?? DateTime.now().year;
+
+                  return BlocProvider<PaymentBloc>(
+                    create: (context) => getIt<PaymentBloc>()
+                      ..add(LoadPaymentsByMonthEvent(
+                        month: month,
+                        year: year,
+                      )),
+                    child: const PaymentManagementPage(),
+                  );
+                },
+              ),
+              GoRoute(
+                path: 'payment-info',
+                name: RouteNames.tutorPaymentInfo,
+                builder: (context, state) => BlocProvider<PaymentInfoBloc>(
+                  create: (context) => getIt<PaymentInfoBloc>(),
+                  child: const PaymentInfoPage(),
+                ),
+              ),
+
+              GoRoute(
+                name: RouteNames.tutorSubjectCosts,
+                path: '/tutor/subject-costs',
+                builder: (context, state) => BlocProvider(
+                  create: (context) => getIt<SubjectCostBloc>(),
+                  child: const SubjectCostConfigurationPage(),
+                ),
               ),
 
               // Add tasks route

@@ -1,0 +1,2 @@
+C:/Users/User/Desktop/Flutter/github/myTuition_app/android/app/.cxx/Debug/1rar715d/x86/CMakeFiles/edit_cache.dir
+C:/Users/User/Desktop/Flutter/github/myTuition_app/android/app/.cxx/Debug/1rar715d/x86/CMakeFiles/rebuild_cache.dir

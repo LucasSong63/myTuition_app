@@ -42,4 +42,6 @@ class RouteNames {
   static const String tutorAttendance = 'tutorAttendance';
   static const String tutorPayments = 'tutorPayments';
   static const String tutorCourseDetails = 'tutorCourseDetails';
+  static const String tutorSubjectCosts = 'tutorSubjectCosts';
+  static const String tutorPaymentInfo = 'tutorPaymentInfo';
 }

@@ -16,7 +16,9 @@ import 'package:mytuition/features/attendance/domain/usecases/get_student_attend
 import 'package:mytuition/features/attendance/domain/usecases/record_bulk_attendance_usecase.dart';
 import 'package:mytuition/features/attendance/presentation/bloc/attendance_bloc.dart';
 import 'package:mytuition/features/courses/data/repositories/course_repository_impl.dart';
+import 'package:mytuition/features/courses/data/repositories/subject_cost_repository_impl.dart';
 import 'package:mytuition/features/courses/domain/repositories/course_repository.dart';
+import 'package:mytuition/features/courses/domain/repositories/subject_cost_repository.dart';
 import 'package:mytuition/features/courses/domain/usecases/add_schedule_usecase.dart';
 import 'package:mytuition/features/courses/domain/usecases/delete_schedule_usecase.dart';
 import 'package:mytuition/features/courses/domain/usecases/get_course_by_id_usecase.dart';
@@ -26,6 +28,14 @@ import 'package:mytuition/features/courses/domain/usecases/get_upcoming_schedule
 import 'package:mytuition/features/courses/domain/usecases/update_course_active_status_usecase.dart';
 import 'package:mytuition/features/courses/domain/usecases/update_course_capacity_usecase.dart';
 import 'package:mytuition/features/courses/presentation/bloc/course_bloc.dart';
+import 'package:mytuition/features/courses/presentation/bloc/subject_cost_bloc.dart';
+import 'package:mytuition/features/notifications/data/notifications_service.dart';
+import 'package:mytuition/features/payments/data/repositories/payment_info_repository_impl.dart';
+import 'package:mytuition/features/payments/data/repositories/payment_repository_impl.dart';
+import 'package:mytuition/features/payments/domain/repositories/payment_info_repository.dart';
+import 'package:mytuition/features/payments/domain/repositories/payment_repository.dart';
+import 'package:mytuition/features/payments/presentation/bloc/payment_bloc.dart';
+import 'package:mytuition/features/payments/presentation/bloc/payment_info_bloc.dart';
 
 // Student Management imports
 import 'features/student_management/data/repositories/student_management_repository_impl.dart';
@@ -372,6 +382,28 @@ Future<void> initDependencies() async {
     ),
   );
 
+  // Subject Cost Repository
+  getIt.registerLazySingleton<SubjectCostRepository>(
+    () => SubjectCostRepositoryImpl(
+      FirebaseFirestore.instance,
+    ),
+  );
+
+  // Subject Cost BLoC
+  getIt.registerFactory<SubjectCostBloc>(
+    () => SubjectCostBloc(
+      subjectCostRepository: getIt<SubjectCostRepository>(),
+    ),
+  );
+
+  // Notification Service
+  getIt.registerLazySingleton<NotificationService>(
+    () => NotificationService(
+      FirebaseFirestore.instance,
+      getIt<EmailService>(),
+    ),
+  );
+
   // Student Management Repository
   getIt.registerLazySingleton<StudentManagementRepository>(
     () => StudentManagementRepositoryImpl(
@@ -426,6 +458,35 @@ Future<void> initDependencies() async {
       enrollStudentInCourseUseCase: getIt<EnrollStudentInCourseUseCase>(),
       removeStudentFromCourseUseCase: getIt<RemoveStudentFromCourseUseCase>(),
       updateStudentProfileUseCase: getIt<UpdateStudentProfileUseCase>(),
+    ),
+  );
+
+  // Payment repository registration - add this with other repositories
+  getIt.registerLazySingleton<PaymentRepository>(
+    () => PaymentRepositoryImpl(
+      FirebaseFirestore.instance,
+    ),
+  );
+
+// Payment BLoC registration - add this with other BLoCs
+  getIt.registerFactory<PaymentBloc>(
+    () => PaymentBloc(
+      paymentRepository: getIt<PaymentRepository>(),
+    ),
+  );
+
+  // Payment Info Repository
+  getIt.registerLazySingleton<PaymentInfoRepository>(
+    () => PaymentInfoRepositoryImpl(
+      FirebaseFirestore.instance,
+      'tutor-leong', // Default tutor ID - should come from auth
+    ),
+  );
+
+  // Payment Info BLoC
+  getIt.registerFactory<PaymentInfoBloc>(
+    () => PaymentInfoBloc(
+      paymentInfoRepository: getIt<PaymentInfoRepository>(),
     ),
   );
 }
