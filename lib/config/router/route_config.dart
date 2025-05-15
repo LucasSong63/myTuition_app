@@ -16,7 +16,6 @@ import 'package:get_it/get_it.dart';
 import 'package:mytuition/features/courses/presentation/bloc/course_bloc.dart';
 import 'package:mytuition/features/courses/presentation/bloc/subject_cost_bloc.dart';
 
-// import 'package:mytuition/features/courses/presentation/pages/course_detail_page.dart'; // Removed
 import 'package:mytuition/features/courses/presentation/pages/student_course_detail_page.dart'; // Added
 import 'package:mytuition/features/courses/presentation/pages/tutor_course_detail_page.dart'; // Added
 import 'package:mytuition/features/courses/presentation/pages/courses_page.dart';
