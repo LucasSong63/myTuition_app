@@ -3,9 +3,12 @@
 import 'package:bloc/bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
-import 'package:mytuition/features/notifications/data/notifications_service.dart';
+import 'package:get_it/get_it.dart';
+import 'package:mytuition/features/notifications/data/services/notifications_service.dart';
 import 'package:mytuition/features/auth/data/datasources/remote/email_service.dart';
 import 'package:mytuition/features/payments/domain/entities/payment_history_with_student.dart';
+import '../../../../core/utils/logger.dart';
+import '../../../notifications/domain/notification_manager.dart';
 import '../../domain/entities/payment.dart';
 import '../../domain/entities/payment_history.dart';
 import '../../domain/repositories/payment_repository.dart';
@@ -415,33 +418,30 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
       );
 
       if (event.sendNotification) {
-        // Send payment confirmation notifications (you'll need to implement this)
-        for (final payment in event.payments) {
-          // Get student email from Firebase
-          final studentDoc =
-              await _firestore.collection('users').doc(payment.studentId).get();
+        try {
+          // Get the notification manager
+          final notificationManager = GetIt.instance<NotificationManager>();
 
-          if (studentDoc.exists) {
-            final studentData = studentDoc.data() as Map<String, dynamic>;
-            final studentEmail = studentData['email'] as String?;
-
-            if (studentEmail != null) {
-              // Send confirmation notification
-              final notificationService = NotificationService(
-                _firestore,
-                EmailService(_firestore),
-              );
-
-              await notificationService.sendPaymentConfirmation(
-                payment.studentId,
-                studentEmail,
-                payment.studentName,
-                payment.amount,
-                payment.month,
-                payment.year,
-              );
-            }
+          // Send payment confirmation notifications
+          for (final payment in event.payments) {
+            await notificationManager.sendStudentNotification(
+              studentId: payment.studentId,
+              type: 'payment_confirmed',
+              // Use constant from NotificationType if preferred
+              title: 'Payment Confirmed',
+              message:
+                  'Your payment of RM ${payment.amount.toStringAsFixed(2)} for ' +
+                      '${_getMonthName(payment.month)} ${payment.year} has been received.',
+              data: {
+                'month': payment.month,
+                'year': payment.year,
+                'amount': payment.amount,
+              },
+            );
           }
+        } catch (e) {
+          // Log error but don't fail the whole operation
+          Logger.error('Error sending payment confirmations: $e');
         }
       }
 
@@ -499,12 +499,33 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
       SendPaymentRemindersEvent event, Emitter<PaymentState> emit) async {
     emit(PaymentLoading());
     try {
-      await _paymentRepository.sendPaymentReminders(
-        event.payments,
-        event.message,
-      );
+      // Get the notification manager
+      final notificationManager = GetIt.instance<NotificationManager>();
+
+      // Send notifications to each student
+      int successCount = 0;
+      for (final payment in event.payments) {
+        final success = await notificationManager.sendStudentNotification(
+          studentId: payment.studentId,
+          type: 'payment_reminder',
+          // Use the constant from NotificationType if preferred
+          title: 'Payment Reminder',
+          message: event.message.isEmpty
+              ? 'Your payment of RM ${payment.amount} is due.'
+              : event.message,
+          data: {
+            'month': payment.month,
+            'year': payment.year,
+            'amount': payment.amount,
+          },
+        );
+
+        if (success) successCount++;
+      }
+
       emit(PaymentOperationSuccess(
-        message: 'Reminders sent to ${event.payments.length} students',
+        message:
+            'Reminders sent to $successCount/${event.payments.length} students',
       ));
     } catch (e) {
       emit(PaymentError(message: 'Failed to send reminders: $e'));
@@ -555,5 +576,24 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
     } catch (e) {
       emit(PaymentError(message: 'Failed to create payment: $e'));
     }
+  }
+
+  // Helper method to get month name
+  String _getMonthName(int month) {
+    final months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
+    ];
+    return months[month - 1];
   }
 }

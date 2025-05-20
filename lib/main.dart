@@ -7,6 +7,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mytuition/features/notifications/data/repositories/notification_repository_impl.dart';
+import 'package:mytuition/features/notifications/domain/notification_manager.dart';
+import 'package:mytuition/features/notifications/domain/repositories/notification_repository.dart';
 import 'package:sizer/sizer.dart'; // Added Sizer import
 import 'package:mytuition/features/attendance/data/repositories/attendance_repository_impl.dart';
 import 'package:mytuition/features/attendance/domain/repositories/attendance_repository.dart';
@@ -30,7 +33,7 @@ import 'package:mytuition/features/courses/domain/usecases/update_course_active_
 import 'package:mytuition/features/courses/domain/usecases/update_course_capacity_usecase.dart';
 import 'package:mytuition/features/courses/presentation/bloc/course_bloc.dart';
 import 'package:mytuition/features/courses/presentation/bloc/subject_cost_bloc.dart';
-import 'package:mytuition/features/notifications/data/notifications_service.dart';
+import 'package:mytuition/features/notifications/data/services/notifications_service.dart';
 import 'package:mytuition/features/payments/data/repositories/payment_info_repository_impl.dart';
 import 'package:mytuition/features/payments/data/repositories/payment_repository_impl.dart';
 import 'package:mytuition/features/payments/domain/repositories/payment_info_repository.dart';
@@ -397,11 +400,23 @@ Future<void> initDependencies() async {
     ),
   );
 
-  // Notification Service
+// Simplified NotificationService
   getIt.registerLazySingleton<NotificationService>(
     () => NotificationService(
       FirebaseFirestore.instance,
-      getIt<EmailService>(),
+    ),
+  );
+
+// Simplified NotificationRepository
+  getIt.registerLazySingleton<NotificationRepository>(
+    () => NotificationRepositoryImpl(
+      FirebaseFirestore.instance,
+    ),
+  );
+
+  getIt.registerLazySingleton<NotificationManager>(
+    () => NotificationManager(
+      getIt<NotificationRepository>(),
     ),
   );
 

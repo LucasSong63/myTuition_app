@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
+import 'package:mytuition/core/utils/task_utils.dart';
 import '../../domain/entities/task.dart';
 import '../../domain/entities/student_task.dart';
 
@@ -131,7 +131,7 @@ class _StudentTaskDetailsUpdatedState extends State<StudentTaskDetailsUpdated> {
                 if (widget.studentTask.completedAt != null) ...[
                   const SizedBox(width: 8),
                   Text(
-                    'on ${DateFormat('dd MMM yyyy').format(widget.studentTask.completedAt!)}',
+                    'on ${TaskUtils.completedDateFormat.format(widget.studentTask.completedAt!)}',
                     style: TextStyle(
                       color: AppColors.textMedium,
                       fontSize: 12,

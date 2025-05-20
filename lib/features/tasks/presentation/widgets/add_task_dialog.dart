@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
+import 'package:mytuition/core/utils/task_utils.dart';
 import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
@@ -26,7 +26,6 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   final _descriptionController = TextEditingController();
 
   DateTime? _selectedDueDate;
-  final _dateFormat = DateFormat('dd MMM yyyy');
 
   @override
   void dispose() {
@@ -126,7 +125,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                   ),
                   child: Text(
                     _selectedDueDate != null
-                        ? _dateFormat.format(_selectedDueDate!)
+                        ? TaskUtils.shortDateFormat.format(_selectedDueDate!)
                         : 'Select a due date',
                     style: TextStyle(
                       color:

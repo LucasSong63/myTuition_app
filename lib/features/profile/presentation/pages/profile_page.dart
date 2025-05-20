@@ -91,7 +91,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 context
                                     .read<ProfileBloc>()
                                     .add(UpdateProfileEvent(
-                                      userId: authState.user.id,
+                                      userId: authState.user.docId,
                                       name: _nameController.text.trim(),
                                       phone: _phoneController.text.trim(),
                                     ));
@@ -498,7 +498,7 @@ class _ProfilePageState extends State<ProfilePage> {
         final authState = context.read<AuthBloc>().state;
         if (authState is Authenticated) {
           context.read<ProfileBloc>().add(UpdateProfilePictureEvent(
-                userId: authState.user.id,
+                userId: authState.user.docId,
                 imageFile: imageFile,
               ));
         }
@@ -514,7 +514,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final authState = context.read<AuthBloc>().state;
     if (authState is Authenticated) {
       context.read<ProfileBloc>().add(RemoveProfilePictureEvent(
-            userId: authState.user.id,
+            userId: authState.user.docId,
           ));
     }
   }

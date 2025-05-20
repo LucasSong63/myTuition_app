@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
+import 'package:mytuition/core/utils/task_utils.dart';
 import 'package:mytuition/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mytuition/features/auth/presentation/bloc/auth_state.dart';
+import 'package:mytuition/features/tasks/domain/entities/student_task.dart';
+import 'package:mytuition/features/tasks/domain/entities/task_with_status.dart';
 import '../../domain/entities/task.dart';
 import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum TaskFilter { all, pending, completed }
 
@@ -24,8 +27,8 @@ class _StudentTasksPageState extends State<StudentTasksPage> {
   String? _courseIdFilter; // If we want to filter by course later
   final _searchController = TextEditingController();
   String _searchQuery = '';
-  List<Task> _allTasks = [];
-  bool _isLoading = false;
+  List<TaskWithStatus> _allTasksWithStatus = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -48,7 +51,7 @@ class _StudentTasksPageState extends State<StudentTasksPage> {
     super.dispose();
   }
 
-  void _loadStudentTasks() {
+  Future<void> _loadStudentTasks() async {
     setState(() {
       _isLoading = true;
     });
@@ -56,26 +59,114 @@ class _StudentTasksPageState extends State<StudentTasksPage> {
     // Get the student ID from auth state
     final authState = context.read<AuthBloc>().state;
     if (authState is Authenticated) {
-      // In your Firestore structure, students are stored in the 'students' array in classes
-      // The format used there could be either user.studentId or user.id
-      // Let's try to get the correct student ID from the user object
       String studentId = '';
 
-      // If your User entity has a studentId field that matches what's in Firestore
+      // If your User entity has a studentId field
       if (authState.user.studentId != null &&
           authState.user.studentId!.isNotEmpty) {
         studentId = authState.user.studentId!;
       } else {
         // Otherwise, fall back to the user's ID
-        studentId = authState.user.id;
+        studentId = authState.user.docId;
       }
 
       print('Loading tasks for student ID: $studentId');
 
-      // Call the task bloc to load tasks for this student
-      context.read<TaskBloc>().add(
-            LoadTasksForStudentEvent(studentId: studentId),
+      try {
+        // 1. Get courses the student is enrolled in
+        final courseSnapshot = await FirebaseFirestore.instance
+            .collection('classes')
+            .where('students', arrayContains: studentId)
+            .get();
+
+        final courseIds = courseSnapshot.docs.map((doc) => doc.id).toList();
+
+        // No courses found
+        if (courseIds.isEmpty) {
+          setState(() {
+            _allTasksWithStatus = [];
+            _isLoading = false;
+          });
+          return;
+        }
+
+        // 2. Get tasks for these courses
+        final taskSnapshot = await FirebaseFirestore.instance
+            .collection('tasks')
+            .where('courseId', whereIn: courseIds)
+            .orderBy('createdAt', descending: true)
+            .get();
+
+        final List<Task> tasks = taskSnapshot.docs.map((doc) {
+          final data = doc.data();
+          return Task(
+            id: doc.id,
+            courseId: data['courseId'] ?? '',
+            title: data['title'] ?? 'Untitled Task',
+            description: data['description'] ?? '',
+            createdAt:
+                (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+            dueDate: (data['dueDate'] as Timestamp?)?.toDate(),
+            isCompleted: data['isCompleted'] ?? false,
           );
+        }).toList();
+
+        // 3. Get student-specific task statuses
+        final studentTaskSnapshot = await FirebaseFirestore.instance
+            .collection('student_tasks')
+            .where('studentId', isEqualTo: studentId)
+            .get();
+
+        // Create a map for quick lookup
+        final Map<String, StudentTask> studentTaskMap = {};
+        for (final doc in studentTaskSnapshot.docs) {
+          final data = doc.data();
+          final studentTask = StudentTask(
+            id: doc.id,
+            taskId: data['taskId'] ?? '',
+            studentId: data['studentId'] ?? '',
+            remarks: data['remarks'] ?? '',
+            isCompleted: data['isCompleted'] ?? false,
+            completedAt: data['completedAt'] != null
+                ? (data['completedAt'] as Timestamp).toDate()
+                : null,
+          );
+          studentTaskMap[studentTask.taskId] = studentTask;
+        }
+
+        // 4. Combine tasks with student-specific statuses
+        List<TaskWithStatus> tasksWithStatus = tasks.map((task) {
+          final hasStudentTask = studentTaskMap.containsKey(task.id);
+          final studentTask = hasStudentTask ? studentTaskMap[task.id] : null;
+
+          return TaskWithStatus(
+            task: task,
+            isCompleted: studentTask?.isCompleted ?? false,
+            hasRemarks: studentTask != null && studentTask.remarks.isNotEmpty,
+            remarks: studentTask?.remarks ?? '',
+            completedAt: studentTask?.completedAt,
+          );
+        }).toList();
+
+        setState(() {
+          _allTasksWithStatus = tasksWithStatus;
+          _isLoading = false;
+        });
+      } catch (e) {
+        print('Error loading tasks: $e');
+        setState(() {
+          _isLoading = false;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error loading tasks: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
     } else {
       setState(() {
         _isLoading = false;
@@ -84,24 +175,31 @@ class _StudentTasksPageState extends State<StudentTasksPage> {
     }
   }
 
-  List<Task> _getFilteredTasks() {
+  List<TaskWithStatus> _getFilteredTasks() {
     // First apply search query
-    List<Task> filteredTasks = _allTasks.where((task) {
+    List<TaskWithStatus> filteredTasks =
+        _allTasksWithStatus.where((taskWithStatus) {
+      final task = taskWithStatus.task;
       return task.title.toLowerCase().contains(_searchQuery) ||
           task.description.toLowerCase().contains(_searchQuery);
     }).toList();
 
     // Then apply status filter
     if (_currentFilter == TaskFilter.pending) {
-      filteredTasks = filteredTasks.where((task) => !task.isCompleted).toList();
+      filteredTasks = filteredTasks
+          .where((taskWithStatus) => !taskWithStatus.isCompleted)
+          .toList();
     } else if (_currentFilter == TaskFilter.completed) {
-      filteredTasks = filteredTasks.where((task) => task.isCompleted).toList();
+      filteredTasks = filteredTasks
+          .where((taskWithStatus) => taskWithStatus.isCompleted)
+          .toList();
     }
 
     // Apply course filter if selected
     if (_courseIdFilter != null) {
       filteredTasks = filteredTasks
-          .where((task) => task.courseId == _courseIdFilter)
+          .where((taskWithStatus) =>
+              taskWithStatus.task.courseId == _courseIdFilter)
           .toList();
     }
 
@@ -114,26 +212,39 @@ class _StudentTasksPageState extends State<StudentTasksPage> {
         return a.isCompleted ? 1 : -1;
       }
 
-      // If both are pending/completed, sort by due date
-      if (a.dueDate != null && b.dueDate != null) {
+      // For non-completed tasks, check if one is overdue
+      if (!a.isCompleted && !b.isCompleted) {
+        bool aIsOverdue =
+            TaskUtils.isTaskOverdue(a.task.dueDate, a.isCompleted);
+        bool bIsOverdue =
+            TaskUtils.isTaskOverdue(b.task.dueDate, b.isCompleted);
+
+        if (aIsOverdue != bIsOverdue) {
+          return aIsOverdue ? -1 : 1; // Overdue tasks first
+        }
+      }
+
+      // If both have the same completion status and overdue status
+      // Sort by due date
+      if (a.task.dueDate != null && b.task.dueDate != null) {
         // For pending tasks, earlier due dates first
         if (!a.isCompleted) {
-          return a.dueDate!.compareTo(b.dueDate!);
+          return a.task.dueDate!.compareTo(b.task.dueDate!);
         }
         // For completed tasks, most recent completions first
         else {
-          return b.dueDate!.compareTo(a.dueDate!);
+          return b.task.dueDate!.compareTo(a.task.dueDate!);
         }
       }
       // If one has a due date and the other doesn't, the one with a due date comes first
-      else if (a.dueDate != null) {
+      else if (a.task.dueDate != null) {
         return -1;
-      } else if (b.dueDate != null) {
+      } else if (b.task.dueDate != null) {
         return 1;
       }
 
       // If neither has a due date, sort by creation date (newest first)
-      return b.createdAt.compareTo(a.createdAt);
+      return b.task.createdAt.compareTo(a.task.createdAt);
     });
 
     return filteredTasks;
@@ -145,68 +256,36 @@ class _StudentTasksPageState extends State<StudentTasksPage> {
       appBar: AppBar(
         title: const Text('My Tasks'),
       ),
-      body: BlocConsumer<TaskBloc, TaskState>(
-        listener: (context, state) {
-          if (state is TasksLoaded) {
-            print('Received ${state.tasks.length} tasks from TaskBloc');
-            setState(() {
-              _allTasks = state.tasks;
-              _isLoading = false;
-            });
-          } else if (state is TaskError) {
-            print('TaskBloc error: ${state.message}');
-            setState(() {
-              _isLoading = false;
-            });
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Error: ${state.message}'),
-                backgroundColor: AppColors.error,
-              ),
-            );
-          } else if (state is TaskLoading) {
-            print('TaskBloc is loading');
-          }
-        },
-        builder: (context, state) {
-          // Show loading indicator initially
-          if (_isLoading || (state is TaskLoading && _allTasks.isEmpty)) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                // Search and filter section
+                _buildSearchAndFilterSection(),
 
-          final filteredTasks = _getFilteredTasks();
-          print('Displaying ${filteredTasks.length} filtered tasks');
-
-          return Column(
-            children: [
-              // Search and filter section
-              _buildSearchAndFilterSection(),
-
-              // Tasks list or empty state
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: () async {
-                    _loadStudentTasks();
-                    // Add delay to ensure pull-to-refresh animation is visible
-                    return await Future.delayed(
-                        const Duration(milliseconds: 800));
-                  },
-                  child: filteredTasks.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: filteredTasks.length,
-                          itemBuilder: (context, index) {
-                            return _buildTaskCard(
-                                context, filteredTasks[index]);
-                          },
-                        ),
+                // Tasks list or empty state
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: () async {
+                      await _loadStudentTasks();
+                      // Add delay to ensure pull-to-refresh animation is visible
+                      return await Future.delayed(
+                          const Duration(milliseconds: 800));
+                    },
+                    child: _allTasksWithStatus.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _getFilteredTasks().length,
+                            itemBuilder: (context, index) {
+                              return _buildTaskCard(
+                                  context, _getFilteredTasks()[index]);
+                            },
+                          ),
+                  ),
                 ),
-              ),
-            ],
-          );
-        },
-      ),
+              ],
+            ),
     );
   }
 
@@ -316,18 +395,24 @@ class _StudentTasksPageState extends State<StudentTasksPage> {
     required bool isSelected,
     required Function(bool) onSelected,
   }) {
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: onSelected,
-      backgroundColor: AppColors.backgroundLight,
-      selectedColor: AppColors.primaryBlueLight,
-      checkmarkColor: Colors.white,
-      labelStyle: TextStyle(
-        color: isSelected ? Colors.white : AppColors.textDark,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 120),
+      child: FilterChip(
+        label: Text(
+          label,
+          overflow: TextOverflow.ellipsis,
+        ),
+        selected: isSelected,
+        onSelected: onSelected,
+        backgroundColor: AppColors.backgroundLight,
+        selectedColor: AppColors.primaryBlueLight,
+        checkmarkColor: Colors.white,
+        labelStyle: TextStyle(
+          color: isSelected ? Colors.white : AppColors.textDark,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     );
   }
 
@@ -339,7 +424,7 @@ class _StudentTasksPageState extends State<StudentTasksPage> {
       message = 'No pending tasks';
     } else if (_currentFilter == TaskFilter.completed) {
       message = 'No completed tasks yet';
-    } else if (_allTasks.isEmpty) {
+    } else if (_allTasksWithStatus.isEmpty) {
       message = 'You don\'t have any tasks assigned yet';
     }
 
@@ -369,22 +454,15 @@ class _StudentTasksPageState extends State<StudentTasksPage> {
     );
   }
 
-  Widget _buildTaskCard(BuildContext context, Task task) {
-    final dateFormat = DateFormat('dd MMM yyyy');
-    final dueDate =
-        task.dueDate != null ? dateFormat.format(task.dueDate!) : 'No due date';
+  Widget _buildTaskCard(BuildContext context, TaskWithStatus taskWithStatus) {
+    final task = taskWithStatus.task;
+    final dueDate = task.dueDate != null
+        ? TaskUtils.shortDateFormat.format(task.dueDate!)
+        : 'No due date';
 
-    // Check if due date is in the past
-    final bool isOverdue = task.dueDate != null &&
-        task.dueDate!.isBefore(DateTime.now()) &&
-        !task.isCompleted;
-
-    // This would normally need to query the student_tasks collection
-    // to check if there are remarks for this student's task
-    // For now we'll need to simulate this based on task data
-    // We'll make this deterministic based on task ID characteristics
-    final bool hasRemarks = task.title.contains("2") ||
-        (task.description.isNotEmpty && task.description.length > 5);
+    // Check if task is overdue using student's completion status (not the global task status)
+    final bool isOverdue =
+        TaskUtils.isTaskOverdue(task.dueDate, taskWithStatus.isCompleted);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -427,10 +505,10 @@ class _StudentTasksPageState extends State<StudentTasksPage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            decoration: task.isCompleted
+                            decoration: taskWithStatus.isCompleted
                                 ? TextDecoration.lineThrough
                                 : null,
-                            color: task.isCompleted
+                            color: taskWithStatus.isCompleted
                                 ? AppColors.textMedium
                                 : AppColors.textDark,
                           ),
@@ -452,18 +530,18 @@ class _StudentTasksPageState extends State<StudentTasksPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        task.isCompleted
+                        taskWithStatus.isCompleted
                             ? Icons.check_circle
                             : isOverdue
                                 ? Icons.warning_amber_rounded
                                 : Icons.circle_outlined,
-                        color: task.isCompleted
+                        color: taskWithStatus.isCompleted
                             ? AppColors.success
                             : isOverdue
                                 ? AppColors.error
                                 : AppColors.primaryBlue,
                       ),
-                      if (hasRemarks)
+                      if (taskWithStatus.hasRemarks)
                         Icon(
                           Icons.comment,
                           color: AppColors.accentOrange,
@@ -495,18 +573,24 @@ class _StudentTasksPageState extends State<StudentTasksPage> {
                       Icon(
                         Icons.event,
                         size: 16,
-                        color:
-                            isOverdue ? AppColors.error : AppColors.textMedium,
+                        color: taskWithStatus.isCompleted
+                            ? AppColors.textMedium
+                            : (isOverdue
+                                ? AppColors.error
+                                : AppColors.textMedium),
                       ),
                       const SizedBox(width: 4),
                       Text(
                         dueDate,
                         style: TextStyle(
-                          color: isOverdue
-                              ? AppColors.error
-                              : AppColors.textMedium,
-                          fontWeight:
-                              isOverdue ? FontWeight.bold : FontWeight.normal,
+                          color: taskWithStatus.isCompleted
+                              ? AppColors.textMedium
+                              : (isOverdue
+                                  ? AppColors.error
+                                  : AppColors.textMedium),
+                          fontWeight: (!taskWithStatus.isCompleted && isOverdue)
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                         ),
                       ),
                     ],
@@ -517,7 +601,7 @@ class _StudentTasksPageState extends State<StudentTasksPage> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: task.isCompleted
+                      color: taskWithStatus.isCompleted
                           ? AppColors.success.withOpacity(0.2)
                           : isOverdue
                               ? AppColors.error.withOpacity(0.2)
@@ -525,15 +609,13 @@ class _StudentTasksPageState extends State<StudentTasksPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      task.isCompleted
+                      taskWithStatus.isCompleted
                           ? 'Completed'
-                          : isOverdue
-                              ? 'Overdue'
-                              : 'Pending',
+                          : (isOverdue ? 'Overdue' : 'Pending'),
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: task.isCompleted
+                        color: taskWithStatus.isCompleted
                             ? AppColors.success
                             : isOverdue
                                 ? AppColors.error

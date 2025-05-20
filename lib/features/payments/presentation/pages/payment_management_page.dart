@@ -2,13 +2,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:mytuition/config/router/route_names.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
 import 'package:mytuition/features/payments/presentation/pages/payment_history_page.dart';
-import 'package:mytuition/features/student_management/presentation/bloc/student_management_bloc.dart';
+import '../../../notifications/presentation/widgets/send_notification_bottom_sheet.dart';
 import '../bloc/payment_bloc.dart';
 import '../../domain/entities/payment.dart';
 import 'payment_detail_page.dart';
@@ -91,12 +90,6 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
           _selectedPaymentIds.add(payment.id);
         }
       }
-    });
-  }
-
-  void _toggleActionPanel() {
-    setState(() {
-      _isActionPanelVisible = !_isActionPanelVisible;
     });
   }
 
@@ -812,33 +805,6 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
     );
   }
 
-  Widget _buildActionButton({
-    required String label,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      height: 42,
-      child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-        icon: Icon(icon, size: 16),
-        label: Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        ),
-        onPressed: onPressed,
-      ),
-    );
-  }
-
   Widget _buildEmptyState() {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -848,7 +814,7 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
+              const Icon(
                 Icons.payment_outlined,
                 size: 48,
                 color: AppColors.textLight,
@@ -1048,64 +1014,28 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
   void _showSendRemindersDialog(BuildContext context) {
     if (_selectedPaymentIds.isEmpty) return;
 
-    final messageController = TextEditingController(
-        text:
-            'Your payment for ${_getMonthName(_selectedMonth)} $_selectedYear is due.');
-    final paymentBloc = context.read<PaymentBloc>();
+    // Get selected payments
+    final selectedPayments = _getSelectedPayments();
+    if (selectedPayments.isEmpty) return;
 
-    showDialog(
+    // Get student IDs and names
+    final studentIds = selectedPayments.map((p) => p.studentId).toList();
+    final studentNames = selectedPayments.map((p) => p.studentName).toList();
+
+    // Show the notification bottom sheet
+    SendNotificationBottomSheet.show(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Send Payment Reminders'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Send reminders to ${_selectedPaymentIds.length} selected students?',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: messageController,
-              decoration: const InputDecoration(
-                labelText: 'Message',
-                hintText: 'Enter reminder message',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-
-              // Get selected payments
-              final selectedPayments = _getSelectedPayments();
-              if (selectedPayments.isEmpty) return;
-
-              // Send reminders
-              paymentBloc.add(
-                SendPaymentRemindersEvent(
-                  payments: selectedPayments,
-                  message: messageController.text.trim(),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.warning,
-            ),
-            child: const Text('Send Reminders'),
-          ),
-        ],
-      ),
-    );
+      studentIds: studentIds,
+      studentNames: studentNames,
+      defaultTitle: 'Payment Reminder',
+      defaultMessage:
+          'Your payment for ${_getMonthName(_selectedMonth)} $_selectedYear is due.',
+      notificationType: 'payment_reminder',
+    ).then((success) {
+      if (success == true) {
+        // Optionally refresh payments or show a success message
+      }
+    });
   }
 
   // Dialog for sending reminders to all students with unpaid payments

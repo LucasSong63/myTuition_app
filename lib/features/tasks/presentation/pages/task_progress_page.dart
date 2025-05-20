@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
+import 'package:mytuition/core/utils/task_utils.dart';
 import '../../domain/entities/task.dart';
 import '../../domain/entities/student_task.dart';
 import '../bloc/task_bloc.dart';
@@ -332,17 +332,18 @@ class _TaskProgressPageState extends State<TaskProgressPage> {
                         Icon(
                           Icons.event,
                           size: 16,
-                          color: _isOverdue(_task!.dueDate!)
+                          color: TaskUtils.isTaskOverdue(_task!.dueDate!, false)
                               ? AppColors.error
                               : AppColors.textMedium,
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Due: ${DateFormat('dd MMM yyyy').format(_task!.dueDate!)}',
+                          'Due: ${TaskUtils.shortDateFormat.format(_task!.dueDate!)}',
                           style: TextStyle(
-                            color: _isOverdue(_task!.dueDate!)
-                                ? AppColors.error
-                                : AppColors.textMedium,
+                            color:
+                                TaskUtils.isTaskOverdue(_task!.dueDate!, false)
+                                    ? AppColors.error
+                                    : AppColors.textMedium,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -503,7 +504,7 @@ class _TaskProgressPageState extends State<TaskProgressPage> {
                 if (studentTask.completedAt != null) ...[
                   const SizedBox(width: 8),
                   Text(
-                    'on ${DateFormat('dd MMM yyyy').format(studentTask.completedAt!)}',
+                    'on ${TaskUtils.completedDateFormat.format(studentTask.completedAt!)}',
                     style: TextStyle(
                       color: AppColors.textMedium,
                       fontSize: 12,
@@ -588,10 +589,6 @@ class _TaskProgressPageState extends State<TaskProgressPage> {
 
   int _getCompletedCount() {
     return _studentTasks.where((task) => task.isCompleted).length;
-  }
-
-  bool _isOverdue(DateTime dueDate) {
-    return dueDate.isBefore(DateTime.now()) && !_task!.isCompleted;
   }
 
   void _markTaskAsCompleted(StudentTask studentTask) {

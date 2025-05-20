@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
+import 'package:mytuition/core/utils/task_utils.dart';
 import '../../domain/entities/task.dart';
 import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
@@ -164,10 +164,13 @@ class _TutorTaskManagementPageState extends State<TutorTaskManagementPage> {
   }
 
   Widget _buildTaskCard(BuildContext context, Task task) {
-    final dateFormat = DateFormat('dd MMM yyyy');
     final dueDate = task.dueDate != null
-        ? 'Due: ${dateFormat.format(task.dueDate!)}'
+        ? TaskUtils.shortDateFormat.format(task.dueDate!)
         : 'No due date';
+
+    // Check if task is overdue using our utility function
+    final bool isOverdue =
+        TaskUtils.isTaskOverdue(task.dueDate, task.isCompleted);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -221,10 +224,7 @@ class _TutorTaskManagementPageState extends State<TutorTaskManagementPage> {
                   Text(
                     dueDate,
                     style: TextStyle(
-                      color: task.dueDate != null &&
-                              task.dueDate!.isBefore(DateTime.now())
-                          ? AppColors.error
-                          : AppColors.textMedium,
+                      color: isOverdue ? AppColors.error : AppColors.textMedium,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
