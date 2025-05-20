@@ -109,7 +109,7 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
   void _loadCourses() {
     final authState = context.read<AuthBloc>().state;
     if (authState is Authenticated) {
-      String tutorId = authState.user.id;
+      String tutorId = authState.user.docId;
       if (tutorId.isNotEmpty) {
         // Only set refreshing state if we're not already updating a course
         if (!_uiState.isUpdatingCourse) {

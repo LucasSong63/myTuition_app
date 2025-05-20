@@ -417,7 +417,6 @@ Future<void> initDependencies() async {
   getIt.registerLazySingleton<NotificationManager>(
     () => NotificationManager(
       getIt<NotificationRepository>(),
-      FirebaseFirestore.instance,
     ),
   );
 

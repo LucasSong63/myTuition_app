@@ -27,6 +27,9 @@ class RouteNames {
   static const String studentAttendance = 'studentAttendance';
   static const String studentPayments = 'studentPayments';
 
+  // Notification routes
+  static const String notifications = 'notifications';
+
   // Tutor routes
   static const String tutorRoot = 'tutorRoot';
   static const String tutorDashboard = 'tutorDashboard';

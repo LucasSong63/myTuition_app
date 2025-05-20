@@ -1,26 +1,25 @@
-// Modified route_config.dart file with changes for CourseDetailPage split
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mytuition/features/admin/setup_screen.dart';
 import 'package:mytuition/features/attendance/presentation/bloc/attendance_event.dart';
 import 'package:mytuition/features/auth/presentation/bloc/registration_bloc.dart';
-import 'package:mytuition/features/auth/presentation/pages/demo_home_screen.dart';
 import 'package:mytuition/features/auth/presentation/pages/email_verification_page.dart';
 import 'package:mytuition/features/auth/presentation/pages/login_page.dart';
 import 'package:mytuition/features/auth/presentation/pages/register_page.dart';
 import 'package:mytuition/features/auth/presentation/pages/registration_details_page.dart';
 import 'package:mytuition/features/auth/presentation/pages/registration_list_page.dart';
+import 'package:mytuition/features/auth/presentation/pages/student_dashboard_page.dart'; // New import
+import 'package:mytuition/features/auth/presentation/pages/tutor_dashboard_page.dart'; // New import
 import 'package:get_it/get_it.dart';
 import 'package:mytuition/features/courses/presentation/bloc/course_bloc.dart';
 import 'package:mytuition/features/courses/presentation/bloc/subject_cost_bloc.dart';
-
-import 'package:mytuition/features/courses/presentation/pages/student_course_detail_page.dart'; // Added
-import 'package:mytuition/features/courses/presentation/pages/tutor_course_detail_page.dart'; // Added
+import 'package:mytuition/features/courses/presentation/pages/student_course_detail_page.dart';
+import 'package:mytuition/features/courses/presentation/pages/tutor_course_detail_page.dart';
 import 'package:mytuition/features/courses/presentation/pages/courses_page.dart';
 import 'package:mytuition/features/courses/presentation/pages/subject_cost_configuration_page.dart';
 import 'package:mytuition/features/courses/presentation/pages/tutor_courses_page.dart';
+import 'package:mytuition/features/notifications/presentation/pages/notification_list_page.dart'; // New import
 import 'package:mytuition/features/payments/presentation/bloc/payment_bloc.dart';
 import 'package:mytuition/features/payments/presentation/bloc/payment_info_bloc.dart';
 import 'package:mytuition/features/payments/presentation/pages/payment_info_page.dart';
@@ -139,6 +138,22 @@ class AppRouter {
         builder: (context, state) => const SetupScreen(),
       ),
 
+      // Notifications route
+      GoRoute(
+        path: '/notifications',
+        name: RouteNames.notifications,
+        builder: (context, state) {
+          final authState = context.read<AuthBloc>().state;
+          if (authState is Authenticated) {
+            return NotificationListPage(userId: authState.user.studentId!);
+          }
+          // Fallback if somehow the user isn't authenticated
+          return const Scaffold(
+            body: Center(child: Text('Please log in to view notifications')),
+          );
+        },
+      ),
+
       // Student routes - organized as a ShellRoute for nested navigation
       ShellRoute(
         builder: (context, state, child) {
@@ -165,7 +180,13 @@ class AppRouter {
           GoRoute(
             path: '/student',
             name: RouteNames.studentRoot,
-            builder: (context, state) => const DemoHomeScreen(isTutor: false),
+            builder: (context, state) {
+              final authState = context.read<AuthBloc>().state;
+              final studentId = authState is Authenticated
+                  ? authState.user.studentId ?? ''
+                  : '';
+              return StudentDashboardPage(studentId: studentId);
+            },
             routes: [
               // Add profile route
               GoRoute(
@@ -193,7 +214,6 @@ class AppRouter {
                       final courseId = state.pathParameters['courseId'] ?? '';
                       return BlocProvider<CourseBloc>(
                         create: (context) => getIt<CourseBloc>(),
-                        // Replace with StudentCourseDetailPage
                         child: StudentCourseDetailPage(courseId: courseId),
                       );
                     },
@@ -262,7 +282,7 @@ class AppRouter {
           GoRoute(
             path: '/tutor',
             name: RouteNames.tutorRoot,
-            builder: (context, state) => const DemoHomeScreen(isTutor: true),
+            builder: (context, state) => const TutorDashboardPage(),
             routes: [
               // Add profile route
               GoRoute(
@@ -455,7 +475,6 @@ class AppRouter {
                       final courseId = state.pathParameters['courseId'] ?? '';
                       return BlocProvider<CourseBloc>(
                         create: (context) => getIt<CourseBloc>(),
-                        // Replace with TutorCourseDetailPage
                         child: TutorCourseDetailPage(courseId: courseId),
                       );
                     },

@@ -16,7 +16,7 @@ class UserModel extends User {
     required DateTime createdAt,
     required DateTime updatedAt,
   }) : super(
-          id: id,
+          docId: id,
           email: email,
           name: name,
           role: role,
@@ -74,7 +74,7 @@ class UserModel extends User {
   // Convert the user model to a map
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
+      'id': docId,
       'email': email,
       'name': name,
       'role': role,
