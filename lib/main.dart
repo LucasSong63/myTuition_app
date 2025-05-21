@@ -1,12 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mytuition/core/services/fcm_service.dart';
 import 'package:mytuition/features/notifications/data/repositories/notification_repository_impl.dart';
 import 'package:mytuition/features/notifications/domain/notification_manager.dart';
 import 'package:mytuition/features/notifications/domain/repositories/notification_repository.dart';
@@ -40,6 +43,7 @@ import 'package:mytuition/features/payments/domain/repositories/payment_info_rep
 import 'package:mytuition/features/payments/domain/repositories/payment_repository.dart';
 import 'package:mytuition/features/payments/presentation/bloc/payment_bloc.dart';
 import 'package:mytuition/features/payments/presentation/bloc/payment_info_bloc.dart';
+import 'package:http/http.dart' as http;
 
 // Student Management imports
 import 'features/student_management/data/repositories/student_management_repository_impl.dart';
@@ -417,6 +421,7 @@ Future<void> initDependencies() async {
   getIt.registerLazySingleton<NotificationManager>(
     () => NotificationManager(
       getIt<NotificationRepository>(),
+      httpClient: http.Client(),
     ),
   );
 
@@ -507,6 +512,78 @@ Future<void> initDependencies() async {
   );
 }
 
+// Define this outside any class
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Ensure Firebase is initialized
+  await Firebase.initializeApp(
+    name: 'myTuition_FYP',
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  print("Handling a background message: ${message.messageId}");
+}
+
+// Create this as a global variable
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+// Add this function
+Future<void> setupFirebaseMessaging() async {
+  // Set the background message handler
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // Configure local notifications for foreground messages
+  const AndroidNotificationChannel channel = AndroidNotificationChannel(
+    'high_importance_channel',
+    'High Importance Notifications',
+    description: 'This channel is used for important notifications.',
+    importance: Importance.high,
+  );
+
+  // Create the Android notification channel
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(channel);
+
+  // Initialize local notifications
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@drawable/ic_notification');
+  const InitializationSettings initializationSettings =
+      InitializationSettings(android: initializationSettingsAndroid);
+  await flutterLocalNotificationsPlugin.initialize(
+    initializationSettings,
+  );
+
+  // Handle foreground messages
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    print("Got a message in foreground!");
+    print("Message data: ${message.data}");
+
+    final notification = message.notification;
+    final android = message.notification?.android;
+
+    if (notification != null && android != null) {
+      flutterLocalNotificationsPlugin.show(
+        notification.hashCode,
+        notification.title,
+        notification.body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            channel.id,
+            channel.name,
+            channelDescription: channel.description,
+            icon: '@drawable/ic_notification',
+          ),
+        ),
+      );
+    }
+  });
+
+  // Print the FCM token for debugging
+  String? token = await FirebaseMessaging.instance.getToken();
+  print("FCM Token: $token");
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -526,6 +603,14 @@ Future<void> main() async {
 
   // Initialize dependency injection
   await initDependencies();
+
+  // Initialize FCM Service
+  final fcmService = FCMService();
+  await fcmService.initialize();
+  await setupFirebaseMessaging();
+
+  // Register FCM service in GetIt
+  getIt.registerSingleton<FCMService>(fcmService);
 
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([

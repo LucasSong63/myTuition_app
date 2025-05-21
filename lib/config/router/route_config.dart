@@ -37,6 +37,7 @@ import 'package:mytuition/features/tasks/presentation/bloc/task_bloc.dart';
 import 'package:mytuition/features/attendance/presentation/bloc/attendance_bloc.dart';
 import 'package:mytuition/features/attendance/presentation/pages/attendance_history_page.dart';
 import 'package:mytuition/features/attendance/presentation/pages/take_attendance_page.dart';
+import '../../core/services/fcm_service.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
 import 'route_names.dart';
@@ -51,6 +52,7 @@ class AppRouter {
 
   // Router instance
   static final _router = GoRouter(
+    navigatorKey: navigatorKey,
     initialLocation: '/login',
     debugLogDiagnostics: true,
     redirect: _guardRoutes,

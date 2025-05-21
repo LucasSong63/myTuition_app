@@ -6,6 +6,7 @@ import 'package:equatable/equatable.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mytuition/features/notifications/data/services/notifications_service.dart';
 import 'package:mytuition/features/auth/data/datasources/remote/email_service.dart';
+import 'package:mytuition/features/notifications/domain/entities/notification_type.dart';
 import 'package:mytuition/features/payments/domain/entities/payment_history_with_student.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../notifications/domain/notification_manager.dart';
@@ -108,6 +109,10 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
       final payment = await _paymentRepository.getStudentPayment(
           event.payment.studentId, event.payment.month, event.payment.year);
 
+      // Send payment notification
+      _sendPaymentConfirmationNotification(
+          payment ?? event.payment, event.amount, event.discount);
+
       emit(PaymentRecorded(
         payment: payment ?? event.payment,
         message: 'Payment successfully recorded',
@@ -115,6 +120,57 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
     } catch (e) {
       emit(PaymentError(message: 'Failed to record payment: $e'));
     }
+  }
+
+  Future<void> _sendPaymentConfirmationNotification(
+      Payment payment, double amount, double discount) async {
+    try {
+      // Get the notification manager
+      final notificationManager = GetIt.instance<NotificationManager>();
+
+      final String title = 'Payment Confirmed';
+      final String message =
+          'Your payment of RM ${amount.toStringAsFixed(2)} for '
+          '${_getMonthName(payment.month)} ${payment.year} has been received.'
+          '${discount > 0 ? ' A discount of RM ${discount.toStringAsFixed(2)} was applied.' : ''}';
+
+      await notificationManager.sendStudentNotification(
+        studentId: payment.studentId,
+        type: NotificationType.paymentConfirmed,
+        title: title,
+        message: message,
+        data: {
+          'paymentId': payment.id,
+          'amount': amount,
+          'discount': discount,
+          'month': payment.month,
+          'year': payment.year,
+        },
+        createInApp: false,
+      );
+    } catch (e) {
+      // Log error but don't fail the operation
+      Logger.error('Error sending payment confirmation notification: $e');
+    }
+  }
+
+// Add helper method for month name
+  String _getMonthName(int month) {
+    final months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
+    ];
+    return months[month - 1];
   }
 
   Future<void> _onLoadPaymentHistory(
@@ -150,6 +206,9 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
       final createdCount = await _paymentRepository.generateMonthlyPayments(
           event.month, event.year, event.defaultAmount);
 
+      if (createdCount > 0) {
+        _sendPaymentGenerationNotifications(event.month, event.year);
+      }
       emit(PaymentOperationSuccess(
         message: 'Generated $createdCount new payment records',
       ));
@@ -158,6 +217,42 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
       add(LoadPaymentsByMonthEvent(month: event.month, year: event.year));
     } catch (e) {
       emit(PaymentError(message: 'Failed to generate monthly payments: $e'));
+    }
+  }
+
+  // Add this helper method
+  Future<void> _sendPaymentGenerationNotifications(int month, int year) async {
+    try {
+      // Get newly created payments
+      final payments =
+          await _paymentRepository.getPaymentsByMonthYear(month, year);
+      final unpaidPayments =
+          payments.where((p) => p.status == 'unpaid').toList();
+
+      // Get notification manager
+      final notificationManager = GetIt.instance<NotificationManager>();
+
+      // Send notifications
+      for (final payment in unpaidPayments) {
+        await notificationManager.sendStudentNotification(
+          studentId: payment.studentId,
+          type: NotificationType.paymentReminder,
+          title: 'New Payment Generated',
+          message:
+              'Your tuition payment of RM ${payment.amount.toStringAsFixed(2)} for '
+              '${_getMonthName(payment.month)} ${payment.year} has been generated and is now due.',
+          data: {
+            'paymentId': payment.id,
+            'amount': payment.amount,
+            'month': payment.month,
+            'year': payment.year,
+          },
+          createInApp: false,
+        );
+      }
+    } catch (e) {
+      // Log but don't fail the operation
+      Logger.error('Error sending payment generation notifications: $e');
     }
   }
 
@@ -437,6 +532,7 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
                 'year': payment.year,
                 'amount': payment.amount,
               },
+              createInApp: false,
             );
           }
         } catch (e) {
@@ -518,6 +614,7 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
             'year': payment.year,
             'amount': payment.amount,
           },
+          createInApp: false,
         );
 
         if (success) successCount++;
@@ -576,24 +673,5 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
     } catch (e) {
       emit(PaymentError(message: 'Failed to create payment: $e'));
     }
-  }
-
-  // Helper method to get month name
-  String _getMonthName(int month) {
-    final months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December'
-    ];
-    return months[month - 1];
   }
 }

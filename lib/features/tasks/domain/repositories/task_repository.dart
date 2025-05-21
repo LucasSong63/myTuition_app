@@ -35,4 +35,10 @@ abstract class TaskRepository {
   Future<List<StudentTask>> getTaskCompletionStatus(String taskId);
 
   Future<Task?> getTaskById(String taskId);
+
+  /// Get all students enrolled in a specific course
+  Future<List<String>> getStudentsForCourse(String courseId);
+
+  /// Get the name of a course by its ID
+  Future<String> getCourseNameById(String courseId);
 }

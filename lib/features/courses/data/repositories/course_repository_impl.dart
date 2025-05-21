@@ -296,4 +296,42 @@ class CourseRepositoryImpl implements CourseRepository {
           'Network error while updating capacity. Please try again.');
     }
   }
+
+  @override
+  Future<List<String>> getEnrolledStudentsForCourse(String courseId) async {
+    try {
+      final courseDoc =
+          await _firestore.collection('classes').doc(courseId).get();
+
+      if (!courseDoc.exists) {
+        return [];
+      }
+
+      final List<dynamic> enrolledStudentsRaw =
+          courseDoc.data()?['students'] ?? [];
+      return enrolledStudentsRaw.map((s) => s.toString()).toList();
+    } catch (e) {
+      print('Error getting enrolled students: $e');
+      return [];
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> getCourseDetailsById(String courseId) async {
+    try {
+      final doc = await _firestore.collection('classes').doc(courseId).get();
+
+      if (!doc.exists) {
+        return {'subject': 'Unknown Course', 'grade': null};
+      }
+
+      return {
+        'subject': doc.data()?['subject'] ?? 'Unknown Course',
+        'grade': doc.data()?['grade'],
+      };
+    } catch (e) {
+      print('Error getting course details: $e');
+      return {'subject': 'Unknown Course', 'grade': null};
+    }
+  }
 }

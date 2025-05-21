@@ -1,6 +1,9 @@
 // lib/features/payments/data/repositories/payment_repository_impl.dart
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:get_it/get_it.dart';
+import 'package:mytuition/features/notifications/domain/entities/notification_type.dart';
+import 'package:mytuition/features/notifications/domain/notification_manager.dart';
 import 'package:mytuition/features/payments/domain/entities/payment_history_with_student.dart';
 import '../../domain/entities/payment.dart';
 import '../../domain/entities/payment_history.dart';
@@ -282,31 +285,52 @@ class PaymentRepositoryImpl implements PaymentRepository {
     await batch.commit();
   }
 
-  @override
   Future<void> sendPaymentReminders(
       List<Payment> payments, String message) async {
-    final batch = _firestore.batch();
-    final now = Timestamp.fromDate(DateTime.now());
+    try {
+      // Get notification manager
+      final notificationManager = GetIt.instance<NotificationManager>();
 
-    for (final payment in payments) {
-      // Create notification
-      final notificationRef = _firestore.collection('notifications').doc();
-      batch.set(notificationRef, {
-        'studentId': payment.studentId,
-        'type': 'payment_reminder',
-        'title': 'Payment Reminder',
-        'message': message,
-        'isRead': false,
-        'createdAt': now,
-        'paymentId': payment.id,
-        'amount': payment.amount,
-        'month': payment.month,
-        'year': payment.year,
-      });
+      // Send notifications to each student
+      for (final payment in payments) {
+        await notificationManager.sendStudentNotification(
+          studentId: payment.studentId,
+          type: NotificationType.paymentReminder,
+          title: 'Payment Reminder',
+          message: message.isEmpty
+              ? 'Your payment of RM ${payment.amount.toStringAsFixed(2)} for ${_getMonthName(payment.month)} ${payment.year} is due.'
+              : message,
+          data: {
+            'paymentId': payment.id,
+            'amount': payment.amount,
+            'month': payment.month,
+            'year': payment.year,
+          },
+        );
+      }
+    } catch (e) {
+      print('Error sending payment reminders: $e');
+      throw Exception('Failed to send payment reminders: $e');
     }
+  }
 
-    // Commit the batch
-    await batch.commit();
+// Helper method
+  String _getMonthName(int month) {
+    final months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
+    ];
+    return months[month - 1];
   }
 
   @override

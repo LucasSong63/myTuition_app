@@ -27,4 +27,10 @@ abstract class CourseRepository {
 
   // Update course capacity
   Future<void> updateCourseCapacity(String courseId, int capacity);
+
+  /// Get all students enrolled in a specific course
+  Future<List<String>> getEnrolledStudentsForCourse(String courseId);
+
+  /// Get course details by ID for better notification messages
+  Future<Map<String, dynamic>> getCourseDetailsById(String courseId);
 }

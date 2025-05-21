@@ -5,8 +5,9 @@
 const admin = require("firebase-admin");
 admin.initializeApp();
 
-// Import the scheduler from v2
+// Import the required modules
 const {onSchedule} = require("firebase-functions/v2/scheduler");
+const {https} = require("firebase-functions");
 
 // Cloud function for notification cleanup using v2 syntax
 exports.cleanupOldNotifications = onSchedule({
@@ -138,7 +139,8 @@ exports.checkTaskDueDates = onSchedule({
           daysFromDueDate: -3,
           type: "task_overdue_final",
           title: "Final Reminder: Task Overdue",
-          message: "Your task is 3days overdue. Please remember to complete it",
+          message: "Your task is 3 days overdue. " +
+            "Please remember to complete it",
         },
       ],
       batchSize: 20,
@@ -163,9 +165,11 @@ exports.checkTaskDueDates = onSchedule({
       const targetDateEnd = new Date(targetDate);
       targetDateEnd.setHours(23, 59, 59, 999);
 
+      // Break long line for better readability
+      const reminderType = reminder.daysFromDueDate > 0 ?
+        "upcoming" : "overdue";
       console.log(
-          `Processing reminders for ${reminder.daysFromDueDate > 0 ?
-              "upcoming" : "overdue"} tasks (${reminder.type})`,
+          `Processing reminders for ${reminderType} tasks (${reminder.type})`,
       );
 
       await processTasksInDateRange(
@@ -216,10 +220,12 @@ async function processTasksInDateRange(
       .get();
 
   // Log the number of tasks found in this date range
+  // Split into multiple lines to avoid max-len
+  const startDateStr = startDate.toDate().toLocaleDateString();
+  const endDateStr = endDate.toDate().toLocaleDateString();
   console.log(
       `Found ${tasksSnapshot.size} tasks in date range ` +
-      `${startDate.toDate().toLocaleDateString()} to ` +
-      `${endDate.toDate().toLocaleDateString()}`,
+      `${startDateStr} to ${endDateStr}`,
   );
 
   // Process tasks in batches
@@ -282,7 +288,396 @@ async function processTasksInDateRange(
             taskTitle: task.title,
           },
         });
+
+        // Also send push notification
+        await sendPushNotification(
+            studentId,
+            notificationTitle,
+            // Break this into multiple lines to avoid max-len
+            `${baseMessage}: "${task.title}" for ${course.subject} ` +
+            `(${formattedDate})`,
+            {
+              type: notificationType,
+              taskId: taskDoc.id,
+              courseId: courseId,
+              courseName: course.subject,
+              dueDate: task.dueDate.toDate().getTime().toString(),
+            },
+        );
       }
     }));
   }
 }
+
+exports.checkOverduePayments = onSchedule({
+  schedule: "0 8 * * *", // Run daily at 8 AM
+  timeZone: "Asia/Kuala_Lumpur",
+  region: "asia-southeast1",
+}, async (event) => {
+  const firestore = admin.firestore();
+
+  try {
+    // Get current date
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1; // 1-based month
+    const currentYear = now.getFullYear();
+
+    // Get unpaid payments for current or previous months
+    const unpaidSnapshot = await firestore
+        .collection("payments")
+        .where("status", "==", "unpaid")
+        .get();
+
+    const overduePayments = unpaidSnapshot.docs.filter((doc) => {
+      const data = doc.data();
+      const paymentMonth = data.month;
+      const paymentYear = data.year;
+
+      // Check if payment is from a previous month/year
+      return (paymentYear < currentYear) ||
+             (paymentYear === currentYear && paymentMonth < currentMonth);
+    });
+
+    // Process each overdue payment
+    for (const doc of overduePayments) {
+      const payment = doc.data();
+      const batch = firestore.batch();
+
+      // Create in-app notification
+      const notificationRef = firestore.collection("notifications").doc();
+      // Break message into multiple lines to avoid max-len
+      const message = `Your payment of RM ${payment.amount} for ` +
+                     `${getMonthName(payment.month)} ${payment.year} ` +
+                     `is overdue. ` +
+                     `Please make payment as soon as possible.`;
+
+      batch.set(notificationRef, {
+        studentId: payment.studentId,
+        type: "payment_overdue",
+        title: "Payment Overdue",
+        message: message,
+        isRead: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        data: {
+          paymentId: doc.id,
+          amount: payment.amount,
+          month: payment.month,
+          year: payment.year,
+        },
+      });
+
+      await batch.commit();
+
+      // Also send push notification
+      // Break into smaller segments to avoid max-len
+      const pushMessage = `Your payment of RM ${payment.amount} for ` +
+                         `${getMonthName(payment.month)} ` +
+                         `${payment.year} is overdue.`;
+
+      await sendPushNotification(
+          payment.studentId,
+          "Payment Overdue",
+          pushMessage,
+          {
+            type: "payment_overdue",
+            paymentId: doc.id,
+            amount: payment.amount.toString(),
+            month: payment.month.toString(),
+            year: payment.year.toString(),
+          },
+      );
+    }
+
+    if (overduePayments.length > 0) {
+      // Split log message to avoid max-len
+      const count = overduePayments.length;
+      console.log(`Sent overdue payment notifications to ${count} students`);
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Error sending overdue payment notifications:", error);
+    return null;
+  }
+});
+
+/**
+ * Returns the name of a month based on its numeric representation.
+ * @param {number} month - The month number (1-12) to convert to name.
+ * @return {string} The name of the month.
+ */
+function getMonthName(month) {
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+  return months[month - 1];
+}
+
+// Push Notification Functions
+const {getMessaging} = require("firebase-admin/messaging");
+
+/**
+ * Sends a push notification to a specific user.
+ * @param {string} studentId - The ID of the student to notify
+ * @param {string} title - The notification title
+ * @param {string} body - The notification message
+ * @param {Object} data - Optional data payload for the notification
+ * @return {Promise<string>} Messaging response
+ */
+async function sendPushNotification(studentId, title, body, data = {}) {
+  try {
+    // Get user document to retrieve FCM tokens
+    const userDoc = await admin.firestore()
+        .collection("users")
+        .where("studentId", "==", studentId)
+        .limit(1)
+        .get();
+
+    if (userDoc.empty) {
+      console.log(`No user found for studentId: ${studentId}`);
+      return null;
+    }
+
+    const userData = userDoc.docs[0].data();
+    const fcmTokens = userData.fcmTokens || [];
+
+    if (fcmTokens.length === 0) {
+      console.log(`No FCM tokens found for student: ${studentId}`);
+      return null;
+    }
+
+    // Prepare notification message
+    const message = {
+      notification: {
+        title: title,
+        body: body,
+      },
+      data: {
+        ...data,
+        click_action: "FLUTTER_NOTIFICATION_CLICK",
+      },
+      tokens: fcmTokens, // Multiple tokens can be targeted
+    };
+
+    // Send message
+    const response = await getMessaging().sendMulticast(message);
+    console.log(
+        `Successfully sent message to ${response.successCount} devices ` +
+        `for ${studentId}`,
+    );
+
+    // Handle failed tokens
+    if (response.failureCount > 0) {
+      const failedTokens = [];
+      response.responses.forEach((resp, idx) => {
+        if (!resp.success) {
+          failedTokens.push(fcmTokens[idx]);
+        }
+      });
+
+      // Remove failed tokens
+      if (failedTokens.length > 0) {
+        await admin.firestore()
+            .collection("users")
+            .doc(userDoc.docs[0].id)
+            .update({
+              fcmTokens: admin.firestore.FieldValue
+                  .arrayRemove(...failedTokens),
+            });
+        console.log(`Removed ${failedTokens.length} invalid tokens`);
+      }
+    }
+
+    return response;
+  } catch (error) {
+    console.error("Error sending push notification:", error);
+    return null;
+  }
+}
+
+// We'll keep this function even if it's not used currently
+/**
+ * Sends a push notification to a topic.
+ * @param {string} topic - The topic to send to
+ * @param {string} title - The notification title
+ * @param {string} body - The notification message
+ * @param {Object} data - Optional data payload for the notification
+ * @return {Promise<string>} Messaging response
+ */
+// async function sendTopicPushNotification(topic, title, body, data = {}) {
+//  try {
+//    // Prepare notification message
+//    const message = {
+//      notification: {
+//        title: title,
+//        body: body,
+//      },
+//      data: {
+//        ...data,
+//        click_action: "FLUTTER_NOTIFICATION_CLICK",
+//      },
+//      topic: topic,
+//    };
+//
+//    // Send message
+//    const response = await getMessaging().send(message);
+//    console.log(`Successfully sent message to topic ${topic}: ${response}`);
+//    return response;
+//  } catch (error) {
+//    console.error(`Error sending notification to topic ${topic}:`, error);
+//    return null;
+//  }
+// }
+
+// Cloud Function to test push notifications
+
+
+// Make sure admin is initialized at the top level of index.js
+// If admin is not initialized yet, uncomment the next line:
+// admin.initializeApp();
+
+/**
+ * Usage: https://asia-southeast1-mytuition-fyp.cloudfunctions.net/testPushNotificationHttp?studentId=MT25-2656
+ */
+/**
+ * General-purpose push notification sender.
+ * Parameters:
+ * - studentId: the ID of the student to send to
+ * - title: notification title
+ * - message: notification body
+ * - type: notification type (for routing)
+ * - data: optional JSON string containing additional data
+ */
+exports.sendPushNotification = https.onRequest({
+  region: "asia-southeast1",
+}, async (req, res) => {
+  // Set CORS headers
+  res.set("Access-Control-Allow-Origin", "*");
+
+  // Handle OPTIONS request for CORS preflight
+  if (req.method === "OPTIONS") {
+    res.set("Access-Control-Allow-Methods", "GET");
+    res.set("Access-Control-Allow-Headers", "Content-Type");
+    res.status(204).send("");
+    return;
+  }
+
+  try {
+    // Extract parameters from query string
+    const studentId = req.query.studentId;
+    const title = req.query.title;
+    const message = req.query.message;
+    const type = req.query.type || "general_notification";
+    const createInApp = req.query.createInApp !== "false";
+    // Default to true if not specified
+
+    // Parse data if provided
+    let data = {};
+    try {
+      if (req.query.data) {
+        data = JSON.parse(req.query.data);
+      }
+    } catch (parseError) {
+      console.warn("Error parsing data payload using empty object:",
+          parseError);
+    }
+
+    // Add required fields to data
+    data.type = type;
+    data.click_action = "FLUTTER_NOTIFICATION_CLICK";
+    data.timestamp = Date.now().toString();
+
+    console.log(`Sending push notification to ${studentId}`);
+
+    // Only create in-app notification if requested
+    if (createInApp) {
+      // Create in-app notification
+      await admin.firestore().collection("notifications").add({
+        userId: studentId,
+        type: type,
+        title: title,
+        message: message,
+        isRead: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        data: data,
+      });
+      console.log("Created in-app notification successfully");
+    } else {
+      console.log("Skipping in-app notification creation (createInApp=false)");
+    }
+
+    // Get user document to find FCM token
+    const userSnapshot = await admin.firestore()
+        .collection("users")
+        .where("studentId", "==", studentId)
+        .limit(1)
+        .get();
+
+    if (userSnapshot.empty) {
+      const errorMsg = `No user found with studentId: ${studentId}`;
+      console.error(errorMsg);
+      res.status(404).json({success: false, error: errorMsg});
+      return;
+    }
+
+    const userData = userSnapshot.docs[0].data();
+    const fcmTokens = userData.fcmTokens || [];
+
+    console.log(`Found user: ${userSnapshot.docs[0].id}`);
+    console.log(`Found ${fcmTokens.length} FCM tokens`);
+
+    if (fcmTokens.length === 0) {
+      const errorMsg = "No FCM tokens found for user";
+      console.error(errorMsg);
+      res.status(400).json({success: false, error: errorMsg});
+      return;
+    }
+
+    const mostRecentToken = fcmTokens[fcmTokens.length - 1];
+
+    const singleMessage = {
+      notification: {
+        title: title,
+        body: message,
+      },
+      android: {
+        notification: {
+          channelId: "high_importance_channel",
+          priority: "high",
+          icon: "ic_notification",
+          sound: "default",
+        },
+      },
+      data: Object.keys(data).reduce((result, key) => {
+        // Convert all values to strings as FCM requires string values in data
+        result[key] = data[key] !== null && data[key] !==
+        undefined ? data[key].toString() : "";
+        return result;
+      }, {}),
+      token: mostRecentToken,
+    };
+
+    console.log(`Sending FCM message to token:
+    ${mostRecentToken.substring(0, 15)}...`);
+
+    // Use send instead of sendMulticast for reliability
+    const response = await admin.messaging().send(singleMessage);
+    console.log(`Successfully sent message: ${response}`);
+
+    // Return success response
+    res.status(200).json({
+      success: true,
+      message: "Push notification sent successfully!",
+      messageId: response,
+      inAppNotification: createInApp,
+    });
+  } catch (error) {
+    console.error("Error sending notification:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack,
+    });
+  }
+});

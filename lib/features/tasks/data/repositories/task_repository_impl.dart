@@ -292,4 +292,43 @@ class TaskRepositoryImpl implements TaskRepository {
       throw Exception('Failed to get task completion status: $e');
     }
   }
+
+  @override
+  Future<List<String>> getStudentsForCourse(String courseId) async {
+    try {
+      final courseDoc =
+          await _firestore.collection('classes').doc(courseId).get();
+
+      if (!courseDoc.exists) {
+        return [];
+      }
+
+      final List<dynamic> enrolledStudentsRaw =
+          courseDoc.data()?['students'] ?? [];
+      return enrolledStudentsRaw.map((s) => s.toString()).toList();
+    } catch (e) {
+      print('Error getting students for course: $e');
+      return []; // Return empty list instead of throwing to prevent cascading failures
+    }
+  }
+
+  @override
+  Future<String> getCourseNameById(String courseId) async {
+    try {
+      final courseDoc =
+          await _firestore.collection('classes').doc(courseId).get();
+
+      if (!courseDoc.exists) {
+        return 'Unknown Course';
+      }
+
+      final String subject = courseDoc.data()?['subject'] ?? 'Unknown Subject';
+      final dynamic grade = courseDoc.data()?['grade'];
+
+      return grade != null ? '$subject (Grade $grade)' : subject;
+    } catch (e) {
+      print('Error getting course name: $e');
+      return 'Unknown Course'; // Return a fallback instead of throwing
+    }
+  }
 }
