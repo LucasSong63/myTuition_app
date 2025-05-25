@@ -1,3 +1,5 @@
+import 'package:mytuition/features/courses/domain/entities/schedule.dart';
+
 import '../entities/attendance.dart';
 
 abstract class AttendanceRepository {
@@ -33,4 +35,6 @@ abstract class AttendanceRepository {
 
   // Get all students enrolled in a course
   Future<List<Map<String, dynamic>>> getEnrolledStudents(String courseId);
+
+  Future<List<Schedule>> getCourseSchedules(String courseId);
 }

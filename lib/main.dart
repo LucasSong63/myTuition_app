@@ -10,6 +10,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mytuition/core/services/fcm_service.dart';
+import 'package:mytuition/features/attendance/domain/usecases/get_course_schedules_usecase.dart';
 import 'package:mytuition/features/notifications/data/repositories/notification_repository_impl.dart';
 import 'package:mytuition/features/notifications/domain/notification_manager.dart';
 import 'package:mytuition/features/notifications/domain/repositories/notification_repository.dart';
@@ -109,6 +110,27 @@ import 'features/profile/presentation/bloc/profile_bloc.dart';
 
 // Firebase config
 import 'firebase_option.dart';
+
+// AI Chat imports
+import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:mytuition/features/ai_chat/data/datasources/local/chat_local_datasource.dart';
+import 'package:mytuition/features/ai_chat/data/datasources/remote/openai_service.dart';
+import 'package:mytuition/features/ai_chat/data/repositories/ai_usage_repository_impl.dart';
+import 'package:mytuition/features/ai_chat/data/repositories/chat_repository_impl.dart';
+import 'package:mytuition/features/ai_chat/data/repositories/openai_repository_impl.dart';
+import 'package:mytuition/features/ai_chat/domain/repositories/ai_usage_repository.dart';
+import 'package:mytuition/features/ai_chat/domain/repositories/chat_repository.dart';
+import 'package:mytuition/features/ai_chat/domain/repositories/openai_repository.dart';
+import 'package:mytuition/features/ai_chat/domain/usecases/get_ai_usage_usecase.dart';
+import 'package:mytuition/features/ai_chat/domain/usecases/get_or_create_active_session_usecase.dart';
+import 'package:mytuition/features/ai_chat/domain/usecases/get_session_messages_usecase.dart';
+import 'package:mytuition/features/ai_chat/domain/usecases/send_message_usecase.dart';
+import 'package:mytuition/features/ai_chat/domain/usecases/start_new_session_usecase.dart';
+import 'package:mytuition/features/ai_chat/presentation/bloc/chat_bloc.dart';
+import 'package:mytuition/features/ai_chat/domain/usecases/get_archived_sessions_usecase.dart';
+import 'package:mytuition/features/ai_chat/domain/usecases/reactivate_session_usecase.dart';
+import 'package:mytuition/features/ai_chat/domain/usecases/delete_session_usecase.dart';
+import 'package:mytuition/features/ai_chat/presentation/bloc/chat_history_bloc.dart';
 
 // Get instance of GetIt
 final getIt = GetIt.instance;
@@ -379,6 +401,10 @@ Future<void> initDependencies() async {
     () => GetCourseAttendanceStatsUseCase(getIt<AttendanceRepository>()),
   );
 
+  getIt.registerLazySingleton(
+    () => GetCourseSchedulesUseCase(getIt<AttendanceRepository>()),
+  );
+
   // Attendance BLoC
   getIt.registerFactory(
     () => AttendanceBloc(
@@ -387,6 +413,7 @@ Future<void> initDependencies() async {
       recordBulkAttendanceUseCase: getIt<RecordBulkAttendanceUseCase>(),
       getStudentAttendanceUseCase: getIt<GetStudentAttendanceUseCase>(),
       getCourseAttendanceStatsUseCase: getIt<GetCourseAttendanceStatsUseCase>(),
+      getCourseSchedulesUseCase: getIt<GetCourseSchedulesUseCase>(),
     ),
   );
 
@@ -510,6 +537,129 @@ Future<void> initDependencies() async {
       paymentInfoRepository: getIt<PaymentInfoRepository>(),
     ),
   );
+
+  // Firebase Remote Config
+  getIt.registerLazySingleton<FirebaseRemoteConfig>(
+    () => FirebaseRemoteConfig.instance,
+  );
+
+  // AI Chat Data Sources
+  getIt.registerLazySingleton<ChatLocalDatasource>(
+    () => ChatLocalDatasource(FirebaseFirestore.instance),
+  );
+
+  getIt.registerLazySingleton<OpenAIService>(
+    () => OpenAIService(
+      httpClient: http.Client(),
+      remoteConfig: getIt<FirebaseRemoteConfig>(),
+    ),
+  );
+
+  // AI Chat Repositories
+  getIt.registerLazySingleton<ChatRepository>(
+    () => ChatRepositoryImpl(
+      localDatasource: getIt<ChatLocalDatasource>(),
+      openaiService: getIt<OpenAIService>(),
+    ),
+  );
+
+  getIt.registerLazySingleton<AIUsageRepository>(
+    () => AIUsageRepositoryImpl(getIt<ChatLocalDatasource>()),
+  );
+
+  getIt.registerLazySingleton<OpenAIRepository>(
+    () => OpenAIRepositoryImpl(getIt<OpenAIService>()),
+  );
+
+  // AI Chat Use Cases
+  getIt.registerLazySingleton<SendMessageUseCase>(
+    () => SendMessageUseCase(
+      chatRepository: getIt<ChatRepository>(),
+      aiUsageRepository: getIt<AIUsageRepository>(),
+    ),
+  );
+
+  getIt.registerLazySingleton<GetOrCreateActiveSessionUseCase>(
+    () => GetOrCreateActiveSessionUseCase(
+      chatRepository: getIt<ChatRepository>(),
+      aiUsageRepository: getIt<AIUsageRepository>(),
+    ),
+  );
+
+  getIt.registerLazySingleton<GetSessionMessagesUseCase>(
+    () => GetSessionMessagesUseCase(getIt<ChatRepository>()),
+  );
+
+  getIt.registerLazySingleton<GetAIUsageUseCase>(
+    () => GetAIUsageUseCase(getIt<AIUsageRepository>()),
+  );
+
+  getIt.registerLazySingleton<StartNewSessionUseCase>(
+    () => StartNewSessionUseCase(getIt<ChatRepository>()),
+  );
+
+  getIt.registerLazySingleton<GetArchivedSessionsUseCase>(
+    () => GetArchivedSessionsUseCase(getIt<ChatRepository>()),
+  );
+
+  getIt.registerLazySingleton<ReactivateSessionUseCase>(
+    () => ReactivateSessionUseCase(getIt<ChatRepository>()),
+  );
+
+  getIt.registerLazySingleton<DeleteSessionUseCase>(
+    () => DeleteSessionUseCase(getIt<ChatRepository>()),
+  );
+
+  // AI Chat BLoC
+  getIt.registerFactory<ChatBloc>(
+    () => ChatBloc(
+      sendMessageUseCase: getIt<SendMessageUseCase>(),
+      getOrCreateActiveSessionUseCase: getIt<GetOrCreateActiveSessionUseCase>(),
+      getSessionMessagesUseCase: getIt<GetSessionMessagesUseCase>(),
+      getAIUsageUseCase: getIt<GetAIUsageUseCase>(),
+      startNewSessionUseCase: getIt<StartNewSessionUseCase>(),
+    ),
+  );
+
+  //Chat History BLoC
+  getIt.registerFactory<ChatHistoryBloc>(
+    () => ChatHistoryBloc(
+      getArchivedSessionsUseCase: getIt<GetArchivedSessionsUseCase>(),
+      reactivateSessionUseCase: getIt<ReactivateSessionUseCase>(),
+      deleteSessionUseCase: getIt<DeleteSessionUseCase>(),
+    ),
+  );
+}
+
+Future<void> initFirebaseRemoteConfig() async {
+  final remoteConfig = FirebaseRemoteConfig.instance;
+
+  await remoteConfig.setConfigSettings(RemoteConfigSettings(
+    fetchTimeout: const Duration(minutes: 1),
+    minimumFetchInterval: const Duration(seconds: 0), // For debugging only
+  ));
+
+  await remoteConfig.setDefaults({
+    'openai_api_key': '',
+    'openai_assistant_id': '',
+    'daily_question_limit': 20,
+  });
+
+  try {
+    // Add debugging
+    print('Fetching Remote Config...');
+    bool updated = await remoteConfig.fetchAndActivate();
+    print('Remote Config fetch result: $updated');
+
+    // Check the actual value
+    final apiKey = remoteConfig.getString('openai_api_key');
+    print(
+        'API Key found: ${apiKey.isNotEmpty ? "YES (${apiKey.length} chars)" : "NO"}');
+    print(
+        'First 10 chars: ${apiKey.length > 10 ? apiKey.substring(0, 10) : apiKey}');
+  } catch (e) {
+    print('Remote Config fetch error: $e');
+  }
 }
 
 // Define this outside any class
@@ -608,6 +758,9 @@ Future<void> main() async {
   final fcmService = FCMService();
   await fcmService.initialize();
   await setupFirebaseMessaging();
+
+  // Initialize Remote Config
+  await initFirebaseRemoteConfig();
 
   // Register FCM service in GetIt
   getIt.registerSingleton<FCMService>(fcmService);

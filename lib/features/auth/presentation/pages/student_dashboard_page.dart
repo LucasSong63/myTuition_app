@@ -1,6 +1,7 @@
 // lib/features/auth/presentation/pages/student_dashboard_page.dart
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -22,6 +23,9 @@ import 'package:mytuition/features/notifications/presentation/widgets/notificati
 import 'package:mytuition/core/utils/logger.dart';
 import 'package:http/http.dart' as http;
 
+// Add import for AI usage testing
+import 'package:mytuition/features/ai_chat/data/models/ai_usage_model.dart';
+
 class StudentDashboardPage extends StatefulWidget {
   final String
       studentId; // This should be the actual student ID (MT25-XXXX format)
@@ -40,6 +44,7 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
   late NotificationManager _notificationManager;
   bool _isSendingTestNotification = false;
   bool _isListeningToMessages = false;
+  bool _isTestingAiUsage = false; // Add state for AI usage testing
   StreamSubscription<RemoteMessage>? _foregroundMessageSubscription;
 
   @override
@@ -445,6 +450,281 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
     }
   }
 
+  // ADD: AI Usage Testing Methods
+  Future<void> _testAIUsageUpdate() async {
+    if (_isTestingAiUsage) return;
+
+    setState(() {
+      _isTestingAiUsage = true;
+    });
+
+    try {
+      final firestore = FirebaseFirestore.instance;
+
+      print('=== TESTING AI USAGE UPDATE FIX ===');
+
+      // Step 1: Find user document
+      final userQuery = await firestore
+          .collection('users')
+          .where('studentId', isEqualTo: widget.studentId)
+          .limit(1)
+          .get();
+
+      if (userQuery.docs.isEmpty) {
+        throw Exception('No user found with studentId: ${widget.studentId}');
+      }
+
+      final userDocId = userQuery.docs.first.id;
+      print('Found user document: $userDocId');
+
+      // Step 2: Get current AI usage
+      print('Getting current AI usage...');
+      final doc = await firestore
+          .collection('users')
+          .doc(userDocId)
+          .collection('ai_usage')
+          .doc('current')
+          .get();
+
+      if (!doc.exists) {
+        throw Exception('AI usage document not found');
+      }
+
+      // FIXED: Use the new method signature with studentId parameter
+      final currentUsage = AIUsageModel.fromFirestore(doc, widget.studentId);
+      print(
+          'Current usage: ${currentUsage.dailyCount}/${currentUsage.dailyLimit}');
+      print('StudentId in model: ${currentUsage.studentId}');
+
+      // Step 3: Increment the usage
+      print('Incrementing usage...');
+      final updatedUsage = currentUsage.copyWith(
+        dailyCount: currentUsage.dailyCount + 1,
+        totalQuestions: currentUsage.totalQuestions + 1,
+      );
+
+      print('New usage: ${updatedUsage.dailyCount}/${updatedUsage.dailyLimit}');
+      print('StudentId in updated model: ${updatedUsage.studentId}');
+
+      // Step 4: Save the updated usage
+      print('Saving updated usage...');
+      await firestore
+          .collection('users')
+          .doc(userDocId)
+          .collection('ai_usage')
+          .doc('current')
+          .set(updatedUsage.toFirestore(), SetOptions(merge: true));
+
+      print('Usage saved successfully');
+
+      // Step 5: Verify the update
+      print('Verifying update...');
+      final verifyDoc = await firestore
+          .collection('users')
+          .doc(userDocId)
+          .collection('ai_usage')
+          .doc('current')
+          .get();
+
+      if (verifyDoc.exists) {
+        final verifiedUsage =
+            AIUsageModel.fromFirestore(verifyDoc, widget.studentId);
+        print(
+            'Verified usage: ${verifiedUsage.dailyCount}/${verifiedUsage.dailyLimit}');
+        print('Verified StudentId: ${verifiedUsage.studentId}');
+
+        if (mounted) {
+          if (verifiedUsage.dailyCount == updatedUsage.dailyCount) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                    '✅ SUCCESS: AI usage incremented from ${currentUsage.dailyCount} to ${verifiedUsage.dailyCount}!'),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('❌ FAILED: AI usage update did not work'),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 4),
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print('❌ ERROR: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error testing AI usage: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isTestingAiUsage = false;
+        });
+      }
+    }
+  }
+
+  // Method to reset daily count for testing
+  Future<void> _resetDailyCount() async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+
+      // Find user document
+      final userQuery = await firestore
+          .collection('users')
+          .where('studentId', isEqualTo: widget.studentId)
+          .limit(1)
+          .get();
+
+      if (userQuery.docs.isEmpty) {
+        throw Exception('No user found with studentId: ${widget.studentId}');
+      }
+
+      final userDocId = userQuery.docs.first.id;
+
+      await firestore
+          .collection('users')
+          .doc(userDocId)
+          .collection('ai_usage')
+          .doc('current')
+          .update({'dailyCount': 0});
+
+      print('Daily count reset to 0');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Daily count reset to 0'),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error resetting daily count: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error resetting daily count: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Method to check current AI usage
+  Future<void> _checkAIUsage() async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+
+      // Find user document
+      final userQuery = await firestore
+          .collection('users')
+          .where('studentId', isEqualTo: widget.studentId)
+          .limit(1)
+          .get();
+
+      if (userQuery.docs.isEmpty) {
+        throw Exception('No user found with studentId: ${widget.studentId}');
+      }
+
+      final userDocId = userQuery.docs.first.id;
+      print('User document ID: $userDocId');
+
+      // Get AI usage
+      final doc = await firestore
+          .collection('users')
+          .doc(userDocId)
+          .collection('ai_usage')
+          .doc('current')
+          .get();
+
+      if (doc.exists) {
+        final usage = AIUsageModel.fromFirestore(doc, widget.studentId);
+        print('Current AI usage: ${usage.dailyCount}/${usage.dailyLimit}');
+        print('Total questions: ${usage.totalQuestions}');
+        print('Last reset: ${usage.lastReset}');
+        print('StudentId: ${usage.studentId}');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'AI Usage: ${usage.dailyCount}/${usage.dailyLimit} (Total: ${usage.totalQuestions})'),
+              backgroundColor: Colors.blue,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No AI usage document found'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error checking AI usage: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error checking AI usage: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _testEmojiEncoding() async {
+    try {
+      // Test string with common emojis
+      const testString = "Hello! 👋 How are you? 😊 Let's learn! 📚✨🎉";
+
+      // Test UTF-8 encoding/decoding
+      final bytes = utf8.encode(testString);
+      final decoded = utf8.decode(bytes);
+
+      print('Original: $testString');
+      print('Bytes length: ${bytes.length}');
+      print('Decoded: $decoded');
+      print('Strings match: ${testString == decoded}');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Emoji test: $decoded'),
+            backgroundColor: testString == decoded ? Colors.green : Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Emoji encoding test error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Emoji test failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -492,8 +772,92 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  'Authenticated as: ${FirebaseAuth.instance.currentUser?.uid ?? "Not authenticated"}\n(${FirebaseAuth.instance.currentUser?.email ?? ""})',
+                  'Authenticated as: ${FirebaseAuth.instance.currentUser?.uid ?? "Not authenticated"}\n(${FirebaseAuth.instance.currentUser?.email ?? ""})\nStudent ID: ${widget.studentId}',
                   style: const TextStyle(color: Colors.white),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // AI Usage Testing Card
+              Card(
+                color: Colors.purple.shade50,
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.psychology, color: Colors.purple),
+                          SizedBox(width: 8),
+                          Text(
+                            'AI Usage Testing',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Test AI usage functionality and daily count increment',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Check AI Usage Button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _checkAIUsage,
+                          icon: const Icon(Icons.info_outline),
+                          label: const Text('Check Current AI Usage'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Test AI Usage Update Button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed:
+                              _isTestingAiUsage ? null : _testAIUsageUpdate,
+                          icon: _isTestingAiUsage
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2))
+                              : const Icon(Icons.add_circle_outline),
+                          label: const Text('Test AI Usage Increment'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.purple,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Test emoji encoding
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _testEmojiEncoding,
+                          icon: const Icon(Icons.emoji_emotions),
+                          label: const Text('Test Emoji Encoding'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 16),

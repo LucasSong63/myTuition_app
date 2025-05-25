@@ -1,9 +1,11 @@
+// config/theme/app_theme.dart - SIMPLE VERSION
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
-/// App theme configurations
+/// App theme configurations with emoji support
 class AppTheme {
-  /// Light theme
+  /// Light theme with emoji support
   static ThemeData get lightTheme {
     return ThemeData(
       // Base colors
@@ -26,68 +28,10 @@ class AppTheme {
         onSurface: AppColors.textDark,
       ),
 
-      // Typography
-      textTheme: TextTheme(
-        headlineLarge: TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.bold,
-          color: AppColors.textDark,
-        ),
-        headlineMedium: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-          color: AppColors.textDark,
-        ),
-        headlineSmall: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: AppColors.textDark,
-        ),
-        titleLarge: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textDark,
-        ),
-        titleMedium: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textDark,
-        ),
-        titleSmall: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textDark,
-        ),
-        bodyLarge: TextStyle(
-          fontSize: 16,
-          color: AppColors.textDark,
-        ),
-        bodyMedium: TextStyle(
-          fontSize: 14,
-          color: AppColors.textDark,
-        ),
-        bodySmall: TextStyle(
-          fontSize: 12,
-          color: AppColors.textMedium,
-        ),
-        labelLarge: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textDark,
-        ),
-        labelMedium: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textDark,
-        ),
-        labelSmall: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textMedium,
-        ),
-      ),
+      // SIMPLE FIX: Typography with emoji support using Google Fonts
+      textTheme: _buildSimpleEmojiTextTheme(),
 
-      // Component themes
+      // Component themes (keep your existing code)
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.primaryBlue,
         foregroundColor: AppColors.white,
@@ -231,10 +175,109 @@ class AppTheme {
     );
   }
 
+  /// SIMPLE: Build text theme with emoji support using Google Fonts (no downloads needed)
+  static TextTheme _buildSimpleEmojiTextTheme() {
+    // Get Inter font from Google Fonts (you already have this package)
+    final baseTextTheme = GoogleFonts.interTextTheme();
+
+    // Create a helper function to add emoji support to any text style
+    TextStyle addEmojiSupport(TextStyle? style) {
+      return (style ?? const TextStyle()).copyWith(
+        fontFamilyFallback: const [
+          // System emoji fonts (built into devices)
+          'Apple Color Emoji', // iOS
+          'Segoe UI Emoji', // Windows
+          'Noto Color Emoji', // Android
+          'Noto Emoji', // Android fallback
+          'Symbola', // Linux
+          'DejaVu Sans', // General fallback
+        ],
+      );
+    }
+
+    return TextTheme(
+      headlineLarge: addEmojiSupport(baseTextTheme.headlineLarge?.copyWith(
+        fontSize: 28,
+        fontWeight: FontWeight.bold,
+        color: AppColors.textDark,
+        height: 1.2,
+        letterSpacing: -0.5,
+      )),
+      headlineMedium: addEmojiSupport(baseTextTheme.headlineMedium?.copyWith(
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+        color: AppColors.textDark,
+        height: 1.3,
+        letterSpacing: -0.25,
+      )),
+      headlineSmall: addEmojiSupport(baseTextTheme.headlineSmall?.copyWith(
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+        color: AppColors.textDark,
+        height: 1.3,
+      )),
+      titleLarge: addEmojiSupport(baseTextTheme.titleLarge?.copyWith(
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textDark,
+        height: 1.4,
+      )),
+      titleMedium: addEmojiSupport(baseTextTheme.titleMedium?.copyWith(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textDark,
+        height: 1.4,
+      )),
+      titleSmall: addEmojiSupport(baseTextTheme.titleSmall?.copyWith(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textDark,
+        height: 1.4,
+      )),
+      bodyLarge: addEmojiSupport(baseTextTheme.bodyLarge?.copyWith(
+        fontSize: 16,
+        color: AppColors.textDark,
+        height: 1.5,
+        letterSpacing: 0.15,
+      )),
+      bodyMedium: addEmojiSupport(baseTextTheme.bodyMedium?.copyWith(
+        fontSize: 14,
+        color: AppColors.textDark,
+        height: 1.5,
+        letterSpacing: 0.25,
+      )),
+      bodySmall: addEmojiSupport(baseTextTheme.bodySmall?.copyWith(
+        fontSize: 12,
+        color: AppColors.textMedium,
+        height: 1.4,
+        letterSpacing: 0.4,
+      )),
+      labelLarge: addEmojiSupport(baseTextTheme.labelLarge?.copyWith(
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+        color: AppColors.textDark,
+        height: 1.4,
+        letterSpacing: 0.1,
+      )),
+      labelMedium: addEmojiSupport(baseTextTheme.labelMedium?.copyWith(
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        color: AppColors.textDark,
+        height: 1.3,
+        letterSpacing: 0.5,
+      )),
+      labelSmall: addEmojiSupport(baseTextTheme.labelSmall?.copyWith(
+        fontSize: 10,
+        fontWeight: FontWeight.w500,
+        color: AppColors.textMedium,
+        height: 1.2,
+        letterSpacing: 1.5,
+      )),
+    );
+  }
+
   /// Dark theme (if needed later)
   static ThemeData get darkTheme {
-    // You can implement a dark theme here if needed
-    // For now, we'll just return the light theme
     return lightTheme;
   }
 }

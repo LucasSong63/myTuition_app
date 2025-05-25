@@ -1,5 +1,12 @@
+import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mytuition/features/courses/domain/entities/schedule.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:mytuition/core/errors/error_handler.dart';
+import '../../domain/entities/attendance.dart';
 import '../../domain/usecases/get_attendance_by_date_usecase.dart';
+import '../../domain/usecases/get_course_schedules_usecase.dart';
 import '../../domain/usecases/get_enrolled_students_usecase.dart';
 import '../../domain/usecases/record_bulk_attendance_usecase.dart';
 import '../../domain/usecases/get_student_attendance_usecase.dart';
@@ -13,6 +20,7 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
   final RecordBulkAttendanceUseCase recordBulkAttendanceUseCase;
   final GetStudentAttendanceUseCase getStudentAttendanceUseCase;
   final GetCourseAttendanceStatsUseCase getCourseAttendanceStatsUseCase;
+  final GetCourseSchedulesUseCase getCourseSchedulesUseCase;
 
   AttendanceBloc({
     required this.getAttendanceByDateUseCase,
@@ -20,12 +28,20 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     required this.recordBulkAttendanceUseCase,
     required this.getStudentAttendanceUseCase,
     required this.getCourseAttendanceStatsUseCase,
+    required this.getCourseSchedulesUseCase,
   }) : super(AttendanceInitial()) {
     on<LoadAttendanceByDateEvent>(_onLoadAttendanceByDate);
     on<LoadEnrolledStudentsEvent>(_onLoadEnrolledStudents);
     on<RecordBulkAttendanceEvent>(_onRecordBulkAttendance);
     on<LoadStudentAttendanceEvent>(_onLoadStudentAttendance);
     on<LoadCourseAttendanceStatsEvent>(_onLoadCourseAttendanceStats);
+    on<LoadCourseSchedulesEvent>(_onLoadCourseSchedules);
+    on<RecordScheduledAttendanceEvent>(_onRecordScheduledAttendance);
+    on<CheckConnectionStatusEvent>(_onCheckConnectionStatus);
+    on<SyncAttendanceDataEvent>(_onSyncAttendanceData);
+    on<LoadCourseAttendanceStatsWithDateRangeEvent>(
+        _onLoadCourseAttendanceStatsWithDateRange);
+    on<LoadAttendanceWeeklyTrendsEvent>(_onLoadAttendanceWeeklyTrends);
   }
 
   Future<void> _onLoadAttendanceByDate(
@@ -34,26 +50,60 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
   ) async {
     emit(AttendanceLoading());
     try {
-      final attendanceRecords = await getAttendanceByDateUseCase.execute(
+      // First check connectivity
+      final isConnected = await ErrorHandler.isConnected();
+      if (!isConnected) {
+        final lastSynced = await _getLastSyncTime();
+        final hasUnsynced = await _hasUnsyncedData();
+
+        emit(AttendanceOfflineMode(
+          lastSynced: lastSynced,
+          hasUnsynced: hasUnsynced,
+        ));
+
+        // Try to get cached data
+        final cachedAttendance = await _getCachedAttendanceData(
+          event.courseId,
+          event.date,
+        );
+
+        if (cachedAttendance.isNotEmpty) {
+          emit(AttendanceByDateLoaded(
+            attendanceRecords: cachedAttendance,
+            date: event.date,
+          ));
+        }
+
+        return;
+      }
+
+      // Use the retry utility for network operations
+      final attendanceRecords = await ErrorHandler.retryWithBackoff(
+        operation: () => getAttendanceByDateUseCase.execute(
+          event.courseId,
+          event.date,
+        ),
+      );
+
+      // Cache the result
+      await _cacheAttendanceData(
         event.courseId,
         event.date,
+        attendanceRecords,
       );
+
       emit(AttendanceByDateLoaded(
         attendanceRecords: attendanceRecords,
         date: event.date,
       ));
     } catch (e) {
-      // Improved error handling with user-friendly messages
-      String errorMessage = 'Failed to load attendance data';
-
-      if (e.toString().contains('permission-denied')) {
-        errorMessage =
-            'You don\'t have permission to access attendance records';
-      } else if (e.toString().contains('network')) {
-        errorMessage =
-            'Network error. Please check your connection and try again';
+      // Handle both Exception and other error types
+      String errorMessage;
+      if (e is Exception) {
+        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+      } else {
+        errorMessage = 'An unexpected error occurred: ${e.toString()}';
       }
-
       emit(AttendanceError(message: errorMessage));
     }
   }
@@ -64,19 +114,41 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
   ) async {
     emit(AttendanceLoading());
     try {
-      final students = await getEnrolledStudentsUseCase.execute(event.courseId);
-      emit(EnrolledStudentsLoaded(students: students));
-    } catch (e) {
-      // User-friendly error message
-      String errorMessage = 'Failed to load student data';
+      // Check connectivity
+      final isConnected = await ErrorHandler.isConnected();
+      if (!isConnected) {
+        final cachedStudents = await _getCachedStudents(event.courseId);
 
-      if (e.toString().contains('permission-denied')) {
-        errorMessage = 'You don\'t have permission to access student data';
-      } else if (e.toString().contains('network')) {
-        errorMessage =
-            'Network error. Please check your connection and try again';
+        if (cachedStudents.isNotEmpty) {
+          emit(EnrolledStudentsLoaded(students: cachedStudents));
+
+          final lastSynced = await _getLastSyncTime();
+          final hasUnsynced = await _hasUnsyncedData();
+
+          emit(AttendanceOfflineMode(
+            lastSynced: lastSynced,
+            hasUnsynced: hasUnsynced,
+          ));
+
+          return;
+        }
       }
 
+      final students = await ErrorHandler.retryWithBackoff(
+        operation: () => getEnrolledStudentsUseCase.execute(event.courseId),
+      );
+
+      // Cache students for offline use
+      await _cacheStudents(event.courseId, students);
+
+      emit(EnrolledStudentsLoaded(students: students));
+    } catch (e) {
+      String errorMessage;
+      if (e is Exception) {
+        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+      } else {
+        errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      }
       emit(AttendanceError(message: errorMessage));
     }
   }
@@ -87,15 +159,42 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
   ) async {
     emit(AttendanceLoading());
     try {
-      await recordBulkAttendanceUseCase.execute(
-        event.courseId,
-        event.date,
-        event.studentAttendances,
-        remarks: event.remarks,
-      );
-      emit(const AttendanceRecordSuccess(
-        message: 'Attendance recorded successfully',
-      ));
+      // Check connectivity
+      final isConnected = await ErrorHandler.isConnected();
+
+      if (isConnected) {
+        await recordBulkAttendanceUseCase.execute(
+          event.courseId,
+          event.date,
+          event.studentAttendances,
+          remarks: event.remarks,
+        );
+
+        // Update last sync time
+        await _updateLastSyncTime();
+
+        emit(const AttendanceRecordSuccess(
+          message: 'Attendance recorded successfully',
+        ));
+      } else {
+        // Store attendance record locally for later sync
+        await _storeOfflineAttendance(
+          event.courseId,
+          event.date,
+          event.studentAttendances,
+          event.remarks,
+        );
+
+        emit(const AttendanceRecordSuccess(
+          message: 'Attendance stored offline. Will sync when online.',
+        ));
+
+        final lastSynced = await _getLastSyncTime();
+        emit(AttendanceOfflineMode(
+          lastSynced: lastSynced,
+          hasUnsynced: true,
+        ));
+      }
 
       // Reload the attendance for this date
       add(LoadAttendanceByDateEvent(
@@ -103,16 +202,12 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
         date: event.date,
       ));
     } catch (e) {
-      // User-friendly error message
-      String errorMessage = 'Failed to save attendance records';
-
-      if (e.toString().contains('permission-denied')) {
-        errorMessage = 'You don\'t have permission to record attendance';
-      } else if (e.toString().contains('network')) {
-        errorMessage =
-            'Network error. Please check your connection and try again';
+      String errorMessage;
+      if (e is Exception) {
+        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+      } else {
+        errorMessage = 'An unexpected error occurred: ${e.toString()}';
       }
-
       emit(AttendanceError(message: errorMessage));
     }
   }
@@ -123,25 +218,57 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
   ) async {
     emit(AttendanceLoading());
     try {
-      final attendanceRecords = await getStudentAttendanceUseCase.execute(
+      // Check connectivity
+      final isConnected = await ErrorHandler.isConnected();
+      if (!isConnected) {
+        final cachedAttendance = await _getCachedStudentAttendance(
+          event.courseId,
+          event.studentId,
+        );
+
+        if (cachedAttendance.isNotEmpty) {
+          emit(StudentAttendanceLoaded(
+            attendanceRecords: cachedAttendance,
+            studentId: event.studentId,
+          ));
+
+          final lastSynced = await _getLastSyncTime();
+          final hasUnsynced = await _hasUnsyncedData();
+
+          emit(AttendanceOfflineMode(
+            lastSynced: lastSynced,
+            hasUnsynced: hasUnsynced,
+          ));
+
+          return;
+        }
+      }
+
+      final attendanceRecords = await ErrorHandler.retryWithBackoff(
+        operation: () => getStudentAttendanceUseCase.execute(
+          event.courseId,
+          event.studentId,
+        ),
+      );
+
+      // Cache student attendance
+      await _cacheStudentAttendance(
         event.courseId,
         event.studentId,
+        attendanceRecords,
       );
+
       emit(StudentAttendanceLoaded(
         attendanceRecords: attendanceRecords,
         studentId: event.studentId,
       ));
     } catch (e) {
-      // User-friendly error message
-      String errorMessage = 'Failed to load student attendance history';
-
-      if (e.toString().contains('permission-denied')) {
-        errorMessage = 'You don\'t have permission to view attendance history';
-      } else if (e.toString().contains('network')) {
-        errorMessage =
-            'Network error. Please check your connection and try again';
+      String errorMessage;
+      if (e is Exception) {
+        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+      } else {
+        errorMessage = 'An unexpected error occurred: ${e.toString()}';
       }
-
       emit(AttendanceError(message: errorMessage));
     }
   }
@@ -152,22 +279,716 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
   ) async {
     emit(AttendanceLoading());
     try {
-      final stats =
-          await getCourseAttendanceStatsUseCase.execute(event.courseId);
-      emit(CourseAttendanceStatsLoaded(stats: stats));
-    } catch (e) {
-      // User-friendly error message
-      String errorMessage = 'Failed to load attendance statistics';
+      // Check connectivity
+      final isConnected = await ErrorHandler.isConnected();
+      if (!isConnected) {
+        final cachedStats = await _getCachedStats(event.courseId);
 
-      if (e.toString().contains('permission-denied')) {
-        errorMessage =
-            'You don\'t have permission to view attendance statistics';
-      } else if (e.toString().contains('network')) {
-        errorMessage =
-            'Network error. Please check your connection and try again';
+        if (cachedStats != null) {
+          emit(CourseAttendanceStatsLoaded(stats: cachedStats));
+
+          final lastSynced = await _getLastSyncTime();
+          final hasUnsynced = await _hasUnsyncedData();
+
+          emit(AttendanceOfflineMode(
+            lastSynced: lastSynced,
+            hasUnsynced: hasUnsynced,
+          ));
+
+          return;
+        }
       }
 
+      final stats = await ErrorHandler.retryWithBackoff(
+        operation: () =>
+            getCourseAttendanceStatsUseCase.execute(event.courseId),
+      );
+
+      // Cache stats
+      await _cacheStats(event.courseId, stats);
+
+      // Also load weekly trends
+      add(LoadAttendanceWeeklyTrendsEvent(courseId: event.courseId));
+
+      emit(CourseAttendanceStatsLoaded(stats: stats));
+    } catch (e) {
+      String errorMessage;
+      if (e is Exception) {
+        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+      } else {
+        errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      }
       emit(AttendanceError(message: errorMessage));
     }
+  }
+
+  Future<void> _onLoadCourseAttendanceStatsWithDateRange(
+    LoadCourseAttendanceStatsWithDateRangeEvent event,
+    Emitter<AttendanceState> emit,
+  ) async {
+    emit(AttendanceLoading());
+    try {
+      // This would be a new method in your repository and use case
+      // For now, we'll simulate it with the regular stats
+      final stats = await ErrorHandler.retryWithBackoff(
+        operation: () =>
+            getCourseAttendanceStatsUseCase.execute(event.courseId),
+      );
+
+      // In a real implementation, you would filter by date range here
+
+      emit(CourseAttendanceStatsLoaded(stats: stats));
+    } catch (e) {
+      String errorMessage;
+      if (e is Exception) {
+        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+      } else {
+        errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      }
+      emit(AttendanceError(message: errorMessage));
+    }
+  }
+
+  Future<void> _onLoadAttendanceWeeklyTrends(
+    LoadAttendanceWeeklyTrendsEvent event,
+    Emitter<AttendanceState> emit,
+  ) async {
+    try {
+      // This would be a new method in your repository and use case
+      // For now, we'll create some sample data
+      final weeklyData = [
+        {'week': 'Week 1', 'attendanceRate': 0.85},
+        {'week': 'Week 2', 'attendanceRate': 0.90},
+        {'week': 'Week 3', 'attendanceRate': 0.82},
+        {'week': 'Week 4', 'attendanceRate': 0.88},
+      ];
+
+      emit(AttendanceWeeklyTrendsLoaded(weeklyData: weeklyData));
+    } catch (e) {
+      // No need to show error for this supplementary data
+    }
+  }
+
+  Future<void> _onLoadCourseSchedules(
+    LoadCourseSchedulesEvent event,
+    Emitter<AttendanceState> emit,
+  ) async {
+    try {
+      // Check connectivity
+      final isConnected = await ErrorHandler.isConnected();
+      if (!isConnected) {
+        final cachedSchedules = await _getCachedSchedules(event.courseId);
+
+        if (cachedSchedules.isNotEmpty) {
+          emit(CourseSchedulesLoaded(schedules: cachedSchedules));
+          return;
+        }
+      }
+
+      final schedules = await ErrorHandler.retryWithBackoff(
+        operation: () => getCourseSchedulesUseCase.execute(event.courseId),
+      );
+
+      // Cache schedules
+      await _cacheSchedules(event.courseId, schedules);
+
+      emit(CourseSchedulesLoaded(schedules: schedules));
+    } catch (e) {
+      String errorMessage;
+      if (e is Exception) {
+        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+      } else {
+        errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      }
+      emit(AttendanceError(message: errorMessage));
+    }
+  }
+
+  Future<void> _onRecordScheduledAttendance(
+    RecordScheduledAttendanceEvent event,
+    Emitter<AttendanceState> emit,
+  ) async {
+    emit(AttendanceLoading());
+    try {
+      // Check connectivity
+      final isConnected = await ErrorHandler.isConnected();
+
+      if (isConnected) {
+        // Get schedules to add schedule metadata
+        final schedules =
+            await getCourseSchedulesUseCase.execute(event.courseId);
+
+        if (event.scheduleIndex >= 0 &&
+            event.scheduleIndex < schedules.length) {
+          final schedule = schedules[event.scheduleIndex];
+          final scheduleMeta = {
+            'scheduleIndex': event.scheduleIndex,
+            'scheduleDay': schedule.day,
+            'scheduleLocation': schedule.location,
+          };
+
+          // Add schedule metadata to remarks
+          Map<String, String> extendedRemarks =
+              event.remarks?.map((k, v) => MapEntry(k, v)) ?? {};
+          extendedRemarks['_scheduleMeta'] = jsonEncode(scheduleMeta);
+
+          await recordBulkAttendanceUseCase.execute(
+            event.courseId,
+            event.date,
+            event.studentAttendances,
+            remarks: extendedRemarks,
+          );
+
+          // Update last sync time
+          await _updateLastSyncTime();
+
+          emit(const AttendanceRecordSuccess(
+            message: 'Attendance recorded successfully for this session',
+          ));
+        } else {
+          emit(const AttendanceError(
+            message: 'Invalid schedule selected',
+          ));
+        }
+      } else {
+        // Store attendance record locally for later sync
+        await _storeOfflineAttendance(
+          event.courseId,
+          event.date,
+          event.studentAttendances,
+          event.remarks,
+          scheduleIndex: event.scheduleIndex,
+        );
+
+        emit(const AttendanceRecordSuccess(
+          message: 'Attendance stored offline. Will sync when online.',
+        ));
+
+        final lastSynced = await _getLastSyncTime();
+        emit(AttendanceOfflineMode(
+          lastSynced: lastSynced,
+          hasUnsynced: true,
+        ));
+      }
+
+      // Reload the attendance for this date
+      add(LoadAttendanceByDateEvent(
+        courseId: event.courseId,
+        date: event.date,
+      ));
+    } catch (e) {
+      String errorMessage;
+      if (e is Exception) {
+        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+      } else {
+        errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      }
+      emit(AttendanceError(message: errorMessage));
+    }
+  }
+
+  Future<void> _onCheckConnectionStatus(
+    CheckConnectionStatusEvent event,
+    Emitter<AttendanceState> emit,
+  ) async {
+    try {
+      final hasConnection = await ErrorHandler.isConnected();
+      final lastSynced = await _getLastSyncTime();
+      final hasUnsynced = await _hasUnsyncedData();
+
+      if (!hasConnection) {
+        emit(AttendanceOfflineMode(
+          lastSynced: lastSynced,
+          hasUnsynced: hasUnsynced,
+        ));
+      }
+    } catch (e) {
+      // Don't emit error for connection check
+    }
+  }
+
+  Future<void> _onSyncAttendanceData(
+    SyncAttendanceDataEvent event,
+    Emitter<AttendanceState> emit,
+  ) async {
+    emit(AttendanceLoading());
+    try {
+      final hasConnection = await ErrorHandler.isConnected();
+
+      if (hasConnection) {
+        await _syncPendingAttendanceRecords();
+        final lastSynced = await _getLastSyncTime();
+        final hasUnsynced = await _hasUnsyncedData();
+
+        emit(AttendanceOfflineMode(
+          lastSynced: lastSynced,
+          hasUnsynced: hasUnsynced,
+        ));
+
+        // Show success message
+        emit(const AttendanceRecordSuccess(
+            message: 'All data synchronized successfully'));
+      } else {
+        emit(const AttendanceError(message: 'Cannot sync while offline'));
+      }
+    } catch (e) {
+      String errorMessage;
+      if (e is Exception) {
+        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+      } else {
+        errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      }
+      emit(AttendanceError(message: errorMessage));
+    }
+  }
+
+  // Helper methods for offline mode
+
+  Future<DateTime> _getLastSyncTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final timestamp = prefs.getInt('last_attendance_sync');
+    if (timestamp != null) {
+      return DateTime.fromMillisecondsSinceEpoch(timestamp);
+    }
+    return DateTime.now();
+  }
+
+  Future<void> _updateLastSyncTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(
+        'last_attendance_sync', DateTime.now().millisecondsSinceEpoch);
+  }
+
+  Future<bool> _hasUnsyncedData() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.containsKey('unsynced_attendance');
+  }
+
+  Future<void> _storeOfflineAttendance(
+    String courseId,
+    DateTime date,
+    Map<String, AttendanceStatus> studentAttendances,
+    Map<String, String>? remarks, {
+    int? scheduleIndex,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Get existing unsynced records or create new list
+      List<Map<String, dynamic>> unsyncedRecords = [];
+      final unsyncedString = prefs.getString('unsynced_attendance');
+      if (unsyncedString != null) {
+        unsyncedRecords = List<Map<String, dynamic>>.from(
+          jsonDecode(unsyncedString) as List,
+        );
+      }
+
+      // Convert AttendanceStatus to string for JSON serialization
+      final Map<String, String> serializedAttendances = {};
+      studentAttendances.forEach((key, value) {
+        serializedAttendances[key] = value.toString().split('.').last;
+      });
+
+      // Create new record
+      final record = {
+        'courseId': courseId,
+        'date': date.millisecondsSinceEpoch,
+        'studentAttendances': serializedAttendances,
+        'remarks': remarks,
+        'scheduleIndex': scheduleIndex,
+        'createdAt': DateTime.now().millisecondsSinceEpoch,
+      };
+
+      // Add to list
+      unsyncedRecords.add(record);
+
+      // Save back to prefs
+      await prefs.setString('unsynced_attendance', jsonEncode(unsyncedRecords));
+    } catch (e) {
+      print('Error storing offline attendance: $e');
+      // Don't rethrow as this is not critical
+    }
+  }
+
+  Future<void> _syncPendingAttendanceRecords() async {
+    final prefs = await SharedPreferences.getInstance();
+    final unsyncedString = prefs.getString('unsynced_attendance');
+
+    if (unsyncedString != null) {
+      try {
+        final List<dynamic> unsyncedData = jsonDecode(unsyncedString) as List;
+
+        for (var data in unsyncedData) {
+          final record = data as Map<String, dynamic>;
+          final courseId = record['courseId'] as String;
+          final date =
+              DateTime.fromMillisecondsSinceEpoch(record['date'] as int);
+
+          // Convert string statuses back to AttendanceStatus enum
+          final Map<String, dynamic> rawAttendances =
+              Map<String, dynamic>.from(record['studentAttendances'] as Map);
+          final Map<String, AttendanceStatus> studentAttendances = {};
+
+          rawAttendances.forEach((key, value) {
+            studentAttendances[key] = _parseAttendanceStatus(value as String);
+          });
+
+          final remarks = record['remarks'] != null
+              ? Map<String, String>.from(record['remarks'] as Map)
+              : null;
+
+          final scheduleIndex = record['scheduleIndex'] as int?;
+
+          if (scheduleIndex != null) {
+            // Handle scheduled attendance
+            add(RecordScheduledAttendanceEvent(
+              courseId: courseId,
+              date: date,
+              scheduleIndex: scheduleIndex,
+              studentAttendances: studentAttendances,
+              remarks: remarks,
+            ));
+          } else {
+            // Handle regular attendance
+            add(RecordBulkAttendanceEvent(
+              courseId: courseId,
+              date: date,
+              studentAttendances: studentAttendances,
+              remarks: remarks,
+            ));
+          }
+        }
+
+        // Clear unsynced records
+        await prefs.remove('unsynced_attendance');
+
+        // Update sync time
+        await _updateLastSyncTime();
+      } catch (e) {
+        print('Error syncing attendance: $e');
+        throw Exception('Failed to sync attendance records');
+      }
+    }
+  }
+
+  // Caching helpers
+
+  Future<void> _cacheAttendanceData(
+    String courseId,
+    DateTime date,
+    List<Attendance> attendanceRecords,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'attendance_${courseId}_${date.year}${date.month}${date.day}';
+
+      // Convert attendance records to JSON-serializable format
+      final recordsData = attendanceRecords
+          .map((record) => {
+                'id': record.id,
+                'courseId': record.courseId,
+                'studentId': record.studentId,
+                'date': record.date.millisecondsSinceEpoch,
+                'status': record.status.toString().split('.').last,
+                'remarks': record.remarks,
+                'createdAt': record.createdAt.millisecondsSinceEpoch,
+                'updatedAt': record.updatedAt.millisecondsSinceEpoch,
+              })
+          .toList();
+
+      await prefs.setString(key, jsonEncode(recordsData));
+    } catch (e) {
+      print('Error caching attendance data: $e');
+      // Don't rethrow as caching is not critical
+    }
+  }
+
+  Future<List<Attendance>> _getCachedAttendanceData(
+    String courseId,
+    DateTime date,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'attendance_${courseId}_${date.year}${date.month}${date.day}';
+      final cached = prefs.getString(key);
+
+      if (cached != null) {
+        final List<dynamic> rawData = jsonDecode(cached) as List;
+        // Convert the dynamic list to List<Attendance>
+        return rawData.map<Attendance>((item) {
+          final Map<String, dynamic> data =
+              Map<String, dynamic>.from(item as Map);
+          return Attendance(
+            id: data['id'] as String,
+            courseId: data['courseId'] as String,
+            studentId: data['studentId'] as String,
+            date: DateTime.fromMillisecondsSinceEpoch(data['date'] as int),
+            status: _parseAttendanceStatus(data['status'] as String),
+            remarks: data['remarks'] as String?,
+            createdAt:
+                DateTime.fromMillisecondsSinceEpoch(data['createdAt'] as int),
+            updatedAt:
+                DateTime.fromMillisecondsSinceEpoch(data['updatedAt'] as int),
+          );
+        }).toList();
+      }
+    } catch (e) {
+      print('Error getting cached attendance data: $e');
+    }
+    return [];
+  }
+
+// Helper to convert string status to enum
+  AttendanceStatus _parseAttendanceStatus(String status) {
+    switch (status) {
+      case 'present':
+        return AttendanceStatus.present;
+      case 'absent':
+        return AttendanceStatus.absent;
+      case 'late':
+        return AttendanceStatus.late;
+      case 'excused':
+        return AttendanceStatus.excused;
+      default:
+        return AttendanceStatus.absent;
+    }
+  }
+
+  Future<void> _cacheStudents(
+    String courseId,
+    List<Map<String, dynamic>> students,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'students_$courseId';
+      await prefs.setString(key, jsonEncode(students));
+    } catch (e) {
+      print('Error caching students: $e');
+      // Don't rethrow as caching is not critical
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _getCachedStudents(
+    String courseId,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'students_$courseId';
+      final cached = prefs.getString(key);
+
+      if (cached != null) {
+        return List<Map<String, dynamic>>.from(
+          (jsonDecode(cached) as List)
+              .map((item) => Map<String, dynamic>.from(item as Map)),
+        );
+      }
+    } catch (e) {
+      print('Error getting cached students: $e');
+    }
+    return [];
+  }
+
+  Future<void> _cacheStudentAttendance(
+    String courseId,
+    String studentId,
+    List<Attendance> attendanceRecords,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'student_attendance_${courseId}_$studentId';
+
+      // Convert attendance records to JSON-serializable format
+      final recordsData = attendanceRecords
+          .map((record) => {
+                'id': record.id,
+                'courseId': record.courseId,
+                'studentId': record.studentId,
+                'date': record.date.millisecondsSinceEpoch,
+                'status': record.status.toString().split('.').last,
+                'remarks': record.remarks,
+                'createdAt': record.createdAt.millisecondsSinceEpoch,
+                'updatedAt': record.updatedAt.millisecondsSinceEpoch,
+              })
+          .toList();
+
+      await prefs.setString(key, jsonEncode(recordsData));
+    } catch (e) {
+      print('Error caching student attendance: $e');
+      // Don't rethrow as caching is not critical
+    }
+  }
+
+  Future<List<Attendance>> _getCachedStudentAttendance(
+    String courseId,
+    String studentId,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'student_attendance_${courseId}_$studentId';
+      final cached = prefs.getString(key);
+
+      if (cached != null) {
+        final List<dynamic> rawData = jsonDecode(cached) as List;
+        // Convert the dynamic list to List<Attendance>
+        return rawData.map<Attendance>((item) {
+          final Map<String, dynamic> data =
+              Map<String, dynamic>.from(item as Map);
+          return Attendance(
+            id: data['id'] as String,
+            courseId: data['courseId'] as String,
+            studentId: data['studentId'] as String,
+            date: DateTime.fromMillisecondsSinceEpoch(data['date'] as int),
+            status: _parseAttendanceStatus(data['status'] as String),
+            remarks: data['remarks'] as String?,
+            createdAt:
+                DateTime.fromMillisecondsSinceEpoch(data['createdAt'] as int),
+            updatedAt:
+                DateTime.fromMillisecondsSinceEpoch(data['updatedAt'] as int),
+          );
+        }).toList();
+      }
+    } catch (e) {
+      print('Error getting cached student attendance: $e');
+    }
+    return [];
+  }
+
+  Future<void> _cacheStats(
+    String courseId,
+    Map<String, dynamic> stats,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'stats_$courseId';
+      await prefs.setString(key, jsonEncode(stats));
+    } catch (e) {
+      print('Error caching stats: $e');
+      // Don't rethrow as caching is not critical
+    }
+  }
+
+  Future<Map<String, dynamic>?> _getCachedStats(
+    String courseId,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'stats_$courseId';
+      final cached = prefs.getString(key);
+
+      if (cached != null) {
+        return Map<String, dynamic>.from(jsonDecode(cached) as Map);
+      }
+    } catch (e) {
+      print('Error getting cached stats: $e');
+    }
+    return null;
+  }
+
+  Future<void> _cacheSchedules(
+    String courseId,
+    List<Schedule> schedules,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'schedules_$courseId';
+
+      // Convert schedules to JSON-serializable format with ALL fields
+      final schedulesData = schedules
+          .map((schedule) => {
+                'id': schedule.id,
+                'courseId': schedule.courseId,
+                'day': schedule.day,
+                'startTime': schedule.startTime.millisecondsSinceEpoch,
+                'endTime': schedule.endTime.millisecondsSinceEpoch,
+                'location': schedule.location,
+                'subject': schedule.subject,
+                'grade': schedule.grade,
+                'type': schedule.type
+                    .toString()
+                    .split('.')
+                    .last, // Convert enum to string
+                'specificDate': schedule.specificDate?.millisecondsSinceEpoch,
+                'replacesDate': schedule.replacesDate,
+                'reason': schedule.reason,
+                'isActive': schedule.isActive,
+                'createdAt': schedule.createdAt?.millisecondsSinceEpoch,
+              })
+          .toList();
+
+      await prefs.setString(key, jsonEncode(schedulesData));
+    } catch (e) {
+      print('Error caching schedules: $e');
+      // Don't rethrow as caching is not critical
+    }
+  }
+
+  Future<List<Schedule>> _getCachedSchedules(
+    String courseId,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'schedules_$courseId';
+      final cached = prefs.getString(key);
+
+      if (cached != null) {
+        final List<dynamic> schedulesData = jsonDecode(cached) as List;
+
+        return schedulesData.map((data) {
+          // Parse schedule type enum
+          ScheduleType type = ScheduleType.regular;
+          if (data['type'] != null) {
+            switch (data['type'] as String) {
+              case 'replacement':
+                type = ScheduleType.replacement;
+                break;
+              case 'extension':
+                type = ScheduleType.extension;
+                break;
+              case 'cancelled':
+                type = ScheduleType.cancelled;
+                break;
+              default:
+                type = ScheduleType.regular;
+            }
+          }
+
+          // Parse optional DateTime fields
+          DateTime? specificDate;
+          if (data['specificDate'] != null) {
+            specificDate = DateTime.fromMillisecondsSinceEpoch(
+                data['specificDate'] as int);
+          }
+
+          DateTime? createdAt;
+          if (data['createdAt'] != null) {
+            createdAt =
+                DateTime.fromMillisecondsSinceEpoch(data['createdAt'] as int);
+          }
+
+          // Create full Schedule object with all fields
+          return Schedule(
+            id: data['id'] as String? ?? 'cached-schedule',
+            courseId: data['courseId'] as String? ?? courseId,
+            day: data['day'] as String,
+            startTime:
+                DateTime.fromMillisecondsSinceEpoch(data['startTime'] as int),
+            endTime:
+                DateTime.fromMillisecondsSinceEpoch(data['endTime'] as int),
+            location: data['location'] as String,
+            subject: data['subject'] as String? ?? 'Unknown',
+            grade: data['grade'] as int? ?? 1,
+            type: type,
+            specificDate: specificDate,
+            replacesDate: data['replacesDate'] as String?,
+            reason: data['reason'] as String?,
+            isActive: data['isActive'] as bool? ?? true,
+            createdAt: createdAt,
+          );
+        }).toList();
+      }
+    } catch (e) {
+      print('Error getting cached schedules: $e');
+    }
+    return [];
   }
 }

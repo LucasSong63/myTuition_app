@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mytuition/config/theme/app_colors.dart';
 import 'package:mytuition/features/admin/setup_screen.dart';
 import 'package:mytuition/features/attendance/presentation/bloc/attendance_event.dart';
 import 'package:mytuition/features/auth/presentation/bloc/registration_bloc.dart';
@@ -26,6 +27,8 @@ import 'package:mytuition/features/payments/presentation/pages/payment_info_page
 import 'package:mytuition/features/payments/presentation/pages/payment_management_page.dart';
 import 'package:mytuition/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:mytuition/features/profile/presentation/pages/profile_page.dart';
+import 'package:mytuition/features/profile/presentation/pages/student_profile_page.dart';
+import 'package:mytuition/features/profile/presentation/pages/tutor_profile_page.dart';
 import 'package:mytuition/features/student_management/presentation/bloc/student_management_bloc.dart';
 import 'package:mytuition/features/student_management/presentation/pages/student_detail_page.dart';
 import 'package:mytuition/features/student_management/presentation/pages/students_page.dart';
@@ -37,8 +40,11 @@ import 'package:mytuition/features/tasks/presentation/bloc/task_bloc.dart';
 import 'package:mytuition/features/attendance/presentation/bloc/attendance_bloc.dart';
 import 'package:mytuition/features/attendance/presentation/pages/attendance_history_page.dart';
 import 'package:mytuition/features/attendance/presentation/pages/take_attendance_page.dart';
+import 'package:mytuition/features/ai_chat/presentation/pages/ai_chat_page.dart';
+import 'package:mytuition/features/ai_chat/presentation/bloc/chat_bloc.dart';
 import '../../core/services/fcm_service.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/auth/presentation/bloc/auth_event.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
 import 'route_names.dart';
 
@@ -196,7 +202,7 @@ class AppRouter {
                 name: RouteNames.studentProfile,
                 builder: (context, state) => BlocProvider<ProfileBloc>(
                   create: (context) => getIt<ProfileBloc>(),
-                  child: const ProfilePage(),
+                  child: const StudentProfilePage(),
                 ),
               ),
 
@@ -227,9 +233,123 @@ class AppRouter {
               GoRoute(
                 path: 'ai-chat',
                 name: RouteNames.studentAiChat,
-                builder: (context, state) => const Scaffold(
-                  body: Center(child: Text('AI Chat Coming Soon')),
-                ),
+                builder: (context, state) {
+                  // Get studentId from auth state
+                  final authState = context.read<AuthBloc>().state;
+                  String studentId = '';
+
+                  if (authState is Authenticated) {
+                    // Try multiple ways to get studentId
+                    studentId = authState.user.studentId ??
+                        authState.user.email?.split('@').first ??
+                        '';
+
+                    // Debug print
+                    print(
+                        'AI Chat Route - AuthState: ${authState.runtimeType}');
+                    print('AI Chat Route - User: ${authState.user}');
+                    print('AI Chat Route - StudentId: "$studentId"');
+                    print(
+                        'AI Chat Route - User.studentId: "${authState.user.studentId}"');
+                    print(
+                        'AI Chat Route - User.email: "${authState.user.email}"');
+                  } else {
+                    print(
+                        'AI Chat Route - Not authenticated: ${authState.runtimeType}');
+                  }
+
+                  // Ensure we have a valid studentId
+                  if (studentId.isEmpty) {
+                    print('ERROR: Empty studentId in AI Chat route');
+                    // You might want to redirect to login or show an error
+                    return Scaffold(
+                      appBar: AppBar(
+                        title: const Text('AI Chat Error'),
+                        backgroundColor: AppColors.primaryBlue,
+                        foregroundColor: AppColors.white,
+                      ),
+                      body: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.error,
+                                size: 64, color: AppColors.error),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Unable to load AI Chat',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Student ID is missing from authentication',
+                              style: TextStyle(color: AppColors.textMedium),
+                            ),
+                            const SizedBox(height: 24),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    // Refresh auth status - CORRECTED EVENT NAME
+                                    context
+                                        .read<AuthBloc>()
+                                        .add(CheckAuthStatusEvent());
+                                  },
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Refresh Auth'),
+                                ),
+                                const SizedBox(width: 16),
+                                OutlinedButton.icon(
+                                  onPressed: () {
+                                    // Go back to student dashboard
+                                    GoRouter.of(context)
+                                        .goNamed(RouteNames.studentRoot);
+                                  },
+                                  icon: const Icon(Icons.arrow_back),
+                                  label: const Text('Go Back'),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            // Debug info card
+                            Container(
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 32),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.backgroundDark,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Debug Info:',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text('Auth State: ${authState.runtimeType}'),
+                                  if (authState is Authenticated) ...[
+                                    Text('User Email: ${authState.user.email}'),
+                                    Text(
+                                        'User StudentId: ${authState.user.studentId}'),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return BlocProvider<ChatBloc>(
+                    create: (context) => getIt<ChatBloc>(),
+                    child: AIChatPage(studentId: studentId),
+                  );
+                },
               ),
 
               // Add Tasks route
@@ -292,7 +412,7 @@ class AppRouter {
                 name: RouteNames.tutorProfile,
                 builder: (context, state) => BlocProvider<ProfileBloc>(
                   create: (context) => getIt<ProfileBloc>(),
-                  child: const ProfilePage(),
+                  child: const TutorProfilePage(),
                 ),
               ),
 

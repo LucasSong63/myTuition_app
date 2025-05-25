@@ -76,17 +76,20 @@ class CourseRepositoryImpl implements CourseRepository {
 
           for (int i = 0; i < schedules.length; i++) {
             final scheduleData = schedules[i] as Map<String, dynamic>;
-            scheduleData['id'] = '$courseId-schedule-$i'; // Create a unique ID
+            scheduleData['id'] = scheduleData['id'] ?? '$courseId-schedule-$i';
 
             final schedule = ScheduleModel.fromMap(
               scheduleData,
-              '$courseId-schedule-$i',
+              scheduleData['id'] as String,
               courseId: courseId,
               subject: subject,
               grade: grade,
             );
 
-            allSchedules.add(schedule);
+            // Only include active schedules and filter expired replacement schedules
+            if (schedule.isActive && !schedule.isExpired) {
+              allSchedules.add(schedule);
+            }
           }
         }
       }
@@ -152,15 +155,25 @@ class CourseRepositoryImpl implements CourseRepository {
       final List<dynamic> existingSchedules =
           courseDoc.data()?['schedules'] ?? [];
 
-      // Convert Schedule to Map
-      final scheduleMap = {
-        'day': schedule.day,
-        'startTime': schedule.startTime,
-        'endTime': schedule.endTime,
-        'location': schedule.location,
-      };
+      // Convert Schedule to Map using ScheduleModel
+      final scheduleModel = ScheduleModel(
+        id: schedule.id,
+        courseId: schedule.courseId,
+        startTime: schedule.startTime,
+        endTime: schedule.endTime,
+        day: schedule.day,
+        location: schedule.location,
+        subject: schedule.subject,
+        grade: schedule.grade,
+        type: schedule.type,
+        specificDate: schedule.specificDate,
+        replacesDate: schedule.replacesDate,
+        reason: schedule.reason,
+        isActive: schedule.isActive,
+        createdAt: schedule.createdAt ?? DateTime.now(),
+      );
 
-      existingSchedules.add(scheduleMap);
+      existingSchedules.add(scheduleModel.toMap());
 
       await _firestore.collection('classes').doc(courseId).update({
         'schedules': existingSchedules,
@@ -184,24 +197,48 @@ class CourseRepositoryImpl implements CourseRepository {
       final List<dynamic> existingSchedules =
           courseDoc.data()?['schedules'] ?? [];
 
-      // Extract the index from the scheduleId (e.g., courseId-schedule-1 -> index 1)
-      final idParts = scheduleId.split('-');
-      if (idParts.length < 3) {
-        throw Exception('Invalid schedule ID format');
+      // Find the schedule by ID
+      int scheduleIndex = -1;
+      for (int i = 0; i < existingSchedules.length; i++) {
+        final scheduleData = existingSchedules[i] as Map<String, dynamic>;
+        final currentId = scheduleData['id'] as String?;
+
+        if (currentId == scheduleId) {
+          scheduleIndex = i;
+          break;
+        }
+
+        // Fallback: try old ID format for backwards compatibility
+        if (currentId == null && scheduleId == '$courseId-schedule-$i') {
+          scheduleIndex = i;
+          break;
+        }
       }
 
-      final scheduleIndex = int.tryParse(idParts.last);
-      if (scheduleIndex == null || scheduleIndex >= existingSchedules.length) {
+      if (scheduleIndex == -1) {
         throw Exception('Schedule not found');
       }
 
+      // Convert updated schedule to map
+      final scheduleModel = ScheduleModel(
+        id: updatedSchedule.id,
+        courseId: updatedSchedule.courseId,
+        startTime: updatedSchedule.startTime,
+        endTime: updatedSchedule.endTime,
+        day: updatedSchedule.day,
+        location: updatedSchedule.location,
+        subject: updatedSchedule.subject,
+        grade: updatedSchedule.grade,
+        type: updatedSchedule.type,
+        specificDate: updatedSchedule.specificDate,
+        replacesDate: updatedSchedule.replacesDate,
+        reason: updatedSchedule.reason,
+        isActive: updatedSchedule.isActive,
+        createdAt: updatedSchedule.createdAt,
+      );
+
       // Update the schedule at the specified index
-      existingSchedules[scheduleIndex] = {
-        'day': updatedSchedule.day,
-        'startTime': updatedSchedule.startTime,
-        'endTime': updatedSchedule.endTime,
-        'location': updatedSchedule.location,
-      };
+      existingSchedules[scheduleIndex] = scheduleModel.toMap();
 
       await _firestore.collection('classes').doc(courseId).update({
         'schedules': existingSchedules,
@@ -224,14 +261,25 @@ class CourseRepositoryImpl implements CourseRepository {
       final List<dynamic> existingSchedules =
           courseDoc.data()?['schedules'] ?? [];
 
-      // Extract the index from the scheduleId
-      final idParts = scheduleId.split('-');
-      if (idParts.length < 3) {
-        throw Exception('Invalid schedule ID format');
+      // Find the schedule by ID
+      int scheduleIndex = -1;
+      for (int i = 0; i < existingSchedules.length; i++) {
+        final scheduleData = existingSchedules[i] as Map<String, dynamic>;
+        final currentId = scheduleData['id'] as String?;
+
+        if (currentId == scheduleId) {
+          scheduleIndex = i;
+          break;
+        }
+
+        // Fallback: try old ID format for backwards compatibility
+        if (currentId == null && scheduleId == '$courseId-schedule-$i') {
+          scheduleIndex = i;
+          break;
+        }
       }
 
-      final scheduleIndex = int.tryParse(idParts.last);
-      if (scheduleIndex == null || scheduleIndex >= existingSchedules.length) {
+      if (scheduleIndex == -1) {
         throw Exception('Schedule not found');
       }
 
@@ -257,7 +305,6 @@ class CourseRepositoryImpl implements CourseRepository {
     }
   }
 
-  @override
   @override
   Future<void> updateCourseCapacity(String courseId, int capacity) async {
     try {
@@ -332,6 +379,73 @@ class CourseRepositoryImpl implements CourseRepository {
     } catch (e) {
       print('Error getting course details: $e');
       return {'subject': 'Unknown Course', 'grade': null};
+    }
+  }
+
+  /// Get schedules relevant for a specific date
+  /// This method helps the attendance system filter schedules appropriately
+  Future<List<Schedule>> getSchedulesForDate(
+      String courseId, DateTime date) async {
+    try {
+      final course = await getCourseById(courseId);
+
+      // Filter schedules that are relevant for the given date
+      final relevantSchedules = course.schedules.where((schedule) {
+        return schedule.isRelevantForDate(date) && schedule.isActive;
+      }).toList();
+
+      return relevantSchedules;
+    } catch (e) {
+      throw Exception('Failed to get schedules for date: $e');
+    }
+  }
+
+  /// Clean up expired replacement schedules (optional utility method)
+  Future<void> cleanupExpiredReplacementSchedules(String courseId) async {
+    try {
+      final courseDoc =
+          await _firestore.collection('classes').doc(courseId).get();
+
+      if (!courseDoc.exists) {
+        throw Exception('Course not found');
+      }
+
+      final List<dynamic> existingSchedules =
+          courseDoc.data()?['schedules'] ?? [];
+
+      final List<dynamic> activeSchedules = [];
+      bool hasExpiredSchedules = false;
+
+      for (var scheduleData in existingSchedules) {
+        final scheduleMap = scheduleData as Map<String, dynamic>;
+
+        // Create a Schedule object to check if it's expired
+        final schedule = ScheduleModel.fromMap(
+          scheduleMap,
+          scheduleMap['id'] ?? 'temp-id',
+          courseId: courseId,
+          subject: 'temp',
+          grade: 1,
+        );
+
+        if (!schedule.isExpired) {
+          activeSchedules.add(scheduleData);
+        } else {
+          hasExpiredSchedules = true;
+          print('Removing expired replacement schedule: ${schedule.id}');
+        }
+      }
+
+      // Only update if there were expired schedules to remove
+      if (hasExpiredSchedules) {
+        await _firestore.collection('classes').doc(courseId).update({
+          'schedules': activeSchedules,
+        });
+        print('Cleaned up expired replacement schedules for course: $courseId');
+      }
+    } catch (e) {
+      print('Error cleaning up expired schedules: $e');
+      // Don't throw error as this is a cleanup operation
     }
   }
 }

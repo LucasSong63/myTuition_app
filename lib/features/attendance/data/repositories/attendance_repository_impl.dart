@@ -1,4 +1,10 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:mytuition/features/courses/data/models/schedule_model.dart';
+import 'package:mytuition/features/courses/domain/entities/schedule.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/entities/attendance.dart';
 import '../../domain/repositories/attendance_repository.dart';
 import '../models/attendance_model.dart';
@@ -294,6 +300,105 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
       return students;
     } catch (e) {
       throw Exception('Failed to get enrolled students: $e');
+    }
+  }
+
+  Future<bool> hasNetworkConnection() async {
+    try {
+      final connectivityResult = await Connectivity().checkConnectivity();
+      return connectivityResult != ConnectivityResult.none;
+    } catch (e) {
+      return false;
+    }
+  }
+
+// Add a storage key for last sync time
+  static const String _lastSyncKey = 'last_attendance_sync';
+
+// Add a method to get the last sync time
+  Future<DateTime> getLastSyncTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final timestamp = prefs.getInt(_lastSyncKey);
+    if (timestamp != null) {
+      return DateTime.fromMillisecondsSinceEpoch(timestamp);
+    }
+    return DateTime.now();
+  }
+
+// Update the last sync time
+  Future<void> updateLastSyncTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_lastSyncKey, DateTime.now().millisecondsSinceEpoch);
+  }
+
+// Check for unsynchronized attendance data
+  Future<bool> hasUnsyncedData() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.containsKey('unsyncedAttendance');
+  }
+
+// Sync pending attendance records
+  Future<void> syncPendingRecords() async {
+    final prefs = await SharedPreferences.getInstance();
+    final unsyncedString = prefs.getString('unsyncedAttendance');
+
+    if (unsyncedString != null) {
+      try {
+        final unsyncedData = jsonDecode(unsyncedString) as List;
+        final batch = _firestore.batch();
+
+        for (var data in unsyncedData) {
+          final Map<String, dynamic> record = data as Map<String, dynamic>;
+          final attendanceId = record['id'] as String;
+          batch.set(
+            _firestore.collection('attendance').doc(attendanceId),
+            record,
+          );
+        }
+
+        await batch.commit();
+        await prefs.remove('unsyncedAttendance');
+        await updateLastSyncTime();
+      } catch (e) {
+        // Handle sync errors
+        print('Error syncing attendance: $e');
+      }
+    }
+
+    // Always update sync time even if there's nothing to sync
+    await updateLastSyncTime();
+  }
+
+  @override
+  Future<List<Schedule>> getCourseSchedules(String courseId) async {
+    try {
+      final courseDoc =
+          await _firestore.collection('classes').doc(courseId).get();
+
+      if (!courseDoc.exists) {
+        throw Exception('Course not found');
+      }
+
+      final List<dynamic> schedulesData = courseDoc.data()?['schedules'] ?? [];
+      final courseData = courseDoc.data()!;
+      final subject = courseData['subject'] as String;
+      final grade = courseData['grade'] as int;
+
+      return schedulesData.asMap().entries.map((entry) {
+        final index = entry.key;
+        final scheduleMap = entry.value as Map<String, dynamic>;
+
+        // Use the courses ScheduleModel which supports replacement schedules
+        return ScheduleModel.fromMap(
+          scheduleMap,
+          scheduleMap['id'] ?? '$courseId-schedule-$index',
+          courseId: courseId,
+          subject: subject,
+          grade: grade,
+        );
+      }).toList();
+    } catch (e) {
+      throw Exception('Failed to get course schedules: $e');
     }
   }
 }
