@@ -225,7 +225,7 @@ Future<void> initDependencies() async {
   );
 
   // BLoCs
-  getIt.registerFactory(
+  getIt.registerLazySingleton<AuthBloc>(
     () => AuthBloc(
       loginUseCase: getIt<LoginUseCase>(),
       logoutUseCase: getIt<LogoutUseCase>(),
@@ -236,19 +236,20 @@ Future<void> initDependencies() async {
     ),
   );
 
-  // Registration BLoC
+// Registration BLoC
   getIt.registerFactory(
     () => RegistrationBloc(
       registrationRepository: getIt<RegistrationRepository>(),
     ),
   );
 
-  // Profile BLoC
+// Profile BLoC - Now with AuthBloc dependency
   getIt.registerFactory(
     () => ProfileBloc(
       updateProfileUseCase: getIt<UpdateProfileUseCase>(),
       updateProfilePictureUseCase: getIt<UpdateProfilePictureUseCase>(),
       removeProfilePictureUseCase: getIt<RemoveProfilePictureUseCase>(),
+      authBloc: getIt<AuthBloc>(), // Add AuthBloc dependency
     ),
   );
 

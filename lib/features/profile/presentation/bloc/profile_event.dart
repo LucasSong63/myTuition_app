@@ -1,3 +1,5 @@
+// lib/features/profile/presentation/bloc/profile_event.dart
+
 import 'dart:io';
 import 'package:equatable/equatable.dart';
 
@@ -10,13 +12,13 @@ abstract class ProfileEvent extends Equatable {
 
 class UpdateProfileEvent extends ProfileEvent {
   final String userId;
-  final String? name;
-  final String? phone;
+  final String name;
+  final String phone;
 
   const UpdateProfileEvent({
     required this.userId,
-    this.name,
-    this.phone,
+    required this.name,
+    required this.phone,
   });
 
   @override
@@ -33,14 +35,27 @@ class UpdateProfilePictureEvent extends ProfileEvent {
   });
 
   @override
-  List<Object> get props => [userId, imageFile];
+  List<Object?> get props => [userId, imageFile];
 }
 
 class RemoveProfilePictureEvent extends ProfileEvent {
   final String userId;
 
-  const RemoveProfilePictureEvent({required this.userId});
+  const RemoveProfilePictureEvent({
+    required this.userId,
+  });
 
   @override
-  List<Object> get props => [userId];
+  List<Object?> get props => [userId];
+}
+
+class LoadProfileEvent extends ProfileEvent {
+  final String userId;
+
+  const LoadProfileEvent({
+    required this.userId,
+  });
+
+  @override
+  List<Object?> get props => [userId];
 }

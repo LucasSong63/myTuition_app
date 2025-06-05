@@ -1,14 +1,18 @@
+// lib/features/profile/presentation/pages/tutor_profile_page.dart
+
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:mytuition/config/router/route_names.dart';
+import 'package:mytuition/features/profile/presentation/widgets/profile_header.dart';
+import 'package:sizer/sizer.dart';
+import 'package:easy_image_viewer/easy_image_viewer.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
-import 'package:mytuition/features/auth/domain/entities/user.dart';
 import 'package:mytuition/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:mytuition/features/auth/presentation/bloc/auth_event.dart';
 import 'package:mytuition/features/auth/presentation/bloc/auth_state.dart';
+import 'package:mytuition/features/payments/presentation/bloc/payment_info_bloc.dart';
 import 'package:mytuition/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:mytuition/features/profile/presentation/bloc/profile_event.dart';
 import 'package:mytuition/features/profile/presentation/bloc/profile_state.dart';
@@ -21,566 +25,851 @@ class TutorProfilePage extends StatefulWidget {
 }
 
 class _TutorProfilePageState extends State<TutorProfilePage> {
-  bool _isEditing = false;
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final ImagePicker _imagePicker = ImagePicker();
-
   @override
-  void dispose() {
-    _nameController.dispose();
-    _phoneController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadInitialData();
+  }
+
+  void _loadInitialData() {
+    // Load payment info when the page loads
+    try {
+      context.read<PaymentInfoBloc>().add(LoadPaymentInfoEvent());
+    } catch (e) {
+      print('PaymentInfoBloc not available in profile page');
+    }
+  }
+
+  Future<void> _refreshPage() async {
+    // Refresh all data
+    try {
+      context.read<PaymentInfoBloc>().add(LoadPaymentInfoEvent());
+      // Add small delay for better UX
+      await Future.delayed(const Duration(milliseconds: 500));
+    } catch (e) {
+      print('Error refreshing page: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<ProfileBloc, ProfileState>(
-      listener: (context, state) {
-        if (state is ProfileUpdateSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.success,
-            ),
-          );
-          setState(() {
-            _isEditing = false;
-          });
-
-          // Refresh auth state to reflect updated profile
-          context.read<AuthBloc>().add(CheckAuthStatusEvent());
-        }
-
-        if (state is ProfileError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('My Profile'),
-          actions: [
-            // Edit/Save button
-            BlocBuilder<ProfileBloc, ProfileState>(
-              builder: (context, state) {
-                return IconButton(
-                  icon: state is ProfileLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Icon(_isEditing ? Icons.save : Icons.edit),
-                  onPressed: state is ProfileLoading
-                      ? null
-                      : () {
-                          if (_isEditing) {
-                            // Save profile changes
-                            if (_formKey.currentState!.validate()) {
-                              final authState = context.read<AuthBloc>().state;
-                              if (authState is Authenticated) {
-                                context
-                                    .read<ProfileBloc>()
-                                    .add(UpdateProfileEvent(
-                                      userId: authState.user.docId,
-                                      name: _nameController.text.trim(),
-                                      phone: _phoneController.text.trim(),
-                                    ));
-                              }
-                            }
-                          } else {
-                            // Enter edit mode
-                            setState(() {
-                              _isEditing = true;
-                            });
-                          }
-                        },
-                );
-              },
-            ),
-          ],
+    return Scaffold(
+      backgroundColor: AppColors.backgroundLight,
+      appBar: AppBar(
+        title: const Text('Profile'),
+        backgroundColor: AppColors.primaryBlue,
+        foregroundColor: AppColors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.white),
+          onPressed: () => Navigator.pop(context),
         ),
-        body: BlocBuilder<AuthBloc, AuthState>(
-          builder: (context, state) {
-            if (state is Authenticated) {
-              final user = state.user;
-
-              // Initialize controllers when entering edit mode
-              if (_isEditing && _nameController.text.isEmpty) {
-                _nameController.text = user.name;
-                _phoneController.text = user.phone ?? '';
+        // Removed reload and settings buttons as requested
+      ),
+      body: BlocConsumer<ProfileBloc, ProfileState>(
+        listener: (context, state) {
+          if (state is ProfileError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          }
+          if (state is ProfileUpdateSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: AppColors.success,
+              ),
+            );
+            // Refresh the page after profile update
+            _refreshPage();
+          }
+        },
+        builder: (context, profileState) {
+          return BlocBuilder<AuthBloc, AuthState>(
+            builder: (context, authState) {
+              if (authState is! Authenticated) {
+                return const Center(
+                  child: Text('Please log in to view your profile'),
+                );
               }
 
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Form(
-                  key: _formKey,
+              final user = authState.user;
+              final isLoading = profileState is ProfileLoading;
+
+              return RefreshIndicator(
+                onRefresh: _refreshPage,
+                color: AppColors.primaryBlue,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildProfileHeader(user),
-                      const SizedBox(height: 24),
-                      _buildPersonalInfoSection(user),
-                      const SizedBox(height: 16),
-                      _buildTeachingInfoSection(user),
-                      const SizedBox(height: 16),
-                      _buildQuickActionsSection(),
+                      // Profile Header Section (moved to body)
+                      _buildProfileHeader(user, isLoading),
+
+                      // Main Content
+                      Padding(
+                        padding: EdgeInsets.all(4.w),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(height: 2.h),
+
+                            // Quick Stats Card
+                            _buildQuickStatsCard(),
+
+                            SizedBox(height: 2.5.h),
+
+                            // Personal Information Card
+                            _buildPersonalInfoCard(user),
+
+                            SizedBox(height: 2.5.h),
+
+                            // Business Management Section
+                            _buildSectionHeader('💼 Business Management'),
+                            SizedBox(height: 1.5.h),
+                            _buildBusinessManagementCard(),
+
+                            SizedBox(height: 2.5.h),
+
+                            // Payment Management Section
+                            _buildSectionHeader('💳 Payment Management'),
+                            SizedBox(height: 1.5.h),
+                            _buildPaymentManagementCard(),
+
+                            SizedBox(height: 2.5.h),
+
+                            // Help & Support Section
+                            _buildSectionHeader('🔧 Help & Support'),
+                            SizedBox(height: 1.5.h),
+                            _buildHelpSupportCard(),
+
+                            SizedBox(height: 4.h),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
               );
-            }
+            },
+          );
+        },
+      ),
+    );
+  }
 
-            // Loading state
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          },
+  // Profile header now in body instead of app bar
+  Widget _buildProfileHeader(user, bool isLoading) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppColors.primaryBlue,
+            AppColors.primaryBlueDark,
+          ],
+        ),
+      ),
+      child: SafeArea(
+        top: false, // Don't add extra top padding since we have AppBar
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 4.h),
+          child: Column(
+            children: [
+              // Profile Picture - Fixed to show actual image
+              _buildProfilePicture(user, isLoading),
+
+              SizedBox(height: 2.5.h),
+
+              // User Name
+              Text(
+                user.name ?? 'Tutor',
+                style: TextStyle(
+                  fontSize: 22.sp,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.white,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+
+              SizedBox(height: 0.8.h),
+
+              // User Email
+              Text(
+                user.email ?? '',
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  color: AppColors.white.withOpacity(0.9),
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+
+              SizedBox(height: 2.h),
+
+              // Edit Profile Button
+              ElevatedButton.icon(
+                onPressed: isLoading
+                    ? null
+                    : () => _showEditProfileBottomSheet(context, user),
+                icon: isLoading
+                    ? SizedBox(
+                        width: 4.w,
+                        height: 4.w,
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.primaryBlue),
+                        ),
+                      )
+                    : Icon(Icons.edit, size: 4.w),
+                label: Text(
+                  isLoading ? 'Updating...' : 'Edit Profile',
+                  style: TextStyle(fontSize: 13.sp),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.white,
+                  foregroundColor: AppColors.primaryBlue,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(5.w),
+                  ),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.2.h),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildProfileHeader(User user) {
-    return Center(
-      child: Column(
-        children: [
-          // Profile picture with edit capability
-          Stack(
-            children: [
-              // Profile image
-              GestureDetector(
-                onTap: _isEditing ? _showImagePickerOptions : null,
-                child: CircleAvatar(
-                  radius: 50,
-                  backgroundColor: AppColors.primaryBlueLight,
-                  backgroundImage: user.profilePictureUrl != null
-                      ? CachedNetworkImageProvider(user.profilePictureUrl!)
-                      : null,
-                  child: user.profilePictureUrl == null
-                      ? Text(
-                          user.name.isNotEmpty
-                              ? user.name[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        )
-                      : null,
+  // Fixed profile picture widget
+  Widget _buildProfilePicture(user, bool isLoading) {
+    return Stack(
+      children: [
+        // Main profile picture container
+        GestureDetector(
+          onTap: () => _viewProfilePicture(user.profilePictureUrl),
+          child: Container(
+            width: 28.w,
+            height: 28.w,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppColors.white,
+                width: 1.w,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 2.w,
+                  offset: Offset(0, 0.5.h),
+                ),
+              ],
+            ),
+            child: ClipOval(
+              child: isLoading
+                  ? _buildLoadingState()
+                  : _buildProfileImage(user.profilePictureUrl),
+            ),
+          ),
+        ),
+
+        // Edit button
+        Positioned(
+          bottom: 0,
+          right: 0,
+          child: GestureDetector(
+            onTap: isLoading
+                ? null
+                : () => _showProfilePictureOptions(context, user.docId),
+            child: Container(
+              width: 7.w,
+              height: 7.w,
+              decoration: BoxDecoration(
+                color:
+                    isLoading ? AppColors.textMedium : AppColors.accentOrange,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.white,
+                  width: 0.5.w,
                 ),
               ),
-              // Edit icon overlay
-              if (_isEditing)
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryBlue,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.camera_alt,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // User name
-          _isEditing
-              ? TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Full Name',
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your name';
-                    }
-                    return null;
-                  },
-                )
-              : Text(
-                  user.name,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-          // Email (non-editable)
-          Text(
-            user.email,
-            style: TextStyle(
-              fontSize: 16,
-              color: AppColors.textMedium,
+              child: Icon(
+                isLoading ? Icons.hourglass_empty : Icons.camera_alt,
+                color: AppColors.white,
+                size: 3.5.w,
+              ),
             ),
           ),
-          const SizedBox(height: 8),
-          // Role badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.accentOrange.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+        ),
+      ],
+    );
+  }
+
+  // Fixed profile image loading
+  Widget _buildProfileImage(String? imageUrl) {
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return Image.network(
+        imageUrl,
+        width: 28.w,
+        height: 28.w,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return _buildLoadingState();
+        },
+        errorBuilder: (context, error, stackTrace) {
+          print('Error loading profile image: $error');
+          return _buildDefaultAvatar();
+        },
+      );
+    }
+    return _buildDefaultAvatar();
+  }
+
+  Widget _buildLoadingState() {
+    return Container(
+      width: 28.w,
+      height: 28.w,
+      color: AppColors.backgroundDark,
+      child: Center(
+        child: CircularProgressIndicator(
+          valueColor:
+              const AlwaysStoppedAnimation<Color>(AppColors.primaryBlue),
+          strokeWidth: 0.5.w,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDefaultAvatar() {
+    return Container(
+      width: 28.w,
+      height: 28.w,
+      color: AppColors.backgroundDark,
+      child: Icon(
+        Icons.person,
+        size: 12.w,
+        color: AppColors.textMedium,
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 18.sp,
+        fontWeight: FontWeight.bold,
+        color: AppColors.textDark,
+      ),
+    );
+  }
+
+  Widget _buildQuickStatsCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.w)),
+      child: Padding(
+        padding: EdgeInsets.all(5.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
                 Icon(
-                  Icons.school,
-                  color: AppColors.accentOrange,
-                  size: 16,
+                  Icons.dashboard,
+                  color: AppColors.primaryBlue,
+                  size: 6.w,
                 ),
-                const SizedBox(width: 4),
+                SizedBox(width: 3.w),
                 Text(
-                  'Tutor',
+                  'Teaching Overview',
                   style: TextStyle(
-                    color: AppColors.accentOrange,
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
                   ),
                 ),
               ],
             ),
+            SizedBox(height: 2.5.h),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatItem('👥', 'Students', '24'),
+                ),
+                Expanded(
+                  child: _buildStatItem('📚', 'Classes', '8'),
+                ),
+                Expanded(
+                  child: _buildStatItem('📝', 'Tasks', '32'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String emoji, String label, String value) {
+    return Column(
+      children: [
+        Text(
+          emoji,
+          style: TextStyle(fontSize: 20.sp),
+        ),
+        SizedBox(height: 1.h),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16.sp,
+            fontWeight: FontWeight.bold,
+            color: AppColors.primaryBlue,
+          ),
+        ),
+        SizedBox(height: 0.5.h),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11.sp,
+            color: AppColors.textMedium,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPersonalInfoCard(user) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.w)),
+      child: Padding(
+        padding: EdgeInsets.all(5.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.person_outline,
+                  color: AppColors.primaryBlue,
+                  size: 6.w,
+                ),
+                SizedBox(width: 3.w),
+                Text(
+                  'Personal Information',
+                  style: TextStyle(
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 2.5.h),
+            _buildInfoRow('📧', 'Email', user.email ?? 'Not provided'),
+            SizedBox(height: 2.h),
+            _buildInfoRow('📱', 'Phone', user.phone ?? 'Not provided'),
+            SizedBox(height: 2.h),
+            _buildInfoRow('👨‍🏫', 'Role', 'Tutor'),
+            SizedBox(height: 2.h),
+            _buildInfoRow(
+                '📚', 'Subjects', user.subjects?.join(', ') ?? 'Not specified'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String emoji, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          emoji,
+          style: TextStyle(fontSize: 20.sp),
+        ),
+        SizedBox(width: 3.w),
+        Expanded(
+          flex: 2,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textMedium,
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 14.sp,
+              color: AppColors.textDark,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBusinessManagementCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.w)),
+      child: Column(
+        children: [
+          ProfileMenuItem(
+            icon: Icons.class_outlined,
+            iconColor: AppColors.primaryBlue,
+            title: 'Manage Classes',
+            subtitle: 'View and manage your classes',
+            onTap: () {
+              context.goNamed(RouteNames.tutorClasses);
+            },
+          ),
+          const Divider(height: 1),
+          ProfileMenuItem(
+            icon: Icons.people_outline,
+            iconColor: AppColors.accentTeal,
+            title: 'Student Management',
+            subtitle: 'Manage student enrollments and progress',
+            onTap: () {
+              context.goNamed(RouteNames.tutorStudents);
+            },
+          ),
+          const Divider(height: 1),
+          ProfileMenuItem(
+            icon: Icons.assignment_outlined,
+            iconColor: AppColors.accentOrange,
+            title: 'Task Management',
+            subtitle: 'Create and manage assignments',
+            onTap: () {
+              context.goNamed(RouteNames.tutorTasks);
+            },
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPersonalInfoSection(User user) {
+  Widget _buildPaymentManagementCard() {
     return Card(
       elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Personal Information',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Phone number
-            _buildInfoItem(
-              'Phone',
-              isEditing: _isEditing,
-              value: user.phone ?? 'Not provided',
-              editWidget: TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Phone Number',
-                  prefixText: '+60 | ',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your phone number';
-                  }
-                  // Simple validation for Malaysian phone number
-                  if (!RegExp(r'^[0-9]{9,10}$').hasMatch(value)) {
-                    return 'Please enter a valid phone number';
-                  }
-                  return null;
-                },
-              ),
-            ),
-          ],
-        ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.w)),
+      child: Column(
+        children: [
+          Builder(
+            builder: (context) {
+              try {
+                return BlocBuilder<PaymentInfoBloc, PaymentInfoState>(
+                  builder: (context, paymentState) {
+                    String subtitle = 'Set up payment methods for students';
+                    if (paymentState is PaymentInfoLoaded) {
+                      final totalMethods =
+                          paymentState.paymentInfo.bankAccounts.length +
+                              paymentState.paymentInfo.eWallets.length +
+                              paymentState.paymentInfo.otherMethods.length;
+                      subtitle = totalMethods > 0
+                          ? '$totalMethods payment method${totalMethods > 1 ? 's' : ''} configured'
+                          : 'No payment methods configured';
+                    }
+
+                    return ProfileMenuItem(
+                      icon: Icons.payment_outlined,
+                      iconColor: AppColors.success,
+                      title: 'Payment Information',
+                      subtitle: subtitle,
+                      onTap: () {
+                        context.goNamed(RouteNames.tutorPaymentInfo);
+                      },
+                    );
+                  },
+                );
+              } catch (e) {
+                return ProfileMenuItem(
+                  icon: Icons.payment_outlined,
+                  iconColor: AppColors.textMedium,
+                  title: 'Payment Information',
+                  subtitle: 'Service unavailable',
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content:
+                            Text('Payment service is currently unavailable'),
+                        backgroundColor: AppColors.warning,
+                      ),
+                    );
+                  },
+                );
+              }
+            },
+          ),
+          const Divider(height: 1),
+          ProfileMenuItem(
+            icon: Icons.receipt_long_outlined,
+            iconColor: AppColors.primaryBlue,
+            title: 'Payment Records',
+            subtitle: 'View student payment history',
+            onTap: () {
+              context.goNamed(RouteNames.tutorPayments);
+            },
+          ),
+          const Divider(height: 1),
+          ProfileMenuItem(
+            icon: Icons.price_change_outlined,
+            iconColor: AppColors.accentOrange,
+            title: 'Subject Pricing',
+            subtitle: 'Manage subject costs and pricing',
+            onTap: () {
+              context.goNamed(RouteNames.tutorSubjectCosts);
+            },
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildTeachingInfoSection(User user) {
+  Widget _buildHelpSupportCard() {
     return Card(
       elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Teaching Information',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Teaching subjects
-            const Text(
-              'Teaching Subjects:',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            if (user.subjects != null && user.subjects!.isNotEmpty)
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: user.subjects!.map((subject) {
-                  return Chip(
-                    label: Text(subject),
-                    backgroundColor: AppColors.accentOrange.withOpacity(0.2),
-                    labelStyle: TextStyle(color: AppColors.accentOrange),
-                  );
-                }).toList(),
-              )
-            else
-              Text(
-                'No subjects assigned',
-                style: TextStyle(
-                  color: AppColors.textMedium,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-          ],
-        ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.w)),
+      child: Column(
+        children: [
+          ProfileMenuItem(
+            icon: Icons.help_outline,
+            iconColor: AppColors.accentTeal,
+            title: 'Help Center',
+            subtitle: 'Get help and find answers',
+            onTap: () {
+              // Navigate to help center
+            },
+          ),
+          const Divider(height: 1),
+          ProfileMenuItem(
+            icon: Icons.support_agent_outlined,
+            iconColor: AppColors.primaryBlue,
+            title: 'Contact Support',
+            subtitle: 'Get in touch with our support team',
+            onTap: () {
+              // Contact support
+            },
+          ),
+          const Divider(height: 1),
+          ProfileMenuItem(
+            icon: Icons.bug_report_outlined,
+            iconColor: AppColors.warning,
+            title: 'Report Issue',
+            subtitle: 'Report bugs and issues',
+            onTap: () {
+              // Navigate to report issue
+            },
+          ),
+          const Divider(height: 1),
+          ProfileMenuItem(
+            icon: Icons.info_outline,
+            iconColor: AppColors.primaryBlue,
+            title: 'About',
+            subtitle: 'App version and information',
+            onTap: () {
+              // Show about dialog
+            },
+          ),
+          const Divider(height: 1),
+          ProfileMenuItem(
+            icon: Icons.logout,
+            iconColor: AppColors.error,
+            title: 'Sign Out',
+            subtitle: 'Sign out of your account',
+            onTap: () => _showLogoutDialog(context),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildQuickActionsSection() {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Quick Actions',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+  void _viewProfilePicture(String? imageUrl) {
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      final imageProvider = NetworkImage(imageUrl);
+      showImageViewer(
+        context,
+        imageProvider,
+        onViewerDismissed: () {
+          print("Profile picture viewer dismissed");
+        },
+        swipeDismissible: true,
+        doubleTapZoomable: true,
+      );
+    }
+  }
+
+  void _showEditProfileBottomSheet(BuildContext context, user) {
+    EditProfileBottomSheet.show(
+      context: context,
+      user: user,
+      onSave: (name, phone) {
+        context.read<ProfileBloc>().add(
+              UpdateProfileEvent(
+                userId: user.docId,
+                name: name,
+                phone: phone,
               ),
-            ),
-            const SizedBox(height: 16),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 2.5,
-              children: [
-                _buildQuickActionTile(
-                  icon: Icons.qr_code_scanner,
-                  label: 'Scan QR Codes',
-                  color: AppColors.accentTeal,
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                            'Go to any course to scan QR codes for attendance'),
-                      ),
-                    );
-                  },
-                ),
-                _buildQuickActionTile(
-                  icon: Icons.analytics,
-                  label: 'View Reports',
-                  color: AppColors.primaryBlue,
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Reports feature coming soon!'),
-                      ),
-                    );
-                  },
-                ),
-                _buildQuickActionTile(
-                  icon: Icons.notifications,
-                  label: 'Notifications',
-                  color: AppColors.accentOrange,
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Notification center coming soon!'),
-                      ),
-                    );
-                  },
-                ),
-                _buildQuickActionTile(
-                  icon: Icons.settings,
-                  label: 'Settings',
-                  color: AppColors.textMedium,
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Settings page coming soon!'),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+            );
+      },
     );
   }
 
-  Widget _buildQuickActionTile({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: color.withOpacity(0.3),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoItem(
-    String label, {
-    required String value,
-    bool isEditing = false,
-    Widget? editWidget,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '$label:',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        if (isEditing && editWidget != null)
-          editWidget
-        else
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 16,
-            ),
-          ),
-      ],
-    );
-  }
-
-  // Image picker methods (same as student profile)
-  void _showImagePickerOptions() {
+  void _showProfilePictureOptions(BuildContext context, String userId) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera),
-              title: const Text('Take a photo'),
-              onTap: () {
-                Navigator.of(context).pop();
-                _pickImage(ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Choose from gallery'),
-              onTap: () {
-                Navigator.of(context).pop();
-                _pickImage(ImageSource.gallery);
-              },
-            ),
-            if (context.read<AuthBloc>().state is Authenticated &&
-                (context.read<AuthBloc>().state as Authenticated)
-                        .user
-                        .profilePictureUrl !=
-                    null)
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(5.w)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 10.w,
+                height: 0.5.h,
+                margin: EdgeInsets.only(top: 1.5.h, bottom: 2.5.h),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundDark,
+                  borderRadius: BorderRadius.circular(0.5.w),
+                ),
+              ),
+              Text(
+                'Profile Picture',
+                style: TextStyle(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textDark,
+                ),
+              ),
+              SizedBox(height: 2.5.h),
               ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Remove photo',
-                    style: TextStyle(color: Colors.red)),
+                leading:
+                    const Icon(Icons.camera_alt, color: AppColors.primaryBlue),
+                title: const Text('Take Photo'),
                 onTap: () {
-                  Navigator.of(context).pop();
-                  _removeProfilePicture();
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.camera, userId);
                 },
               ),
-          ],
+              ListTile(
+                leading: const Icon(Icons.photo_library,
+                    color: AppColors.accentOrange),
+                title: const Text('Choose from Gallery'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.gallery, userId);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: AppColors.error),
+                title: const Text('Remove Photo'),
+                onTap: () {
+                  Navigator.pop(context);
+                  context.read<ProfileBloc>().add(
+                        RemoveProfilePictureEvent(userId: userId),
+                      );
+                },
+              ),
+              SizedBox(height: 2.5.h),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      final pickedFile = await _imagePicker.pickImage(
-        source: source,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 85,
-      );
+  Future<void> _pickImage(ImageSource source, String userId) async {
+    // Show loading immediately
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text('Processing image...'),
+          ],
+        ),
+        backgroundColor: AppColors.primaryBlue,
+        duration: const Duration(seconds: 2),
+      ),
+    );
 
-      if (pickedFile != null) {
-        final imageFile = File(pickedFile.path);
-        final authState = context.read<AuthBloc>().state;
-        if (authState is Authenticated) {
-          context.read<ProfileBloc>().add(UpdateProfilePictureEvent(
-                userId: authState.user.docId,
-                imageFile: imageFile,
-              ));
-        }
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking image: ${e.toString()}')),
-      );
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: source,
+      maxWidth: 1080, // Higher resolution
+      maxHeight: 1080,
+      imageQuality: 90, // Higher quality
+    );
+
+    if (image != null) {
+      context.read<ProfileBloc>().add(
+            UpdateProfilePictureEvent(
+              userId: userId,
+              imageFile: File(image.path),
+            ),
+          );
+    } else {
+      // Hide loading if user cancelled
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
     }
   }
 
-  void _removeProfilePicture() {
-    final authState = context.read<AuthBloc>().state;
-    if (authState is Authenticated) {
-      context.read<ProfileBloc>().add(RemoveProfilePictureEvent(
-            userId: authState.user.docId,
-          ));
-    }
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.w)),
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Add logout event to AuthBloc
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: AppColors.white,
+            ),
+            child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
   }
 }

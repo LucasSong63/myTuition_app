@@ -1,20 +1,21 @@
+// lib/features/profile/presentation/pages/student_profile_page.dart
+
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+import 'package:mytuition/features/profile/presentation/widgets/profile_header.dart';
+import 'package:mytuition/features/profile/presentation/widgets/student_payment_info_card.dart';
+import 'package:mytuition/features/profile/presentation/widgets/profile_picture_widget.dart';
+import 'package:sizer/sizer.dart';
+import 'package:easy_image_viewer/easy_image_viewer.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
-import 'package:mytuition/features/auth/domain/entities/user.dart';
 import 'package:mytuition/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:mytuition/features/auth/presentation/bloc/auth_event.dart';
 import 'package:mytuition/features/auth/presentation/bloc/auth_state.dart';
+import 'package:mytuition/features/payments/presentation/bloc/payment_info_bloc.dart';
 import 'package:mytuition/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:mytuition/features/profile/presentation/bloc/profile_event.dart';
 import 'package:mytuition/features/profile/presentation/bloc/profile_state.dart';
-import 'package:mytuition/core/utils/student_id_validator.dart';
-import 'package:sizer/sizer.dart';
 
 class StudentProfilePage extends StatefulWidget {
   const StudentProfilePage({Key? key}) : super(key: key);
@@ -24,813 +25,895 @@ class StudentProfilePage extends StatefulWidget {
 }
 
 class _StudentProfilePageState extends State<StudentProfilePage> {
-  bool _isEditing = false;
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final ImagePicker _imagePicker = ImagePicker();
-
   @override
-  void dispose() {
-    _nameController.dispose();
-    _phoneController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadInitialData();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return BlocListener<ProfileBloc, ProfileState>(
-      listener: (context, state) {
-        if (state is ProfileUpdateSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.success,
-            ),
-          );
-          setState(() {
-            _isEditing = false;
-          });
-
-          // Refresh auth state to reflect updated profile
-          context.read<AuthBloc>().add(CheckAuthStatusEvent());
-        }
-
-        if (state is ProfileError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('My Profile'),
-          actions: [
-            // Edit/Save button
-            BlocBuilder<ProfileBloc, ProfileState>(
-              builder: (context, state) {
-                return IconButton(
-                  icon: state is ProfileLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Icon(_isEditing ? Icons.save : Icons.edit),
-                  onPressed: state is ProfileLoading
-                      ? null
-                      : () {
-                          if (_isEditing) {
-                            // Save profile changes
-                            if (_formKey.currentState!.validate()) {
-                              final authState = context.read<AuthBloc>().state;
-                              if (authState is Authenticated) {
-                                context
-                                    .read<ProfileBloc>()
-                                    .add(UpdateProfileEvent(
-                                      userId: authState.user.docId,
-                                      name: _nameController.text.trim(),
-                                      phone: _phoneController.text.trim(),
-                                    ));
-                              }
-                            }
-                          } else {
-                            // Enter edit mode
-                            setState(() {
-                              _isEditing = true;
-                            });
-                          }
-                        },
-                );
-              },
-            ),
-          ],
-        ),
-        body: BlocBuilder<AuthBloc, AuthState>(
-          builder: (context, state) {
-            if (state is Authenticated) {
-              final user = state.user;
-
-              // Initialize controllers when entering edit mode
-              if (_isEditing && _nameController.text.isEmpty) {
-                _nameController.text = user.name;
-                _phoneController.text = user.phone ?? '';
-              }
-
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildProfileHeader(user),
-                      const SizedBox(height: 24),
-                      _buildStudentIdSection(user),
-                      const SizedBox(height: 16),
-                      _buildQRCodeSection(user),
-                      const SizedBox(height: 16),
-                      _buildPersonalInfoSection(user),
-                      const SizedBox(height: 16),
-                      _buildAcademicInfoSection(user),
-                    ],
-                  ),
-                ),
-              );
-            }
-
-            // Loading state
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfileHeader(User user) {
-    return Center(
-      child: Column(
-        children: [
-          // Profile picture with edit capability
-          Stack(
-            children: [
-              // Profile image
-              GestureDetector(
-                onTap: _isEditing ? _showImagePickerOptions : null,
-                child: CircleAvatar(
-                  radius: 50,
-                  backgroundColor: AppColors.primaryBlueLight,
-                  backgroundImage: user.profilePictureUrl != null
-                      ? CachedNetworkImageProvider(user.profilePictureUrl!)
-                      : null,
-                  child: user.profilePictureUrl == null
-                      ? Text(
-                          user.name.isNotEmpty
-                              ? user.name[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        )
-                      : null,
-                ),
-              ),
-              // Edit icon overlay
-              if (_isEditing)
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryBlue,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.camera_alt,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // User name
-          _isEditing
-              ? TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Full Name',
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your name';
-                    }
-                    return null;
-                  },
-                )
-              : Text(
-                  user.name,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-          // Email (non-editable)
-          Text(
-            user.email,
-            style: TextStyle(
-              fontSize: 16,
-              color: AppColors.textMedium,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStudentIdSection(User user) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Student ID',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                if (user.studentId != null)
-                  IconButton(
-                    icon: const Icon(Icons.copy),
-                    tooltip: 'Copy ID',
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: user.studentId!));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Student ID copied to clipboard'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (user.studentId != null) ...[
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryBlueLight.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.badge,
-                      color: AppColors.primaryBlue,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      user.studentId!,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                        color: AppColors.primaryBlue,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              // Display year batch information
-              _buildStudentBatchInfo(user.studentId!),
-            ] else
-              Text(
-                'Not assigned',
-                style: TextStyle(
-                  color: AppColors.textMedium,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStudentBatchInfo(String studentId) {
-    final year = StudentIdValidator.extractYear(studentId);
-    final studentNumber = StudentIdValidator.extractStudentNumber(studentId);
-
-    if (year == null || studentNumber == null) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: AppColors.accentTeal.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.school,
-            color: AppColors.accentTeal,
-            size: 16,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            'Class of $year • Student #$studentNumber',
-            style: TextStyle(
-              color: AppColors.accentTeal,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQRCodeSection(User user) {
-    if (user.studentId == null) {
-      return const SizedBox.shrink();
-    }
-
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'My QR Code',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                PopupMenuButton<String>(
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'share':
-                        _shareQRCode(user.studentId!);
-                        break;
-                      case 'fullscreen':
-                        _showFullScreenQR(user.studentId!);
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'fullscreen',
-                      child: Row(
-                        children: [
-                          Icon(Icons.fullscreen),
-                          SizedBox(width: 8),
-                          Text('View Full Screen'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'share',
-                      child: Row(
-                        children: [
-                          Icon(Icons.share),
-                          SizedBox(width: 8),
-                          Text('Share QR Code'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Center(
-              child: Column(
-                children: [
-                  // QR Code
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.primaryBlue.withOpacity(0.3),
-                        width: 2,
-                      ),
-                    ),
-                    child: QrImageView(
-                      data: user.studentId!,
-                      // Static QR code with just student ID
-                      version: QrVersions.auto,
-                      size: 200.0,
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Instructions
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryBlue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          'Show this QR code to your tutor for attendance',
-                          style: TextStyle(
-                            color: AppColors.primaryBlue,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 14,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Tap the menu for more options',
-                          style: TextStyle(
-                            color: AppColors.textMedium,
-                            fontSize: 12,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPersonalInfoSection(User user) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Personal Information',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Phone number
-            _buildInfoItem(
-              'Phone',
-              isEditing: _isEditing,
-              value: user.phone ?? 'Not provided',
-              editWidget: TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Phone Number',
-                  prefixText: '+60 | ',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your phone number';
-                  }
-                  // Simple validation for Malaysian phone number
-                  if (!RegExp(r'^[0-9]{9,10}$').hasMatch(value)) {
-                    return 'Please enter a valid phone number';
-                  }
-                  return null;
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAcademicInfoSection(User user) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Academic Information',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Grade
-            _buildInfoItem('Grade',
-                value: 'Grade ${user.grade ?? "Not assigned"}'),
-            const SizedBox(height: 16),
-            // Subjects
-            const Text(
-              'Subjects:',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            if (user.subjects != null && user.subjects!.isNotEmpty)
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: user.subjects!.map((subject) {
-                  return Chip(
-                    label: Text(subject),
-                    backgroundColor:
-                        AppColors.primaryBlueLight.withOpacity(0.2),
-                  );
-                }).toList(),
-              )
-            else
-              Text(
-                'No subjects enrolled',
-                style: TextStyle(
-                  color: AppColors.textMedium,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoItem(
-    String label, {
-    required String value,
-    bool isEditing = false,
-    Widget? editWidget,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '$label:',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        if (isEditing && editWidget != null)
-          editWidget
-        else
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 16,
-            ),
-          ),
-      ],
-    );
-  }
-
-  void _shareQRCode(String studentId) {
-    // Implementation for sharing QR code
-    // You can use share_plus package for this
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('QR code sharing functionality coming soon!'),
-      ),
-    );
-  }
-
-  void _showFullScreenQR(String studentId) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => _FullScreenQRView(
-          studentId: studentId,
-          studentName: context.read<AuthBloc>().state is Authenticated
-              ? (context.read<AuthBloc>().state as Authenticated).user.name
-              : 'Student',
-        ),
-      ),
-    );
-  }
-
-  // Image picker methods
-  void _showImagePickerOptions() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera),
-              title: const Text('Take a photo'),
-              onTap: () {
-                Navigator.of(context).pop();
-                _pickImage(ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Choose from gallery'),
-              onTap: () {
-                Navigator.of(context).pop();
-                _pickImage(ImageSource.gallery);
-              },
-            ),
-            if (context.read<AuthBloc>().state is Authenticated &&
-                (context.read<AuthBloc>().state as Authenticated)
-                        .user
-                        .profilePictureUrl !=
-                    null)
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Remove photo',
-                    style: TextStyle(color: Colors.red)),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _removeProfilePicture();
-                },
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _pickImage(ImageSource source) async {
+  void _loadInitialData() {
+    // Load payment info when the page loads
     try {
-      final pickedFile = await _imagePicker.pickImage(
-        source: source,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 85,
-      );
-
-      if (pickedFile != null) {
-        final imageFile = File(pickedFile.path);
-        final authState = context.read<AuthBloc>().state;
-        if (authState is Authenticated) {
-          context.read<ProfileBloc>().add(UpdateProfilePictureEvent(
-                userId: authState.user.docId,
-                imageFile: imageFile,
-              ));
-        }
-      }
+      context.read<PaymentInfoBloc>().add(LoadPaymentInfoEvent());
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking image: ${e.toString()}')),
-      );
+      print('PaymentInfoBloc not available in profile page');
     }
   }
 
-  void _removeProfilePicture() {
-    final authState = context.read<AuthBloc>().state;
-    if (authState is Authenticated) {
-      context.read<ProfileBloc>().add(RemoveProfilePictureEvent(
-            userId: authState.user.docId,
-          ));
+  Future<void> _refreshPage() async {
+    // Refresh all data
+    try {
+      context.read<PaymentInfoBloc>().add(LoadPaymentInfoEvent());
+      // Add small delay for better UX
+      await Future.delayed(const Duration(milliseconds: 500));
+    } catch (e) {
+      print('Error refreshing page: $e');
     }
   }
-}
-
-// Full screen QR code view
-class _FullScreenQRView extends StatelessWidget {
-  final String studentId;
-  final String studentName;
-
-  const _FullScreenQRView({
-    required this.studentId,
-    required this.studentName,
-  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: const Text('My QR Code'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        title: const Text('Profile'),
+        backgroundColor: AppColors.primaryBlue,
+        foregroundColor: AppColors.white,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        // Removed reload and settings buttons as requested
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Container(
-            width: 100.w,
-            height: 80.h,
-            padding: EdgeInsets.all(4.w),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(height: 2.h),
+      body: BlocConsumer<ProfileBloc, ProfileState>(
+        listener: (context, state) {
+          if (state is ProfileError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          }
+          if (state is ProfileUpdateSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: AppColors.success,
+              ),
+            );
+            // Refresh the page after profile update
+            _refreshPage();
+          }
+        },
+        builder: (context, profileState) {
+          return BlocBuilder<AuthBloc, AuthState>(
+            builder: (context, authState) {
+              if (authState is! Authenticated) {
+                return const Center(
+                  child: Text('Please log in to view your profile'),
+                );
+              }
 
-                // Student info
-                Text(
-                  studentName,
-                  style: TextStyle(
-                    fontSize: 20.sp, // Responsive font size
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 1.h),
-                Text(
-                  studentId,
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    color: AppColors.textMedium,
-                    letterSpacing: 1.2,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 4.h),
+              final user = authState.user;
+              final isLoading = profileState is ProfileLoading;
 
-                // Large QR Code - Responsive size
-                Container(
-                  padding: EdgeInsets.all(4.w),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: QrImageView(
-                    data: studentId,
-                    version: QrVersions.auto,
-                    size: 60.w,
-                    // Responsive QR code size (60% of screen width)
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                  ),
-                ),
-
-                SizedBox(height: 4.h),
-
-                // Instructions - Flexible container
-                Container(
-                  width: 100.w,
-                  padding: EdgeInsets.all(4.w),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryBlue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+              return RefreshIndicator(
+                onRefresh: _refreshPage,
+                color: AppColors.primaryBlue,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   child: Column(
                     children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: AppColors.primaryBlue,
-                        size: 24.sp, // Responsive icon size
-                      ),
-                      SizedBox(height: 1.h),
-                      Text(
-                        'Show this QR code to your tutor',
-                        style: TextStyle(
-                          color: AppColors.primaryBlue,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14.sp,
+                      // Profile Header Section (moved to body)
+                      _buildProfileHeader(user, isLoading),
+
+                      // Main Content
+                      Padding(
+                        padding: EdgeInsets.all(4.w),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(height: 2.h),
+
+                            // Quick Stats Card
+                            _buildQuickStatsCard(),
+
+                            SizedBox(height: 2.5.h),
+
+                            // Personal Information Card
+                            _buildPersonalInfoCard(user),
+
+                            SizedBox(height: 2.5.h),
+
+                            // Payment Information Section
+                            _buildSectionHeader('💳 Payment Information'),
+                            SizedBox(height: 1.5.h),
+                            _buildPaymentInfoSection(),
+
+                            SizedBox(height: 2.5.h),
+
+                            // Help & Support Section
+                            _buildSectionHeader('🔧 Help & Support'),
+                            SizedBox(height: 1.5.h),
+                            _buildHelpSupportCard(),
+
+                            SizedBox(height: 4.h),
+                          ],
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: 0.5.h),
-                      Text(
-                        'Make sure the code is clearly visible and well-lit for scanning',
-                        style: TextStyle(
-                          color: AppColors.textMedium,
-                          fontSize: 12.sp,
-                        ),
-                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
                 ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
 
-                SizedBox(height: 2.h), // Extra bottom padding
+  // Profile header now in body instead of app bar
+  Widget _buildProfileHeader(user, bool isLoading) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppColors.primaryBlue,
+            AppColors.primaryBlueDark,
+          ],
+        ),
+      ),
+      child: SafeArea(
+        top: false, // Don't add extra top padding since we have AppBar
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 4.h),
+          child: Column(
+            children: [
+              // Profile Picture - Fixed to show actual image
+              _buildProfilePicture(user, isLoading),
+
+              SizedBox(height: 2.5.h),
+
+              // User Name
+              Text(
+                user.name ?? 'Student',
+                style: TextStyle(
+                  fontSize: 22.sp,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.white,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+
+              SizedBox(height: 0.8.h),
+
+              // User Email
+              Text(
+                user.email ?? '',
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  color: AppColors.white.withOpacity(0.9),
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+
+              SizedBox(height: 2.h),
+
+              // Edit Profile Button
+              ElevatedButton.icon(
+                onPressed: isLoading
+                    ? null
+                    : () => _showEditProfileBottomSheet(context, user),
+                icon: isLoading
+                    ? SizedBox(
+                        width: 4.w,
+                        height: 4.w,
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.primaryBlue),
+                        ),
+                      )
+                    : Icon(Icons.edit, size: 4.w),
+                label: Text(
+                  isLoading ? 'Updating...' : 'Edit Profile',
+                  style: TextStyle(fontSize: 13.sp),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.white,
+                  foregroundColor: AppColors.primaryBlue,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(5.w),
+                  ),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.2.h),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Fixed profile picture widget
+  Widget _buildProfilePicture(user, bool isLoading) {
+    return Stack(
+      children: [
+        // Main profile picture container
+        GestureDetector(
+          onTap: () => _viewProfilePicture(user.profilePictureUrl),
+          child: Container(
+            width: 28.w,
+            height: 28.w,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppColors.white,
+                width: 1.w,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 2.w,
+                  offset: Offset(0, 0.5.h),
+                ),
               ],
+            ),
+            child: ClipOval(
+              child: isLoading
+                  ? _buildLoadingState()
+                  : _buildProfileImage(user.profilePictureUrl),
             ),
           ),
         ),
+
+        // Edit button
+        Positioned(
+          bottom: 0,
+          right: 0,
+          child: GestureDetector(
+            onTap: isLoading
+                ? null
+                : () => _showProfilePictureOptions(context, user.docId),
+            child: Container(
+              width: 7.w,
+              height: 7.w,
+              decoration: BoxDecoration(
+                color:
+                    isLoading ? AppColors.textMedium : AppColors.accentOrange,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.white,
+                  width: 0.5.w,
+                ),
+              ),
+              child: Icon(
+                isLoading ? Icons.hourglass_empty : Icons.camera_alt,
+                color: AppColors.white,
+                size: 3.5.w,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Fixed profile image loading
+  Widget _buildProfileImage(String? imageUrl) {
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return Image.network(
+        imageUrl,
+        width: 28.w,
+        height: 28.w,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return _buildLoadingState();
+        },
+        errorBuilder: (context, error, stackTrace) {
+          print('Error loading profile image: $error');
+          return _buildDefaultAvatar();
+        },
+      );
+    }
+    return _buildDefaultAvatar();
+  }
+
+  Widget _buildLoadingState() {
+    return Container(
+      width: 28.w,
+      height: 28.w,
+      color: AppColors.backgroundDark,
+      child: Center(
+        child: CircularProgressIndicator(
+          valueColor:
+              const AlwaysStoppedAnimation<Color>(AppColors.primaryBlue),
+          strokeWidth: 0.5.w,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDefaultAvatar() {
+    return Container(
+      width: 28.w,
+      height: 28.w,
+      color: AppColors.backgroundDark,
+      child: Icon(
+        Icons.person,
+        size: 12.w,
+        color: AppColors.textMedium,
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 18.sp,
+        fontWeight: FontWeight.bold,
+        color: AppColors.textDark,
+      ),
+    );
+  }
+
+  // Updated Quick Stats for students with more relevant metrics
+  Widget _buildQuickStatsCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.w)),
+      child: Padding(
+        padding: EdgeInsets.all(5.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.insights,
+                  color: AppColors.primaryBlue,
+                  size: 6.w,
+                ),
+                SizedBox(width: 3.w),
+                Text(
+                  'Quick Overview',
+                  style: TextStyle(
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 2.5.h),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatItem('📚', 'Courses', '3'),
+                ),
+                Expanded(
+                  child: _buildStatItem('📊', 'Attendance', '92%'),
+                ),
+                Expanded(
+                  child: _buildStatItem('🤖', 'AI Questions', '15/20'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String emoji, String label, String value) {
+    return Column(
+      children: [
+        Text(
+          emoji,
+          style: TextStyle(fontSize: 20.sp),
+        ),
+        SizedBox(height: 1.h),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16.sp,
+            fontWeight: FontWeight.bold,
+            color: AppColors.primaryBlue,
+          ),
+        ),
+        SizedBox(height: 0.5.h),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11.sp,
+            color: AppColors.textMedium,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPersonalInfoCard(user) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.w)),
+      child: Padding(
+        padding: EdgeInsets.all(5.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.person_outline,
+                  color: AppColors.primaryBlue,
+                  size: 6.w,
+                ),
+                SizedBox(width: 3.w),
+                Text(
+                  'Personal Information',
+                  style: TextStyle(
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 2.5.h),
+            _buildInfoRow('📧', 'Email', user.email ?? 'Not provided'),
+            SizedBox(height: 2.h),
+            _buildInfoRow('📱', 'Phone', user.phone ?? 'Not provided'),
+            SizedBox(height: 2.h),
+            _buildInfoRow(
+                '🎓', 'Grade', user.grade?.toString() ?? 'Not specified'),
+            SizedBox(height: 2.h),
+            _buildInfoRow('🆔', 'Student ID', user.studentId ?? 'Not assigned'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String emoji, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          emoji,
+          style: TextStyle(fontSize: 20.sp),
+        ),
+        SizedBox(width: 3.w),
+        Expanded(
+          flex: 2,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textMedium,
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 14.sp,
+              color: AppColors.textDark,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPaymentInfoSection() {
+    try {
+      return BlocBuilder<PaymentInfoBloc, PaymentInfoState>(
+        builder: (context, paymentState) {
+          if (paymentState is PaymentInfoLoading) {
+            return _buildLoadingCard();
+          }
+          if (paymentState is PaymentInfoLoaded) {
+            return StudentPaymentInfoCard(
+              paymentInfo: paymentState.paymentInfo,
+            );
+          }
+          if (paymentState is PaymentInfoError) {
+            return _buildErrorCard(
+              'Unable to load payment information',
+              paymentState.message,
+              () => context.read<PaymentInfoBloc>().add(LoadPaymentInfoEvent()),
+            );
+          }
+          return _buildEmptyPaymentCard();
+        },
+      );
+    } catch (e) {
+      return _buildUnavailablePaymentCard();
+    }
+  }
+
+  Widget _buildHelpSupportCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.w)),
+      child: Column(
+        children: [
+          ProfileMenuItem(
+            icon: Icons.help_outline,
+            iconColor: AppColors.accentTeal,
+            title: 'Help Center',
+            subtitle: 'Get help and find answers',
+            onTap: () {
+              // Navigate to help center
+            },
+          ),
+          const Divider(height: 1),
+          ProfileMenuItem(
+            icon: Icons.bug_report_outlined,
+            iconColor: AppColors.warning,
+            title: 'Report Issue',
+            subtitle: 'Report bugs and issues',
+            onTap: () {
+              // Navigate to report issue
+            },
+          ),
+          const Divider(height: 1),
+          ProfileMenuItem(
+            icon: Icons.info_outline,
+            iconColor: AppColors.primaryBlue,
+            title: 'About',
+            subtitle: 'App version and information',
+            onTap: () {
+              // Show about dialog
+            },
+          ),
+          const Divider(height: 1),
+          ProfileMenuItem(
+            icon: Icons.logout,
+            iconColor: AppColors.error,
+            title: 'Sign Out',
+            subtitle: 'Sign out of your account',
+            onTap: () => _showLogoutDialog(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.w)),
+      child: Padding(
+        padding: EdgeInsets.all(6.w),
+        child: Row(
+          children: [
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryBlue),
+            ),
+            SizedBox(width: 4.w),
+            Text(
+              'Loading payment information...',
+              style: TextStyle(
+                fontSize: 16.sp,
+                color: AppColors.textMedium,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorCard(String title, String message, VoidCallback onRetry) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.w)),
+      child: Padding(
+        padding: EdgeInsets.all(6.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.error_outline, color: AppColors.error, size: 6.w),
+                SizedBox(width: 3.w),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 1.5.h),
+            Text(
+              message,
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: AppColors.textMedium,
+              ),
+            ),
+            SizedBox(height: 2.h),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                  foregroundColor: AppColors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyPaymentCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.w)),
+      child: Padding(
+        padding: EdgeInsets.all(6.w),
+        child: Column(
+          children: [
+            Icon(
+              Icons.payment_outlined,
+              size: 12.w,
+              color: AppColors.textLight,
+            ),
+            SizedBox(height: 2.h),
+            Text(
+              'No Payment Information',
+              style: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textDark,
+              ),
+            ),
+            SizedBox(height: 1.h),
+            Text(
+              'Payment information will be available once your tutor sets it up.',
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: AppColors.textMedium,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUnavailablePaymentCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.w)),
+      child: Padding(
+        padding: EdgeInsets.all(6.w),
+        child: Column(
+          children: [
+            Icon(
+              Icons.info_outline,
+              size: 12.w,
+              color: AppColors.textLight,
+            ),
+            SizedBox(height: 2.h),
+            Text(
+              'Payment Information Unavailable',
+              style: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textDark,
+              ),
+            ),
+            SizedBox(height: 1.h),
+            Text(
+              'Payment information service is currently unavailable.',
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: AppColors.textMedium,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _viewProfilePicture(String? imageUrl) {
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      final imageProvider = NetworkImage(imageUrl);
+      showImageViewer(
+        context,
+        imageProvider,
+        onViewerDismissed: () {
+          print("Profile picture viewer dismissed");
+        },
+        swipeDismissible: true,
+        doubleTapZoomable: true,
+      );
+    }
+  }
+
+  void _showEditProfileBottomSheet(BuildContext context, user) {
+    EditProfileBottomSheet.show(
+      context: context,
+      user: user,
+      onSave: (name, phone) {
+        context.read<ProfileBloc>().add(
+              UpdateProfileEvent(
+                userId: user.docId,
+                name: name,
+                phone: phone,
+              ),
+            );
+      },
+    );
+  }
+
+  void _showProfilePictureOptions(BuildContext context, String userId) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(5.w)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 10.w,
+                height: 0.5.h,
+                margin: EdgeInsets.only(top: 1.5.h, bottom: 2.5.h),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundDark,
+                  borderRadius: BorderRadius.circular(0.5.w),
+                ),
+              ),
+              Text(
+                'Profile Picture',
+                style: TextStyle(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textDark,
+                ),
+              ),
+              SizedBox(height: 2.5.h),
+              ListTile(
+                leading:
+                    const Icon(Icons.camera_alt, color: AppColors.primaryBlue),
+                title: const Text('Take Photo'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.camera, userId);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library,
+                    color: AppColors.accentOrange),
+                title: const Text('Choose from Gallery'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.gallery, userId);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: AppColors.error),
+                title: const Text('Remove Photo'),
+                onTap: () {
+                  Navigator.pop(context);
+                  context.read<ProfileBloc>().add(
+                        RemoveProfilePictureEvent(userId: userId),
+                      );
+                },
+              ),
+              SizedBox(height: 2.5.h),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source, String userId) async {
+    // Show loading immediately
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text('Processing image...'),
+          ],
+        ),
+        backgroundColor: AppColors.primaryBlue,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: source,
+      maxWidth: 1080, // Higher resolution
+      maxHeight: 1080,
+      imageQuality: 90, // Higher quality
+    );
+
+    if (image != null) {
+      context.read<ProfileBloc>().add(
+            UpdateProfilePictureEvent(
+              userId: userId,
+              imageFile: File(image.path),
+            ),
+          );
+    } else {
+      // Hide loading if user cancelled
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    }
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.w)),
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Add logout event to AuthBloc
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: AppColors.white,
+            ),
+            child: const Text('Sign Out'),
+          ),
+        ],
       ),
     );
   }

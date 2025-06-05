@@ -63,6 +63,7 @@ dependencies:
   syncfusion_flutter_charts: 27.2.5
   firebase_remote_config: ^5.4.4
   google_fonts: ^6.2.1
+  easy_image_viewer: ^1.5.1
 
 dev_dependencies:
   flutter_test:

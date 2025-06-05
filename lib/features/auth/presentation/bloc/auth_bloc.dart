@@ -34,7 +34,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required this.submitRegistrationUseCase,
     firebase_auth.FirebaseAuth? firebaseAuth,
     FirebaseFirestore? firestore,
-  }) : _firebaseAuth = firebaseAuth ?? firebase_auth.FirebaseAuth.instance,
+  })  : _firebaseAuth = firebaseAuth ?? firebase_auth.FirebaseAuth.instance,
         _firestore = firestore ?? FirebaseFirestore.instance,
         super(AuthInitial()) {
     on<CheckAuthStatusEvent>(_onCheckAuthStatus);
@@ -44,15 +44,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<ForgotPasswordEvent>(_onForgotPassword);
     on<ResendVerificationEmailEvent>(_onResendVerificationEmail);
     on<CheckEmailVerificationEvent>(_onCheckEmailVerification);
+    on<RefreshUserEvent>(_onRefreshUser); // Add this handler
 
     // Check auth status when bloc is created
     add(CheckAuthStatusEvent());
   }
 
   Future<void> _onCheckAuthStatus(
-      CheckAuthStatusEvent event,
-      Emitter<AuthState> emit,
-      ) async {
+    CheckAuthStatusEvent event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(AuthLoading());
     try {
       final User? user = await getCurrentUserUseCase.execute();
@@ -76,9 +77,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLogin(
-      LoginEvent event,
-      Emitter<AuthState> emit,
-      ) async {
+    LoginEvent event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(AuthLoading());
     try {
       final user = await loginUseCase.execute(
@@ -100,9 +101,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onRegister(
-      RegisterEvent event,
-      Emitter<AuthState> emit,
-      ) async {
+    RegisterEvent event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(AuthLoading());
     try {
       // If this is a tutor registration, use the normal registration flow
@@ -142,9 +143,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLogout(
-      LogoutEvent event,
-      Emitter<AuthState> emit,
-      ) async {
+    LogoutEvent event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(AuthLoading());
     try {
       await logoutUseCase.execute();
@@ -157,9 +158,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onForgotPassword(
-      ForgotPasswordEvent event,
-      Emitter<AuthState> emit,
-      ) async {
+    ForgotPasswordEvent event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(AuthLoading());
     try {
       await forgotPasswordUseCase.execute(email: event.email);
@@ -172,9 +173,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onResendVerificationEmail(
-      ResendVerificationEmailEvent event,
-      Emitter<AuthState> emit,
-      ) async {
+    ResendVerificationEmailEvent event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(AuthLoading());
     try {
       // Get current user
@@ -186,17 +187,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       } else {
         // This is a tricky case since we need the user to be logged in
         // We might need to adjust the flow for this case
-        emit(AuthError(message: 'You need to be logged in to resend verification email'));
+        emit(AuthError(
+            message: 'You need to be logged in to resend verification email'));
       }
     } catch (e) {
-      emit(AuthError(message: 'Failed to resend verification email: ${e.toString()}'));
+      emit(AuthError(
+          message: 'Failed to resend verification email: ${e.toString()}'));
     }
   }
 
   Future<void> _onCheckEmailVerification(
-      CheckEmailVerificationEvent event,
-      Emitter<AuthState> emit,
-      ) async {
+    CheckEmailVerificationEvent event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(AuthLoading());
     try {
       // Get current user
@@ -208,7 +211,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
         if (currentUser.emailVerified) {
           // Get user data from Firestore
-          final userDoc = await _firestore.collection('users').doc(currentUser.uid).get();
+          final userDoc =
+              await _firestore.collection('users').doc(currentUser.uid).get();
 
           if (userDoc.exists) {
             final userData = userDoc.data() as Map<String, dynamic>;
@@ -241,8 +245,29 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(Unauthenticated());
       }
     } catch (e) {
-      emit(AuthError(message: 'Failed to check verification status: ${e.toString()}'));
+      emit(AuthError(
+          message: 'Failed to check verification status: ${e.toString()}'));
       // Don't emit Unauthenticated here, so the user stays on the verification page
+    }
+  }
+
+  // FIXED: Use getCurrentUserUseCase instead of non-existent authRepository
+  Future<void> _onRefreshUser(
+    RefreshUserEvent event,
+    Emitter<AuthState> emit,
+  ) async {
+    if (state is Authenticated) {
+      try {
+        // Fetch updated user data using the use case
+        final updatedUser = await getCurrentUserUseCase.execute();
+        if (updatedUser != null) {
+          emit(Authenticated(user: updatedUser, isTutor: updatedUser.isTutor));
+        }
+      } catch (e) {
+        // If refresh fails, keep current state but log error
+        print('Failed to refresh user data: $e');
+        // Optionally emit a brief error state or just log
+      }
     }
   }
 

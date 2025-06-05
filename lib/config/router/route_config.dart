@@ -27,7 +27,6 @@ import 'package:mytuition/features/payments/presentation/bloc/payment_info_bloc.
 import 'package:mytuition/features/payments/presentation/pages/payment_info_page.dart';
 import 'package:mytuition/features/payments/presentation/pages/payment_management_page.dart';
 import 'package:mytuition/features/profile/presentation/bloc/profile_bloc.dart';
-import 'package:mytuition/features/profile/presentation/pages/profile_page.dart';
 import 'package:mytuition/features/profile/presentation/pages/student_profile_page.dart';
 import 'package:mytuition/features/profile/presentation/pages/tutor_profile_page.dart';
 import 'package:mytuition/features/student_management/presentation/bloc/student_management_bloc.dart';
@@ -202,8 +201,15 @@ class AppRouter {
               GoRoute(
                 path: 'profile',
                 name: RouteNames.studentProfile,
-                builder: (context, state) => BlocProvider<ProfileBloc>(
-                  create: (context) => getIt<ProfileBloc>(),
+                builder: (context, state) => MultiBlocProvider(
+                  providers: [
+                    BlocProvider<ProfileBloc>(
+                      create: (context) => getIt<ProfileBloc>(),
+                    ),
+                    BlocProvider<PaymentInfoBloc>(
+                      create: (context) => getIt<PaymentInfoBloc>(),
+                    ),
+                  ],
                   child: const StudentProfilePage(),
                 ),
               ),
@@ -412,8 +418,15 @@ class AppRouter {
               GoRoute(
                 path: 'profile',
                 name: RouteNames.tutorProfile,
-                builder: (context, state) => BlocProvider<ProfileBloc>(
-                  create: (context) => getIt<ProfileBloc>(),
+                builder: (context, state) => MultiBlocProvider(
+                  providers: [
+                    BlocProvider<ProfileBloc>(
+                      create: (context) => getIt<ProfileBloc>(),
+                    ),
+                    BlocProvider<PaymentInfoBloc>(
+                      create: (context) => getIt<PaymentInfoBloc>(),
+                    ),
+                  ],
                   child: const TutorProfilePage(),
                 ),
               ),
