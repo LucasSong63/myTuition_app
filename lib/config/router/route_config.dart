@@ -6,6 +6,7 @@ import 'package:mytuition/features/admin/setup_screen.dart';
 import 'package:mytuition/features/attendance/presentation/bloc/attendance_event.dart';
 import 'package:mytuition/features/auth/presentation/bloc/registration_bloc.dart';
 import 'package:mytuition/features/auth/presentation/pages/email_verification_page.dart';
+import 'package:mytuition/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:mytuition/features/auth/presentation/pages/login_page.dart';
 import 'package:mytuition/features/auth/presentation/pages/register_page.dart';
 import 'package:mytuition/features/auth/presentation/pages/registration_details_page.dart';
@@ -137,8 +138,9 @@ class AppRouter {
       GoRoute(
         path: '/forgot-password',
         name: RouteNames.forgotPassword,
-        builder: (context, state) => const Scaffold(
-          body: Center(child: Text('Forgot Password Screen')),
+        builder: (context, state) => BlocProvider(
+          create: (context) => getIt<AuthBloc>(),
+          child: const ForgotPasswordPage(),
         ),
       ),
       GoRoute(

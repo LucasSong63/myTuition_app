@@ -11,7 +11,6 @@ class OpenAIService {
 
   static const String baseUrl = 'https://api.openai.com/v1';
 
-  // KEEP your original emoji-friendly prompt!
   static const String assistantPrompt = '''
 You are a helpful AI tutor for primary school students (ages 6-12) in Malaysia. Your role is to:
 
