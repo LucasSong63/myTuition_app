@@ -144,17 +144,22 @@ class Payment extends Equatable {
   double getOutstandingAmount() {
     double outstanding = amount;
 
-    // Subtract discount if any
+    // Subtract total discount applied
     if (discount != null) {
       outstanding -= discount!;
     }
 
-    // Subtract amount paid if this is a partial payment
-    if (status == 'partial' && amountPaid != null) {
+    // Subtract total amount paid so far
+    if (amountPaid != null) {
       outstanding -= amountPaid!;
     }
 
     // Ensure we don't return a negative value
     return outstanding > 0 ? outstanding : 0;
+  }
+
+// ADD this helper method to Payment class
+  bool isFullyPaid() {
+    return getOutstandingAmount() <= 0;
   }
 }

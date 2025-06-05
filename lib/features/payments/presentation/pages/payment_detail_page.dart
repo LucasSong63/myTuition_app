@@ -58,7 +58,7 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
 
   void _updateCalculation() {
     setState(() {
-      // Parse amount paid and discount
+      // Parse amount paid and discount for this transaction
       _amountPaid = double.tryParse(_amountController.text) ?? 0.0;
       _discount = double.tryParse(_discountController.text) ?? 0.0;
 
@@ -68,19 +68,25 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
         _discountController.text = _discount.toStringAsFixed(2);
       }
 
-      // Calculate outstanding
-      _outstandingAmount = widget.payment.amount - _amountPaid - _discount;
+      // Calculate outstanding amount AFTER this payment
+      // Start with current outstanding from the payment entity
+      double currentOutstanding = widget.payment.getOutstandingAmount();
+
+      // Subtract this transaction's amount and discount
+      _outstandingAmount = currentOutstanding - _amountPaid - _discount;
+
+      // Ensure outstanding doesn't go negative
       if (_outstandingAmount < 0) {
         _outstandingAmount = 0.0;
       }
 
-      // Determine payment status
+      // Determine payment status after this transaction
       if (_outstandingAmount <= 0) {
         _paymentStatus = 'paid';
       } else if (_amountPaid > 0) {
         _paymentStatus = 'partial';
       } else {
-        _paymentStatus = 'unpaid';
+        _paymentStatus = widget.payment.status; // Keep current status
       }
     });
   }
@@ -392,10 +398,18 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
               child: Column(
                 children: [
                   _buildSummaryRow('Total Amount', widget.payment.amount),
-                  _buildSummaryRow('Amount Paid', _amountPaid),
-                  _buildSummaryRow('Discount', _discount),
+                  _buildSummaryRow(
+                      'Previously Paid', widget.payment.amountPaid ?? 0.0),
+                  _buildSummaryRow(
+                      'Previous Discount', widget.payment.discount ?? 0.0),
+                  _buildSummaryRow('Current Outstanding',
+                      widget.payment.getOutstandingAmount(),
+                      color: AppColors.warning),
                   const Divider(height: 16),
-                  _buildSummaryRow('Outstanding', _outstandingAmount,
+                  _buildSummaryRow('This Payment', _amountPaid),
+                  _buildSummaryRow('This Discount', _discount),
+                  const Divider(height: 16),
+                  _buildSummaryRow('New Outstanding', _outstandingAmount,
                       highlight: true,
                       color: _outstandingAmount > 0
                           ? AppColors.error
@@ -404,7 +418,7 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
                   Row(
                     children: [
                       Text(
-                        'Status: ',
+                        'New Status: ',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       Container(

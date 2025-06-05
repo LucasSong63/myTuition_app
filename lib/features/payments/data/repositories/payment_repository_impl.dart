@@ -105,22 +105,24 @@ class PaymentRepositoryImpl implements PaymentRepository {
       {double discount = 0.0}) async {
     // Start a batch to ensure both operations complete
     final batch = _firestore.batch();
-
-    // Update the payment record
     final paymentRef = _firestore.collection('payments').doc(payment.id);
-
     final DateTime now = DateTime.now();
     final String previousStatus = payment.status;
 
-    // Determine new status based on payment amount and discount
-    final double totalDue = payment.amount;
-    final double totalPaid = amount;
-    final double totalDiscount = discount;
+    // Get current cumulative amounts (from existing payment record)
+    double currentAmountPaid = payment.amountPaid ?? 0.0;
+    double currentDiscount = payment.discount ?? 0.0;
 
+    // Calculate new cumulative amounts
+    double newTotalAmountPaid = currentAmountPaid + amount;
+    double newTotalDiscount = currentDiscount + discount;
+    double totalDue = payment.amount;
+
+    // Determine status based on cumulative payments
     String newStatus;
-    if (totalPaid + totalDiscount >= totalDue) {
+    if (newTotalAmountPaid + newTotalDiscount >= totalDue) {
       newStatus = 'paid';
-    } else if (totalPaid > 0) {
+    } else if (newTotalAmountPaid > 0) {
       newStatus = 'partial';
     } else {
       newStatus = 'unpaid';
@@ -130,36 +132,29 @@ class PaymentRepositoryImpl implements PaymentRepository {
     final Map<String, dynamic> paymentUpdate = {
       'status': newStatus,
       'updatedAt': Timestamp.fromDate(now),
+      'amountPaid': newTotalAmountPaid, // Cumulative amount paid
+      'discount': newTotalDiscount, // Cumulative discount
     };
 
-    // Add discount field if there is a discount
-    if (discount > 0) {
-      paymentUpdate['discount'] = discount;
-    }
-
-    // Add paidDate if payment is complete or partial
-    if (newStatus == 'paid' || newStatus == 'partial') {
+    // Add paidDate when payment is complete
+    if (newStatus == 'paid') {
       paymentUpdate['paidDate'] = Timestamp.fromDate(now);
     }
 
-    // Add remarks if provided
+    // Add remarks if provided (this will be the latest remark)
     if (remarks.isNotEmpty) {
       paymentUpdate['remarks'] = remarks;
     }
 
-    // Add amountPaid field to track partial payments
-    if (newStatus == 'partial') {
-      paymentUpdate['amountPaid'] = amount;
-    }
-
     batch.update(paymentRef, paymentUpdate);
 
-    // Create payment history record
+    // Create payment history record for this specific transaction
     final historyRef = _firestore.collection('payment_history').doc();
     Map<String, dynamic> historyData = {
       'paymentId': payment.id,
       'studentId': payment.studentId,
-      'amount': amount,
+      'amount': amount, // This transaction's amount
+      'discount': discount, // This transaction's discount
       'previousStatus': previousStatus,
       'newStatus': newStatus,
       'date': Timestamp.fromDate(now),
@@ -167,16 +162,13 @@ class PaymentRepositoryImpl implements PaymentRepository {
       'createdAt': Timestamp.fromDate(now),
       'month': payment.month,
       'year': payment.year,
+      // Track cumulative amounts for history tracking
+      'cumulativeAmountPaid': newTotalAmountPaid,
+      'cumulativeDiscount': newTotalDiscount,
     };
 
-    // Add remarks if provided
     if (remarks.isNotEmpty) {
       historyData['remarks'] = remarks;
-    }
-
-    // Add discount field if there is a discount
-    if (discount > 0) {
-      historyData['discount'] = discount;
     }
 
     batch.set(historyRef, historyData);
@@ -220,65 +212,76 @@ class PaymentRepositoryImpl implements PaymentRepository {
     final now = DateTime.now();
 
     for (final payment in payments) {
-      // Calculate discount for each payment
-      double paymentDiscount = 0.0;
-      if (discount > 0) {
-        // Apply the same discount percentage to each payment
-        paymentDiscount = (discount / payments.length);
+      // Get current cumulative amounts
+      double currentAmountPaid = payment.amountPaid ?? 0.0;
+      double currentDiscount = payment.discount ?? 0.0;
+
+      // Calculate outstanding amount for this payment
+      double outstandingAmount =
+          payment.amount - currentAmountPaid - currentDiscount;
+
+      // For bulk "mark as paid", we want to pay the full outstanding amount
+      // The discount parameter is applied per payment (not total)
+      double paymentAmount = outstandingAmount - discount;
+
+      // Ensure we don't have negative payment amounts
+      if (paymentAmount < 0) {
+        paymentAmount = 0;
       }
 
-      // Determine if payment is fully paid with discount
-      final bool isFullyPaid = payment.amount <= paymentDiscount;
+      // Calculate new cumulative totals
+      double newTotalAmountPaid = currentAmountPaid + paymentAmount;
+      double newTotalDiscount = currentDiscount + discount;
+
+      // Determine new status - should be 'paid' since we're paying outstanding
+      String newStatus;
+      if (newTotalAmountPaid + newTotalDiscount >= payment.amount) {
+        newStatus = 'paid';
+      } else if (newTotalAmountPaid > 0) {
+        newStatus = 'partial';
+      } else {
+        newStatus = 'unpaid';
+      }
 
       // Update payment record
       final paymentRef = _firestore.collection('payments').doc(payment.id);
-
       final Map<String, dynamic> paymentUpdate = {
-        'status': isFullyPaid ? 'paid' : 'partial',
-        'paidDate': Timestamp.fromDate(now),
+        'status': newStatus,
+        'amountPaid': newTotalAmountPaid,
+        'discount': newTotalDiscount,
         'updatedAt': Timestamp.fromDate(now),
       };
+
+      // Set paidDate for completed payments
+      if (newStatus == 'paid') {
+        paymentUpdate['paidDate'] = Timestamp.fromDate(now);
+      }
 
       // Add remarks if provided
       if (remarks.isNotEmpty) {
         paymentUpdate['remarks'] = remarks;
       }
 
-      // Add discount field if there is a discount
-      if (paymentDiscount > 0) {
-        paymentUpdate['discount'] = paymentDiscount;
-      }
-
       batch.update(paymentRef, paymentUpdate);
 
       // Create payment history record
       final historyRef = _firestore.collection('payment_history').doc();
-
-      Map<String, dynamic> historyData = {
+      batch.set(historyRef, {
         'paymentId': payment.id,
         'studentId': payment.studentId,
-        'amount':
-            isFullyPaid ? payment.amount : (payment.amount - paymentDiscount),
+        'amount': paymentAmount,
+        'discount': discount,
         'previousStatus': payment.status,
-        'newStatus': isFullyPaid ? 'paid' : 'partial',
+        'newStatus': newStatus,
         'date': Timestamp.fromDate(now),
         'recordedBy': recordedBy,
         'createdAt': Timestamp.fromDate(now),
         'month': payment.month,
         'year': payment.year,
-      };
-
-      // Add remarks if provided
-      if (remarks.isNotEmpty) {
-        historyData['remarks'] = remarks;
-      }
-
-      // Add discount field if there is a discount
-      if (paymentDiscount > 0) {
-        historyData['discount'] = paymentDiscount;
-      }
-
-      batch.set(historyRef, historyData);
+        'cumulativeAmountPaid': newTotalAmountPaid,
+        'cumulativeDiscount': newTotalDiscount,
+        'remarks': remarks.isNotEmpty ? remarks : null,
+      });
     }
 
     // Commit the batch
@@ -423,25 +426,8 @@ class PaymentRepositoryImpl implements PaymentRepository {
       double total = 0;
       for (var doc in querySnapshot.docs) {
         final payment = Payment.fromFirestore(doc);
-        final Map<String, dynamic> data = doc.data();
-
-        // Calculate outstanding amount considering discount and partial payments
-        double outstanding = payment.amount;
-
-        // Subtract discount if any
-        if (data.containsKey('discount')) {
-          outstanding -= (data['discount'] as num).toDouble();
-        }
-
-        // Subtract amount paid if this is a partial payment
-        if (payment.status == 'partial' && data.containsKey('amountPaid')) {
-          outstanding -= (data['amountPaid'] as num).toDouble();
-        }
-
-        // Only add to total if there is still an outstanding amount
-        if (outstanding > 0) {
-          total += outstanding;
-        }
+        // Use the entity method for consistency
+        total += payment.getOutstandingAmount();
       }
 
       return total;
@@ -453,58 +439,42 @@ class PaymentRepositoryImpl implements PaymentRepository {
   @override
   Future<Map<String, dynamic>> getStudentPaymentStats(String studentId) async {
     try {
-      final totalOutstanding = await calculateTotalOutstanding(studentId);
-
-      // Get count of paid, unpaid, and partial payments
-      final paidQuery = _firestore
+      // Get all payments for this student
+      final allPaymentsQuery = await _firestore
           .collection('payments')
           .where('studentId', isEqualTo: studentId)
-          .where('status', isEqualTo: 'paid');
+          .get();
 
-      final unpaidQuery = _firestore
-          .collection('payments')
-          .where('studentId', isEqualTo: studentId)
-          .where('status', isEqualTo: 'unpaid');
-
-      final partialQuery = _firestore
-          .collection('payments')
-          .where('studentId', isEqualTo: studentId)
-          .where('status', isEqualTo: 'partial');
-
-      final paidSnapshot = await paidQuery.get();
-      final unpaidSnapshot = await unpaidQuery.get();
-      final partialSnapshot = await partialQuery.get();
-
-      // Calculate total paid amount
+      double totalOutstanding = 0;
       double totalPaid = 0;
       double totalDiscount = 0;
+      int paidCount = 0;
+      int unpaidCount = 0;
+      int partialCount = 0;
 
-      // Calculate from paid payments
-      for (var doc in paidSnapshot.docs) {
-        final data = doc.data();
+      for (var doc in allPaymentsQuery.docs) {
         final payment = Payment.fromFirestore(doc);
 
-        // Add the full amount to total paid
-        totalPaid += payment.amount;
-
-        // Track discounts separately
-        if (data.containsKey('discount')) {
-          totalDiscount += (data['discount'] as num).toDouble();
+        // Count by status
+        switch (payment.status) {
+          case 'paid':
+            paidCount++;
+            totalPaid += payment.amount;
+            break;
+          case 'unpaid':
+            unpaidCount++;
+            totalOutstanding += payment.amount;
+            break;
+          case 'partial':
+            partialCount++;
+            totalPaid += (payment.amountPaid ?? 0);
+            totalOutstanding += payment.getOutstandingAmount();
+            break;
         }
-      }
 
-      // Add partial payments to total paid
-      for (var doc in partialSnapshot.docs) {
-        final data = doc.data();
-
-        // Add partial amount to total paid
-        if (data.containsKey('amountPaid')) {
-          totalPaid += (data['amountPaid'] as num).toDouble();
-        }
-
-        // Track discounts
-        if (data.containsKey('discount')) {
-          totalDiscount += (data['discount'] as num).toDouble();
+        // Add discount to total (if any)
+        if (payment.discount != null) {
+          totalDiscount += payment.discount!;
         }
       }
 
@@ -512,9 +482,9 @@ class PaymentRepositoryImpl implements PaymentRepository {
         'totalOutstanding': totalOutstanding,
         'totalPaid': totalPaid,
         'totalDiscount': totalDiscount,
-        'paidCount': paidSnapshot.docs.length,
-        'unpaidCount': unpaidSnapshot.docs.length,
-        'partialCount': partialSnapshot.docs.length,
+        'paidCount': paidCount,
+        'unpaidCount': unpaidCount,
+        'partialCount': partialCount,
       };
     } catch (e) {
       throw Exception('Failed to get payment stats: $e');
