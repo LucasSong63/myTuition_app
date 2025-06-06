@@ -178,10 +178,9 @@ class _TutorProfilePageState extends State<TutorProfilePage> {
       child: SafeArea(
         top: false, // Don't add extra top padding since we have AppBar
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 4.h),
+          padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 2.h),
           child: Column(
             children: [
-              // Profile Picture - Fixed to show actual image
               _buildProfilePicture(user, isLoading),
 
               SizedBox(height: 2.5.h),
@@ -205,7 +204,7 @@ class _TutorProfilePageState extends State<TutorProfilePage> {
               Text(
                 user.email ?? '',
                 style: TextStyle(
-                  fontSize: 14.sp,
+                  fontSize: 15.sp,
                   color: AppColors.white.withOpacity(0.9),
                 ),
                 textAlign: TextAlign.center,
@@ -434,7 +433,7 @@ class _TutorProfilePageState extends State<TutorProfilePage> {
         Text(
           value,
           style: TextStyle(
-            fontSize: 16.sp,
+            fontSize: 18.sp,
             fontWeight: FontWeight.bold,
             color: AppColors.primaryBlue,
           ),
@@ -443,7 +442,7 @@ class _TutorProfilePageState extends State<TutorProfilePage> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 11.sp,
+            fontSize: 14.sp,
             color: AppColors.textMedium,
           ),
           textAlign: TextAlign.center,
@@ -508,7 +507,7 @@ class _TutorProfilePageState extends State<TutorProfilePage> {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 14.sp,
+              fontSize: 15.sp,
               fontWeight: FontWeight.w500,
               color: AppColors.textMedium,
             ),
@@ -519,7 +518,7 @@ class _TutorProfilePageState extends State<TutorProfilePage> {
           child: Text(
             value,
             style: TextStyle(
-              fontSize: 14.sp,
+              fontSize: 15.sp,
               color: AppColors.textDark,
             ),
           ),

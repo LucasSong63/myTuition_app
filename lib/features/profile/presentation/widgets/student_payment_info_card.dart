@@ -1,5 +1,3 @@
-// lib/features/payments/presentation/widgets/student_payment_info_card.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
@@ -31,51 +29,7 @@ class StudentPaymentInfoCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.payment,
-                    color: AppColors.success,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Payment Methods',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    'Active',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.success,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
+            // Removed the "Payment Methods" header section since it's redundant
 
             // Info message
             Container(
@@ -238,6 +192,7 @@ class StudentPaymentInfoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header with bank info and copy button
           Row(
             children: [
               Container(
@@ -254,26 +209,13 @@ class StudentPaymentInfoCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      account.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      account.accountHolder,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textMedium,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  account.name,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
                 ),
               ),
               IconButton(
@@ -288,41 +230,23 @@ class StudentPaymentInfoCard extends StatelessWidget {
               ),
             ],
           ),
+
+          const SizedBox(height: 16),
+
+          // Account Holder - Column Layout
+          _buildDetailItem(
+            'Account Holder:',
+            account.accountHolder,
+            Icons.person,
+          ),
+
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.backgroundLight,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.numbers,
-                  color: AppColors.textMedium,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Account Number:',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textMedium,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    account.accountNumber,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+
+          // Account Number - Column Layout
+          _buildDetailItem(
+            'Account Number:',
+            account.accountNumber,
+            Icons.numbers,
           ),
         ],
       ),
@@ -343,6 +267,7 @@ class StudentPaymentInfoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header with wallet info and copy button
           Row(
             children: [
               Container(
@@ -359,26 +284,13 @@ class StudentPaymentInfoCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      wallet.type,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      wallet.name,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textMedium,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  wallet.type,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
                 ),
               ),
               IconButton(
@@ -392,41 +304,23 @@ class StudentPaymentInfoCard extends StatelessWidget {
               ),
             ],
           ),
+
+          const SizedBox(height: 16),
+
+          // Account Name - Column Layout
+          _buildDetailItem(
+            'Account Name:',
+            wallet.name,
+            Icons.person,
+          ),
+
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.backgroundLight,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.phone_android,
-                  color: AppColors.textMedium,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Number/ID:',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textMedium,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    wallet.number,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+
+          // Number/ID - Column Layout
+          _buildDetailItem(
+            'Number/ID:',
+            wallet.number,
+            Icons.phone_android,
           ),
         ],
       ),
@@ -445,26 +339,27 @@ class StudentPaymentInfoCard extends StatelessWidget {
           color: AppColors.accentTeal.withOpacity(0.2),
         ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.accentTeal.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.payment,
-              color: AppColors.accentTeal,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+          // Header with method name and copy button
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.accentTeal.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.payment,
+                  color: AppColors.accentTeal,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
                   method.name,
                   style: const TextStyle(
                     fontSize: 16,
@@ -472,28 +367,70 @@ class StudentPaymentInfoCard extends StatelessWidget {
                     color: AppColors.textDark,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  method.details,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textMedium,
-                  ),
+              ),
+              IconButton(
+                onPressed: () => _copyToClipboard(context, method.details),
+                icon: const Icon(
+                  Icons.copy,
+                  color: AppColors.accentTeal,
+                  size: 20,
                 ),
-              ],
-            ),
+                tooltip: 'Copy details',
+              ),
+            ],
           ),
-          IconButton(
-            onPressed: () => _copyToClipboard(context, method.details),
-            icon: const Icon(
-              Icons.copy,
-              color: AppColors.accentTeal,
-              size: 20,
-            ),
-            tooltip: 'Copy details',
+
+          const SizedBox(height: 16),
+
+          // Details - Column Layout
+          _buildDetailItem(
+            'Details:',
+            method.details,
+            Icons.info,
           ),
         ],
       ),
+    );
+  }
+
+  // New helper method to build detail items in column format
+  Widget _buildDetailItem(String label, String value, IconData icon) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Label row with icon
+        Row(
+          children: [
+            Icon(
+              icon,
+              color: AppColors.textMedium,
+              size: 16,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textMedium,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        // Value (indented to align with text, not icon)
+        Padding(
+          padding: const EdgeInsets.only(left: 24), // 16 (icon) + 8 (spacing)
+          child: SelectableText(
+            value,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textDark,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

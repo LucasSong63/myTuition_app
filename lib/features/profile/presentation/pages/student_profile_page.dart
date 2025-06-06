@@ -171,7 +171,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
       child: SafeArea(
         top: false, // Don't add extra top padding since we have AppBar
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 4.h),
+          padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 2.h),
           child: Column(
             children: [
               // Profile Picture - Fixed to show actual image
@@ -422,13 +422,13 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
       children: [
         Text(
           emoji,
-          style: TextStyle(fontSize: 20.sp),
+          style: TextStyle(fontSize: 22.sp),
         ),
         SizedBox(height: 1.h),
         Text(
           value,
           style: TextStyle(
-            fontSize: 16.sp,
+            fontSize: 18.sp,
             fontWeight: FontWeight.bold,
             color: AppColors.primaryBlue,
           ),
@@ -437,7 +437,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 11.sp,
+            fontSize: 14.sp,
             color: AppColors.textMedium,
           ),
           textAlign: TextAlign.center,
@@ -502,7 +502,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 14.sp,
+              fontSize: 15.sp,
               fontWeight: FontWeight.w500,
               color: AppColors.textMedium,
             ),
