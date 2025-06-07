@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:qr_flutter/qr_flutter.dart'; // Add this import
 import 'package:mytuition/features/profile/presentation/widgets/edit_profile_bottom_sheet.dart';
 import 'package:mytuition/features/profile/presentation/widgets/profile_header.dart';
 import 'package:mytuition/features/profile/presentation/widgets/student_payment_info_card.dart';
@@ -59,7 +60,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Text('My Profile'),
         backgroundColor: AppColors.primaryBlue,
         foregroundColor: AppColors.white,
         elevation: 0,
@@ -67,7 +68,6 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
           icon: const Icon(Icons.arrow_back, color: AppColors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        // Removed reload and settings buttons as requested
       ),
       body: BlocConsumer<ProfileBloc, ProfileState>(
         listener: (context, state) {
@@ -118,6 +118,11 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            SizedBox(height: 2.h),
+
+                            // Student ID QR Code Section (NEW)
+                            _buildStudentIdQrSection(user),
+
                             SizedBox(height: 2.5.h),
 
                             // Personal Information Card
@@ -148,6 +153,202 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
             },
           );
         },
+      ),
+    );
+  }
+
+  // NEW: Student ID QR Code Section
+  Widget _buildStudentIdQrSection(user) {
+    final studentId = user.studentId ?? 'Not assigned';
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.w)),
+      child: Padding(
+        padding: EdgeInsets.all(5.w),
+        child: Column(
+          children: [
+            // Header
+            Row(
+              children: [
+                Icon(
+                  Icons.qr_code,
+                  color: AppColors.primaryBlue,
+                  size: 6.w,
+                ),
+                SizedBox(width: 3.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Student ID',
+                        style: TextStyle(
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                      SizedBox(height: 0.5.h),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.badge,
+                            color: AppColors.primaryBlue,
+                            size: 4.w,
+                          ),
+                          SizedBox(width: 2.w),
+                          Text(
+                            studentId,
+                            style: TextStyle(
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primaryBlue,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            SizedBox(height: 3.h),
+
+            // QR Code
+            if (studentId != 'Not assigned') ...[
+              GestureDetector(
+                onTap: () => _showFullScreenQrCode(context, studentId),
+                child: Container(
+                  padding: EdgeInsets.all(4.w),
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(3.w),
+                    border: Border.all(
+                      color: AppColors.primaryBlue.withOpacity(0.2),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 1.w,
+                        offset: Offset(0, 0.5.h),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      QrImageView(
+                        data: studentId,
+                        version: QrVersions.auto,
+                        size: 35.w,
+                        backgroundColor: AppColors.white,
+                        foregroundColor: AppColors.textDark,
+                        errorCorrectionLevel: QrErrorCorrectLevel.M,
+                        embeddedImage: null, // Can add logo if needed
+                      ),
+                      SizedBox(height: 2.h),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.fullscreen,
+                            color: AppColors.primaryBlue,
+                            size: 4.w,
+                          ),
+                          SizedBox(width: 2.w),
+                          Text(
+                            'Tap to view full screen',
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: AppColors.primaryBlue,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 2.h),
+
+              // Instruction text
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryBlue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(2.w),
+                  border: Border.all(
+                    color: AppColors.primaryBlue.withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: AppColors.primaryBlue,
+                      size: 5.w,
+                    ),
+                    SizedBox(width: 3.w),
+                    Expanded(
+                      child: Text(
+                        'Show this QR code to your tutor for attendance marking',
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          color: AppColors.primaryBlue,
+                          height: 1.4,
+                        ),
+                        textAlign: TextAlign.left,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              // No student ID assigned state
+              Container(
+                padding: EdgeInsets.all(6.w),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundDark.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(3.w),
+                  border: Border.all(
+                    color: AppColors.backgroundDark,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.qr_code_scanner_outlined,
+                      size: 12.w,
+                      color: AppColors.textMedium,
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      'QR Code Not Available',
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    SizedBox(height: 1.h),
+                    Text(
+                      'Your Student ID has not been assigned yet',
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        color: AppColors.textMedium,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -682,6 +883,134 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
         doubleTapZoomable: true,
       );
     }
+  }
+
+  void _showFullScreenQrCode(BuildContext context, String studentId) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog.fullscreen(
+        backgroundColor: Colors.black87,
+        child: Scaffold(
+          backgroundColor: Colors.black87,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(
+                Icons.close,
+                color: AppColors.white,
+                size: 28,
+              ),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            title: Text(
+              'Student ID: $studentId',
+              style: const TextStyle(
+                color: AppColors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            centerTitle: true,
+          ),
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Full screen QR code
+                Container(
+                  padding: EdgeInsets.all(6.w),
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(4.w),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 3.w,
+                        offset: Offset(0, 1.h),
+                      ),
+                    ],
+                  ),
+                  child: QrImageView(
+                    data: studentId,
+                    version: QrVersions.auto,
+                    size: 70.w,
+                    // Much larger for full screen
+                    backgroundColor: AppColors.white,
+                    foregroundColor: AppColors.textDark,
+                    errorCorrectionLevel: QrErrorCorrectLevel.M,
+                  ),
+                ),
+
+                SizedBox(height: 4.h),
+
+                // Instructions
+                Container(
+                  margin: EdgeInsets.symmetric(horizontal: 8.w),
+                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
+                  decoration: BoxDecoration(
+                    color: AppColors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(3.w),
+                    border: Border.all(
+                      color: AppColors.white.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.qr_code_scanner,
+                        color: AppColors.white,
+                        size: 8.w,
+                      ),
+                      SizedBox(height: 2.h),
+                      Text(
+                        'Show this QR code to your tutor',
+                        style: TextStyle(
+                          fontSize: 18.sp,
+                          color: AppColors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 1.h),
+                      Text(
+                        'Your tutor will scan this code to mark your attendance',
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          color: AppColors.white.withOpacity(0.8),
+                          height: 1.4,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(height: 4.h),
+
+                // Close button
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                  label: const Text('Close'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.white,
+                    foregroundColor: AppColors.textDark,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 8.w,
+                      vertical: 1.5.h,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(3.w),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _showEditProfileBottomSheet(BuildContext context, user) {
