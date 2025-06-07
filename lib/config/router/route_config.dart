@@ -11,8 +11,6 @@ import 'package:mytuition/features/auth/presentation/pages/login_page.dart';
 import 'package:mytuition/features/auth/presentation/pages/register_page.dart';
 import 'package:mytuition/features/auth/presentation/pages/registration_details_page.dart';
 import 'package:mytuition/features/auth/presentation/pages/registration_list_page.dart';
-import 'package:mytuition/features/auth/presentation/pages/student_dashboard_page.dart'; // New import
-import 'package:mytuition/features/auth/presentation/pages/tutor_dashboard_page.dart'; // New import
 import 'package:get_it/get_it.dart';
 import 'package:mytuition/features/courses/presentation/bloc/course_bloc.dart';
 import 'package:mytuition/features/courses/presentation/bloc/subject_cost_bloc.dart';
@@ -21,6 +19,7 @@ import 'package:mytuition/features/courses/presentation/pages/tutor_course_detai
 import 'package:mytuition/features/courses/presentation/pages/courses_page.dart';
 import 'package:mytuition/features/courses/presentation/pages/subject_cost_configuration_page.dart';
 import 'package:mytuition/features/courses/presentation/pages/tutor_courses_page.dart';
+
 import 'package:mytuition/features/notifications/presentation/pages/notification_list_page.dart'; // New import
 import 'package:mytuition/features/payments/presentation/bloc/payment_bloc.dart';
 import 'package:mytuition/features/payments/presentation/bloc/payment_info_bloc.dart';
@@ -29,6 +28,8 @@ import 'package:mytuition/features/payments/presentation/pages/payment_managemen
 import 'package:mytuition/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:mytuition/features/profile/presentation/pages/student_profile_page.dart';
 import 'package:mytuition/features/profile/presentation/pages/tutor_profile_page.dart';
+import 'package:mytuition/features/student_dashboard/presentation/bloc/student_dashboard_bloc.dart';
+import 'package:mytuition/features/student_dashboard/presentation/pages/student_dashboard_page.dart';
 import 'package:mytuition/features/student_management/presentation/bloc/student_management_bloc.dart';
 import 'package:mytuition/features/student_management/presentation/pages/student_detail_page.dart';
 import 'package:mytuition/features/student_management/presentation/pages/students_page.dart';
@@ -42,6 +43,8 @@ import 'package:mytuition/features/attendance/presentation/pages/attendance_hist
 import 'package:mytuition/features/attendance/presentation/pages/take_attendance_page.dart';
 import 'package:mytuition/features/ai_chat/presentation/pages/ai_chat_page.dart';
 import 'package:mytuition/features/ai_chat/presentation/bloc/chat_bloc.dart';
+import 'package:mytuition/features/tutor_dashboard/presentation/bloc/dashboard_bloc.dart';
+import 'package:mytuition/features/tutor_dashboard/presentation/pages/tutor_dashboard_page.dart';
 import '../../core/services/fcm_service.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_event.dart';
@@ -194,7 +197,12 @@ class AppRouter {
               final studentId = authState is Authenticated
                   ? authState.user.studentId ?? ''
                   : '';
-              return StudentDashboardPage(studentId: studentId);
+
+              // UPDATED: Use new StudentDashboardPage with BLoC
+              return BlocProvider<StudentDashboardBloc>(
+                create: (context) => getIt<StudentDashboardBloc>(),
+                child: StudentDashboardPage(studentId: studentId),
+              );
             },
             routes: [
               // Add profile route
@@ -412,7 +420,10 @@ class AppRouter {
           GoRoute(
             path: '/tutor',
             name: RouteNames.tutorRoot,
-            builder: (context, state) => const TutorDashboardPage(),
+            builder: (context, state) => BlocProvider<DashboardBloc>(
+              create: (context) => getIt<DashboardBloc>(),
+              child: const TutorDashboardPage(),
+            ),
             routes: [
               // Add profile route
               GoRoute(

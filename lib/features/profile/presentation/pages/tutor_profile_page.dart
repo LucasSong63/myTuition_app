@@ -6,6 +6,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mytuition/config/router/route_names.dart';
+import 'package:mytuition/features/auth/presentation/bloc/auth_event.dart';
+import 'package:mytuition/features/profile/presentation/widgets/edit_profile_bottom_sheet.dart';
 import 'package:mytuition/features/profile/presentation/widgets/profile_header.dart';
 import 'package:sizer/sizer.dart';
 import 'package:easy_image_viewer/easy_image_viewer.dart';
@@ -116,11 +118,6 @@ class _TutorProfilePageState extends State<TutorProfilePage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             SizedBox(height: 2.h),
-
-                            // Quick Stats Card
-                            _buildQuickStatsCard(),
-
-                            SizedBox(height: 2.5.h),
 
                             // Personal Information Card
                             _buildPersonalInfoCard(user),
@@ -372,82 +369,6 @@ class _TutorProfilePageState extends State<TutorProfilePage> {
         fontWeight: FontWeight.bold,
         color: AppColors.textDark,
       ),
-    );
-  }
-
-  Widget _buildQuickStatsCard() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.w)),
-      child: Padding(
-        padding: EdgeInsets.all(5.w),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.dashboard,
-                  color: AppColors.primaryBlue,
-                  size: 6.w,
-                ),
-                SizedBox(width: 3.w),
-                Text(
-                  'Teaching Overview',
-                  style: TextStyle(
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 2.5.h),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem('👥', 'Students', '24'),
-                ),
-                Expanded(
-                  child: _buildStatItem('📚', 'Classes', '8'),
-                ),
-                Expanded(
-                  child: _buildStatItem('📝', 'Tasks', '32'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String emoji, String label, String value) {
-    return Column(
-      children: [
-        Text(
-          emoji,
-          style: TextStyle(fontSize: 20.sp),
-        ),
-        SizedBox(height: 1.h),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 18.sp,
-            fontWeight: FontWeight.bold,
-            color: AppColors.primaryBlue,
-          ),
-        ),
-        SizedBox(height: 0.5.h),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14.sp,
-            color: AppColors.textMedium,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
     );
   }
 
@@ -859,7 +780,7 @@ class _TutorProfilePageState extends State<TutorProfilePage> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              // Add logout event to AuthBloc
+              context.read<AuthBloc>().add(LogoutEvent());
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,

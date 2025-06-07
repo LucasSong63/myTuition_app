@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mytuition/features/profile/presentation/widgets/edit_profile_bottom_sheet.dart';
 import 'package:mytuition/features/profile/presentation/widgets/profile_header.dart';
 import 'package:mytuition/features/profile/presentation/widgets/student_payment_info_card.dart';
 import 'package:mytuition/features/profile/presentation/widgets/profile_picture_widget.dart';
@@ -16,6 +17,8 @@ import 'package:mytuition/features/payments/presentation/bloc/payment_info_bloc.
 import 'package:mytuition/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:mytuition/features/profile/presentation/bloc/profile_event.dart';
 import 'package:mytuition/features/profile/presentation/bloc/profile_state.dart';
+
+import '../../../auth/presentation/bloc/auth_event.dart';
 
 class StudentProfilePage extends StatefulWidget {
   const StudentProfilePage({Key? key}) : super(key: key);
@@ -115,11 +118,6 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            SizedBox(height: 2.h),
-
-                            // Quick Stats Card
-                            _buildQuickStatsCard(),
-
                             SizedBox(height: 2.5.h),
 
                             // Personal Information Card
@@ -366,83 +364,6 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
         fontWeight: FontWeight.bold,
         color: AppColors.textDark,
       ),
-    );
-  }
-
-  // Updated Quick Stats for students with more relevant metrics
-  Widget _buildQuickStatsCard() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.w)),
-      child: Padding(
-        padding: EdgeInsets.all(5.w),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.insights,
-                  color: AppColors.primaryBlue,
-                  size: 6.w,
-                ),
-                SizedBox(width: 3.w),
-                Text(
-                  'Quick Overview',
-                  style: TextStyle(
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 2.5.h),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem('📚', 'Courses', '3'),
-                ),
-                Expanded(
-                  child: _buildStatItem('📊', 'Attendance', '92%'),
-                ),
-                Expanded(
-                  child: _buildStatItem('🤖', 'AI Questions', '15/20'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String emoji, String label, String value) {
-    return Column(
-      children: [
-        Text(
-          emoji,
-          style: TextStyle(fontSize: 22.sp),
-        ),
-        SizedBox(height: 1.h),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 18.sp,
-            fontWeight: FontWeight.bold,
-            color: AppColors.primaryBlue,
-          ),
-        ),
-        SizedBox(height: 0.5.h),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14.sp,
-            color: AppColors.textMedium,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
     );
   }
 
@@ -905,7 +826,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              // Add logout event to AuthBloc
+              context.read<AuthBloc>().add(LogoutEvent());
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,

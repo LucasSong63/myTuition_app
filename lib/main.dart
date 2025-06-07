@@ -8,9 +8,13 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get_it/get_it.dart';
-import 'package:go_router/go_router.dart';
 import 'package:mytuition/core/services/fcm_service.dart';
 import 'package:mytuition/features/attendance/domain/usecases/get_course_schedules_usecase.dart';
+import 'package:mytuition/features/student_dashboard/data/repositories/student_dashboard_repository_impl.dart';
+import 'package:mytuition/features/student_dashboard/domain/repositories/student_dashboard_repository.dart';
+import 'package:mytuition/features/student_dashboard/domain/usecases/get_student_dashboard_stats_usecase.dart';
+import 'package:mytuition/features/student_dashboard/presentation/bloc/student_dashboard_bloc.dart';
+import 'package:mytuition/features/tutor_dashboard/presentation/bloc/dashboard_bloc.dart';
 import 'package:mytuition/features/notifications/data/repositories/notification_repository_impl.dart';
 import 'package:mytuition/features/notifications/domain/notification_manager.dart';
 import 'package:mytuition/features/notifications/domain/repositories/notification_repository.dart';
@@ -628,6 +632,38 @@ Future<void> initDependencies() async {
       getArchivedSessionsUseCase: getIt<GetArchivedSessionsUseCase>(),
       reactivateSessionUseCase: getIt<ReactivateSessionUseCase>(),
       deleteSessionUseCase: getIt<DeleteSessionUseCase>(),
+    ),
+  );
+
+  // Dashboard BLoC
+  getIt.registerFactory<DashboardBloc>(
+    () => DashboardBloc(
+      getAllStudentsUseCase: getIt<GetAllStudentsUseCase>(),
+      getTutorCoursesUseCase: getIt<GetTutorCoursesUseCase>(),
+      registrationRepository: getIt<RegistrationRepository>(),
+      paymentRepository: getIt<PaymentRepository>(),
+      firestore: FirebaseFirestore.instance,
+    ),
+  );
+
+  // Student Dashboard Repository
+  getIt.registerLazySingleton<StudentDashboardRepository>(
+    () => StudentDashboardRepositoryImpl(FirebaseFirestore.instance),
+  );
+
+  // Student Dashboard Use Cases
+  getIt.registerLazySingleton<GetStudentDashboardStatsUseCase>(
+    () => GetStudentDashboardStatsUseCase(
+      studentDashboardRepository: getIt<StudentDashboardRepository>(),
+      aiUsageRepository: getIt<AIUsageRepository>(),
+    ),
+  );
+
+  // Student Dashboard BLoC (add this with your other BLoC registrations)
+  getIt.registerFactory<StudentDashboardBloc>(
+    () => StudentDashboardBloc(
+      getStudentDashboardStatsUseCase: getIt<GetStudentDashboardStatsUseCase>(),
+      studentDashboardRepository: getIt<StudentDashboardRepository>(),
     ),
   );
 }
