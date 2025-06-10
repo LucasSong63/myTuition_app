@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:mytuition/features/auth/domain/entities/user.dart';
+import '../entities/student_payment_summary.dart';
 
 abstract class ProfileRepository {
   // Update user's profile information
@@ -18,4 +19,7 @@ abstract class ProfileRepository {
 
   // Get full profile data
   Future<User> getProfile(String userId);
+
+  // Get student payment summary with outstanding amounts and recent transactions
+  Future<StudentPaymentSummary> getStudentPaymentSummary(String studentId);
 }

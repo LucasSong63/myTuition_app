@@ -10,6 +10,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mytuition/core/services/fcm_service.dart';
 import 'package:mytuition/features/attendance/domain/usecases/get_course_schedules_usecase.dart';
+import 'package:mytuition/features/profile/domain/usecases/get_student_payment_summary_usecase.dart';
 import 'package:mytuition/features/student_dashboard/data/repositories/student_dashboard_repository_impl.dart';
 import 'package:mytuition/features/student_dashboard/domain/repositories/student_dashboard_repository.dart';
 import 'package:mytuition/features/student_dashboard/domain/usecases/get_student_dashboard_stats_usecase.dart';
@@ -228,6 +229,10 @@ Future<void> initDependencies() async {
     () => RemoveProfilePictureUseCase(getIt<ProfileRepository>()),
   );
 
+  getIt.registerLazySingleton(
+    () => GetStudentPaymentSummaryUseCase(getIt<ProfileRepository>()),
+  );
+
   // BLoCs
   getIt.registerLazySingleton<AuthBloc>(
     () => AuthBloc(
@@ -253,7 +258,8 @@ Future<void> initDependencies() async {
       updateProfileUseCase: getIt<UpdateProfileUseCase>(),
       updateProfilePictureUseCase: getIt<UpdateProfilePictureUseCase>(),
       removeProfilePictureUseCase: getIt<RemoveProfilePictureUseCase>(),
-      authBloc: getIt<AuthBloc>(), // Add AuthBloc dependency
+      authBloc: getIt<AuthBloc>(),
+      getStudentPaymentSummaryUseCase: getIt<GetStudentPaymentSummaryUseCase>(),
     ),
   );
 

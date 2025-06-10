@@ -59,3 +59,14 @@ class LoadProfileEvent extends ProfileEvent {
   @override
   List<Object?> get props => [userId];
 }
+
+class LoadStudentPaymentSummaryEvent extends ProfileEvent {
+  final String studentId;
+
+  const LoadStudentPaymentSummaryEvent({
+    required this.studentId,
+  });
+
+  @override
+  List<Object?> get props => [studentId];
+}

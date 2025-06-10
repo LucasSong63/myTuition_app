@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/usecases/update_profile_usecase.dart';
 import '../../domain/usecases/update_profile_picture_usecase.dart';
 import '../../domain/usecases/remove_profile_picture_usecase.dart';
+import '../../domain/usecases/get_student_payment_summary_usecase.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
 import 'profile_event.dart';
@@ -13,17 +14,20 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   final UpdateProfileUseCase updateProfileUseCase;
   final UpdateProfilePictureUseCase updateProfilePictureUseCase;
   final RemoveProfilePictureUseCase removeProfilePictureUseCase;
+  final GetStudentPaymentSummaryUseCase getStudentPaymentSummaryUseCase;
   final AuthBloc authBloc; // Add AuthBloc reference
 
   ProfileBloc({
     required this.updateProfileUseCase,
     required this.updateProfilePictureUseCase,
     required this.removeProfilePictureUseCase,
+    required this.getStudentPaymentSummaryUseCase,
     required this.authBloc,
   }) : super(ProfileInitial()) {
     on<UpdateProfileEvent>(_onUpdateProfile);
     on<UpdateProfilePictureEvent>(_onUpdateProfilePicture);
     on<RemoveProfilePictureEvent>(_onRemoveProfilePicture);
+    on<LoadStudentPaymentSummaryEvent>(_onLoadStudentPaymentSummary);
   }
 
   Future<void> _onUpdateProfile(
@@ -83,6 +87,20 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           message: 'Profile picture removed successfully'));
     } catch (e) {
       emit(ProfileError(message: e.toString()));
+    }
+  }
+
+  Future<void> _onLoadStudentPaymentSummary(
+    LoadStudentPaymentSummaryEvent event,
+    Emitter<ProfileState> emit,
+  ) async {
+    emit(StudentPaymentSummaryLoading());
+    try {
+      final paymentSummary =
+          await getStudentPaymentSummaryUseCase.execute(event.studentId);
+      emit(StudentPaymentSummaryLoaded(paymentSummary: paymentSummary));
+    } catch (e) {
+      emit(StudentPaymentSummaryError(message: e.toString()));
     }
   }
 }

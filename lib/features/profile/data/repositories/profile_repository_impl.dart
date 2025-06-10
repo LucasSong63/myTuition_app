@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mytuition/features/auth/data/models/user_model.dart';
 import 'package:mytuition/features/auth/domain/entities/user.dart';
 import 'package:mytuition/features/profile/data/datasources/remote/storage_service.dart';
+import 'package:mytuition/features/profile/domain/entities/student_payment_summary.dart';
 import '../../domain/repositories/profile_repository.dart';
 
 class ProfileRepositoryImpl implements ProfileRepository {
@@ -86,6 +87,98 @@ class ProfileRepositoryImpl implements ProfileRepository {
       });
     } catch (e) {
       throw Exception('Failed to get profile: $e');
+    }
+  }
+
+  @override
+  Future<StudentPaymentSummary> getStudentPaymentSummary(
+      String studentId) async {
+    try {
+      // Get outstanding payments (unpaid and partial)
+      final outstandingPaymentsQuery = await _firestore
+          .collection('payments')
+          .where('studentId', isEqualTo: studentId)
+          .where('status', whereIn: ['unpaid', 'partial'])
+          .orderBy('year', descending: true)
+          .orderBy('month', descending: true)
+          .get();
+
+      double totalOutstanding = 0;
+      int unpaidCount = 0;
+      int partialCount = 0;
+      List<OutstandingPayment> outstandingPayments = [];
+
+      for (var doc in outstandingPaymentsQuery.docs) {
+        final data = doc.data();
+        final totalAmount = (data['amount'] ?? 0).toDouble();
+        final amountPaid = (data['amountPaid'] ?? 0).toDouble();
+        final discount = (data['discount'] ?? 0).toDouble();
+
+        // Calculate outstanding amount
+        final outstandingAmount = totalAmount - amountPaid - discount;
+
+        if (outstandingAmount > 0) {
+          totalOutstanding += outstandingAmount;
+
+          final status = data['status'] as String;
+          if (status == 'unpaid') {
+            unpaidCount++;
+          } else if (status == 'partial') {
+            partialCount++;
+          }
+
+          outstandingPayments.add(OutstandingPayment(
+            id: doc.id,
+            studentId: data['studentId'] ?? '',
+            month: data['month'] ?? 0,
+            year: data['year'] ?? 0,
+            totalAmount: totalAmount,
+            amountPaid: amountPaid,
+            outstandingAmount: outstandingAmount,
+            status: status,
+            createdAt: data['createdAt'] != null
+                ? (data['createdAt'] as Timestamp).toDate()
+                : DateTime.now(),
+          ));
+        }
+      }
+
+      // Get recent payment transactions (last 10)
+      final recentTransactionsQuery = await _firestore
+          .collection('payment_history')
+          .where('studentId', isEqualTo: studentId)
+          .orderBy('createdAt', descending: true)
+          .limit(10)
+          .get();
+
+      List<RecentPaymentTransaction> recentTransactions = [];
+
+      for (var doc in recentTransactionsQuery.docs) {
+        final data = doc.data();
+        recentTransactions.add(RecentPaymentTransaction(
+          id: doc.id,
+          paymentId: data['paymentId'] ?? '',
+          amount: (data['amount'] ?? 0).toDouble(),
+          discount: (data['discount'] ?? 0).toDouble(),
+          status: data['newStatus'] ?? '',
+          date: data['date'] != null
+              ? (data['date'] as Timestamp).toDate()
+              : DateTime.now(),
+          remarks: data['remarks'],
+          month: data['month'] ?? 0,
+          year: data['year'] ?? 0,
+        ));
+      }
+
+      return StudentPaymentSummary(
+        totalOutstanding: totalOutstanding,
+        unpaidCount: unpaidCount,
+        partialCount: partialCount,
+        outstandingPayments: outstandingPayments,
+        recentTransactions: recentTransactions,
+      );
+    } catch (e) {
+      throw Exception('Failed to get student payment summary: $e');
     }
   }
 }

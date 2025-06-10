@@ -4,11 +4,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:qr_flutter/qr_flutter.dart'; // Add this import
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:mytuition/features/profile/presentation/widgets/edit_profile_bottom_sheet.dart';
 import 'package:mytuition/features/profile/presentation/widgets/profile_header.dart';
 import 'package:mytuition/features/profile/presentation/widgets/student_payment_info_card.dart';
-import 'package:mytuition/features/profile/presentation/widgets/profile_picture_widget.dart';
+import 'package:mytuition/features/profile/presentation/widgets/student_payment_bottom_sheet.dart';
 import 'package:sizer/sizer.dart';
 import 'package:easy_image_viewer/easy_image_viewer.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
@@ -42,12 +42,35 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
     } catch (e) {
       print('PaymentInfoBloc not available in profile page');
     }
+
+    // Load payment summary for outstanding information
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated && authState.user.studentId != null) {
+      try {
+        context.read<ProfileBloc>().add(
+              LoadStudentPaymentSummaryEvent(
+                  studentId: authState.user.studentId!),
+            );
+      } catch (e) {
+        print('Error loading payment summary: $e');
+      }
+    }
   }
 
   Future<void> _refreshPage() async {
     // Refresh all data
     try {
       context.read<PaymentInfoBloc>().add(LoadPaymentInfoEvent());
+
+      // Also refresh payment summary
+      final authState = context.read<AuthBloc>().state;
+      if (authState is Authenticated && authState.user.studentId != null) {
+        context.read<ProfileBloc>().add(
+              LoadStudentPaymentSummaryEvent(
+                  studentId: authState.user.studentId!),
+            );
+      }
+
       // Add small delay for better UX
       await Future.delayed(const Duration(milliseconds: 500));
     } catch (e) {
@@ -133,7 +156,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
                             // Payment Information Section
                             _buildSectionHeader('💳 Payment Information'),
                             SizedBox(height: 1.5.h),
-                            _buildPaymentInfoSection(),
+                            _buildPaymentInfoSection(user),
 
                             SizedBox(height: 2.5.h),
 
@@ -644,31 +667,123 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
     );
   }
 
-  Widget _buildPaymentInfoSection() {
-    try {
-      return BlocBuilder<PaymentInfoBloc, PaymentInfoState>(
-        builder: (context, paymentState) {
-          if (paymentState is PaymentInfoLoading) {
-            return _buildLoadingCard();
-          }
-          if (paymentState is PaymentInfoLoaded) {
-            return StudentPaymentInfoCard(
-              paymentInfo: paymentState.paymentInfo,
+  Widget _buildPaymentInfoSection(user) {
+    return Column(
+      children: [
+        // Payment History & Outstanding Button (moved to top)
+        if (user.studentId != null) ...[
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () =>
+                  _showPaymentDetailsBottomSheet(context, user.studentId!),
+              icon: Icon(Icons.account_balance_wallet, size: 5.w),
+              label: Text(
+                'View Payment Details',
+                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue,
+                foregroundColor: AppColors.white,
+                padding: EdgeInsets.symmetric(vertical: 1.8.h),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(3.w),
+                ),
+                elevation: 2,
+              ),
+            ),
+          ),
+          SizedBox(height: 3.h),
+        ],
+
+        // Payment Methods Card (improved version)
+        () {
+          try {
+            return BlocBuilder<PaymentInfoBloc, PaymentInfoState>(
+              builder: (context, paymentState) {
+                if (paymentState is PaymentInfoLoading) {
+                  return _buildLoadingCard();
+                }
+                if (paymentState is PaymentInfoLoaded) {
+                  // Get payment summary data for outstanding info
+                  return BlocBuilder<ProfileBloc, ProfileState>(
+                    builder: (context, profileState) {
+                      bool hasOutstanding = false;
+                      double totalOutstanding = 0.0;
+
+                      if (profileState is StudentPaymentSummaryLoaded) {
+                        hasOutstanding =
+                            profileState.paymentSummary.hasOutstandingPayments;
+                        totalOutstanding =
+                            profileState.paymentSummary.totalOutstanding;
+                      }
+
+                      return StudentPaymentInfoCard(
+                        paymentInfo: paymentState.paymentInfo,
+                        hasOutstandingPayments: hasOutstanding,
+                        totalOutstanding: totalOutstanding,
+                      );
+                    },
+                  );
+                }
+                if (paymentState is PaymentInfoError) {
+                  return _buildErrorCard(
+                    'Unable to load payment information',
+                    paymentState.message,
+                    () => context
+                        .read<PaymentInfoBloc>()
+                        .add(LoadPaymentInfoEvent()),
+                  );
+                }
+                return _buildEmptyPaymentCard();
+              },
             );
+          } catch (e) {
+            return _buildUnavailablePaymentCard();
           }
-          if (paymentState is PaymentInfoError) {
-            return _buildErrorCard(
-              'Unable to load payment information',
-              paymentState.message,
-              () => context.read<PaymentInfoBloc>().add(LoadPaymentInfoEvent()),
-            );
-          }
-          return _buildEmptyPaymentCard();
-        },
-      );
-    } catch (e) {
-      return _buildUnavailablePaymentCard();
-    }
+        }(),
+
+        // Show message if no student ID (moved to bottom)
+        if (user.studentId == null) ...[
+          SizedBox(height: 2.h),
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4.w)),
+            child: Padding(
+              padding: EdgeInsets.all(6.w),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 10.w,
+                    color: AppColors.textLight,
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    'Payment Details Unavailable',
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  SizedBox(height: 1.h),
+                  Text(
+                    'Your Student ID has not been assigned yet.',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      color: AppColors.textMedium,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
   }
 
   Widget _buildHelpSupportCard() {
@@ -1165,6 +1280,13 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showPaymentDetailsBottomSheet(BuildContext context, String studentId) {
+    StudentPaymentBottomSheet.show(
+      context: context,
+      studentId: studentId,
     );
   }
 }
