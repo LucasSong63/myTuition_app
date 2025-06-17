@@ -1,8 +1,10 @@
+// lib/config/router/route_config.dart - PART 1
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
 import 'package:mytuition/features/admin/setup_screen.dart';
+import 'package:mytuition/features/attendance/data/models/attendance_model.dart';
 import 'package:mytuition/features/attendance/presentation/bloc/attendance_event.dart';
 import 'package:mytuition/features/auth/presentation/bloc/registration_bloc.dart';
 import 'package:mytuition/features/auth/presentation/pages/email_verification_page.dart';
@@ -20,7 +22,7 @@ import 'package:mytuition/features/courses/presentation/pages/courses_page.dart'
 import 'package:mytuition/features/courses/presentation/pages/subject_cost_configuration_page.dart';
 import 'package:mytuition/features/courses/presentation/pages/tutor_courses_page.dart';
 
-import 'package:mytuition/features/notifications/presentation/pages/notification_list_page.dart'; // New import
+import 'package:mytuition/features/notifications/presentation/pages/notification_list_page.dart';
 import 'package:mytuition/features/payments/presentation/bloc/payment_bloc.dart';
 import 'package:mytuition/features/payments/presentation/bloc/payment_info_bloc.dart';
 import 'package:mytuition/features/payments/presentation/pages/payment_info_page.dart';
@@ -39,13 +41,15 @@ import 'package:mytuition/features/tasks/presentation/pages/student_tasks_page.d
 import 'package:mytuition/features/tasks/presentation/pages/student_task_detail_page.dart';
 import 'package:mytuition/features/tasks/presentation/bloc/task_bloc.dart';
 import 'package:mytuition/features/attendance/presentation/bloc/attendance_bloc.dart';
-import 'package:mytuition/features/attendance/presentation/pages/attendance_history_page.dart';
+import 'package:mytuition/features/attendance/presentation/pages/manage_attendance_page.dart';
 import 'package:mytuition/features/attendance/presentation/pages/take_attendance_page.dart';
 import 'package:mytuition/features/ai_chat/presentation/pages/ai_chat_page.dart';
 import 'package:mytuition/features/ai_chat/presentation/bloc/chat_bloc.dart';
 import 'package:mytuition/features/tutor_dashboard/presentation/bloc/dashboard_bloc.dart';
 import 'package:mytuition/features/tutor_dashboard/presentation/pages/tutor_dashboard_page.dart';
 import '../../core/services/fcm_service.dart';
+import '../../features/attendance/domain/entities/attendance.dart';
+import '../../features/attendance/presentation/pages/edit_attendance_page.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_event.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
@@ -147,6 +151,7 @@ class AppRouter {
       ),
       GoRoute(
         path: '/admin/setup',
+        name: RouteNames.adminSetup,
         builder: (context, state) => const SetupScreen(),
       ),
 
@@ -159,17 +164,18 @@ class AppRouter {
           if (authState is Authenticated) {
             return NotificationListPage(userId: authState.user.studentId!);
           }
-          // Fallback if somehow the user isn't authenticated
           return const Scaffold(
             body: Center(child: Text('Please log in to view notifications')),
           );
         },
       ),
 
+      // lib/config/router/route_config.dart - PART 2
+// Continue from Part 1...
+
       // Student routes - organized as a ShellRoute for nested navigation
       ShellRoute(
         builder: (context, state, child) {
-          // This would be your student scaffold with bottom navigation
           return Scaffold(
             body: child,
             bottomNavigationBar: BottomNavigationBar(
@@ -198,14 +204,13 @@ class AppRouter {
                   ? authState.user.studentId ?? ''
                   : '';
 
-              // UPDATED: Use new StudentDashboardPage with BLoC
               return BlocProvider<StudentDashboardBloc>(
                 create: (context) => getIt<StudentDashboardBloc>(),
                 child: StudentDashboardPage(studentId: studentId),
               );
             },
             routes: [
-              // Add profile route
+              // Student profile route
               GoRoute(
                 path: 'profile',
                 name: RouteNames.studentProfile,
@@ -222,7 +227,7 @@ class AppRouter {
                 ),
               ),
 
-              // Add courses route
+              // Student courses route
               GoRoute(
                 path: 'courses',
                 name: RouteNames.studentCourses,
@@ -245,39 +250,21 @@ class AppRouter {
                 ],
               ),
 
-              // Add AI Chat route
+              // Student AI Chat route
               GoRoute(
                 path: 'ai-chat',
                 name: RouteNames.studentAiChat,
                 builder: (context, state) {
-                  // Get studentId from auth state
                   final authState = context.read<AuthBloc>().state;
                   String studentId = '';
 
                   if (authState is Authenticated) {
-                    // Try multiple ways to get studentId
                     studentId = authState.user.studentId ??
                         authState.user.email?.split('@').first ??
                         '';
-
-                    // Debug print
-                    print(
-                        'AI Chat Route - AuthState: ${authState.runtimeType}');
-                    print('AI Chat Route - User: ${authState.user}');
-                    print('AI Chat Route - StudentId: "$studentId"');
-                    print(
-                        'AI Chat Route - User.studentId: "${authState.user.studentId}"');
-                    print(
-                        'AI Chat Route - User.email: "${authState.user.email}"');
-                  } else {
-                    print(
-                        'AI Chat Route - Not authenticated: ${authState.runtimeType}');
                   }
 
-                  // Ensure we have a valid studentId
                   if (studentId.isEmpty) {
-                    print('ERROR: Empty studentId in AI Chat route');
-                    // You might want to redirect to login or show an error
                     return Scaffold(
                       appBar: AppBar(
                         title: const Text('AI Chat Error'),
@@ -307,7 +294,6 @@ class AppRouter {
                               children: [
                                 ElevatedButton.icon(
                                   onPressed: () {
-                                    // Refresh auth status - CORRECTED EVENT NAME
                                     context
                                         .read<AuthBloc>()
                                         .add(CheckAuthStatusEvent());
@@ -318,7 +304,6 @@ class AppRouter {
                                 const SizedBox(width: 16),
                                 OutlinedButton.icon(
                                   onPressed: () {
-                                    // Go back to student dashboard
                                     GoRouter.of(context)
                                         .goNamed(RouteNames.studentRoot);
                                   },
@@ -326,34 +311,6 @@ class AppRouter {
                                   label: const Text('Go Back'),
                                 ),
                               ],
-                            ),
-                            const SizedBox(height: 16),
-                            // Debug info card
-                            Container(
-                              margin:
-                                  const EdgeInsets.symmetric(horizontal: 32),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: AppColors.backgroundDark,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Debug Info:',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text('Auth State: ${authState.runtimeType}'),
-                                  if (authState is Authenticated) ...[
-                                    Text('User Email: ${authState.user.email}'),
-                                    Text(
-                                        'User StudentId: ${authState.user.studentId}'),
-                                  ],
-                                ],
-                              ),
                             ),
                           ],
                         ),
@@ -368,7 +325,7 @@ class AppRouter {
                 },
               ),
 
-              // Add Tasks route
+              // Student Tasks route
               GoRoute(
                 path: 'tasks',
                 name: RouteNames.studentTasks,
@@ -398,7 +355,6 @@ class AppRouter {
       // Tutor routes - organized as a ShellRoute for nested navigation
       ShellRoute(
         builder: (context, state, child) {
-          // This would be your tutor scaffold with bottom navigation
           return Scaffold(
             body: child,
             bottomNavigationBar: BottomNavigationBar(
@@ -425,7 +381,7 @@ class AppRouter {
               child: const TutorDashboardPage(),
             ),
             routes: [
-              // Add profile route
+              // Tutor profile route
               GoRoute(
                 path: 'profile',
                 name: RouteNames.tutorProfile,
@@ -442,7 +398,7 @@ class AppRouter {
                 ),
               ),
 
-              // Add students route
+              // Tutor students route
               GoRoute(
                 path: 'students',
                 name: RouteNames.tutorStudents,
@@ -454,7 +410,7 @@ class AppRouter {
                 routes: [
                   GoRoute(
                     path: ':studentId',
-                    name: 'tutorStudentDetails',
+                    name: RouteNames.tutorStudentDetails,
                     builder: (context, state) {
                       final studentId = state.pathParameters['studentId'] ?? '';
                       return BlocProvider<StudentManagementBloc>(
@@ -466,6 +422,7 @@ class AppRouter {
                 ],
               ),
 
+              // Tutor payments route
               GoRoute(
                 path: 'payments',
                 name: RouteNames.tutorPayments,
@@ -484,6 +441,8 @@ class AppRouter {
                   );
                 },
               ),
+
+              // Tutor payment info route
               GoRoute(
                 path: 'payment-info',
                 name: RouteNames.tutorPaymentInfo,
@@ -493,16 +452,17 @@ class AppRouter {
                 ),
               ),
 
+              // Tutor subject costs route
               GoRoute(
+                path: 'subject-costs',
                 name: RouteNames.tutorSubjectCosts,
-                path: '/tutor/subject-costs',
                 builder: (context, state) => BlocProvider(
                   create: (context) => getIt<SubjectCostBloc>(),
                   child: const SubjectCostConfigurationPage(),
                 ),
               ),
 
-              // Add tasks route
+              // Tutor tasks route
               GoRoute(
                 path: 'tasks',
                 name: RouteNames.tutorTasks,
@@ -511,10 +471,10 @@ class AppRouter {
                 ),
               ),
 
-              // Route for course task management
+              // Course task management route
               GoRoute(
                 path: 'courses/:courseId/tasks',
-                name: 'tutorCourseTaskManagement',
+                name: RouteNames.tutorCourseTaskManagement,
                 builder: (context, state) {
                   final courseId = state.pathParameters['courseId'] ?? '';
                   final courseName = state.extra as String? ?? 'Course';
@@ -528,10 +488,10 @@ class AppRouter {
                 },
               ),
 
-              // Route for task progress view
+              // Task progress route
               GoRoute(
                 path: 'tasks/:taskId',
-                name: 'tutorTaskProgress',
+                name: RouteNames.tutorTaskProgress,
                 builder: (context, state) {
                   final taskId = state.pathParameters['taskId'] ?? '';
                   return BlocProvider<TaskBloc>(
@@ -541,10 +501,10 @@ class AppRouter {
                 },
               ),
 
-              // Route for course attendance management
+              // Manage attendance route (renamed from attendance history)
               GoRoute(
                 path: 'courses/:courseId/attendance',
-                name: 'courseAttendance',
+                name: RouteNames.manageAttendance,
                 builder: (context, state) {
                   final courseId = state.pathParameters['courseId'] ?? '';
                   final courseName = state.extra as String? ?? 'Course';
@@ -553,7 +513,7 @@ class AppRouter {
                     create: (context) => getIt<AttendanceBloc>()
                       ..add(LoadEnrolledStudentsEvent(courseId: courseId))
                       ..add(LoadCourseAttendanceStatsEvent(courseId: courseId)),
-                    child: AttendanceHistoryPage(
+                    child: ManageAttendancePage(
                       courseId: courseId,
                       courseName: courseName,
                     ),
@@ -561,33 +521,219 @@ class AppRouter {
                 },
               ),
 
-              // Route for taking attendance
+              // Take attendance route (updated to support update mode)
               GoRoute(
                 path: 'courses/:courseId/attendance/take',
-                name: 'takeAttendance',
+                name: RouteNames.takeAttendance,
                 builder: (context, state) {
                   final courseId = state.pathParameters['courseId'] ?? '';
-                  final courseName = state.extra as String? ?? 'Course';
+                  final extra = state.extra as Map<String, dynamic>?;
+                  final courseName =
+                      extra?['courseName'] as String? ?? 'Course';
+                  final isUpdateMode = extra?['isUpdateMode'] as bool? ?? false;
+                  final targetDate = extra?['targetDate'] as DateTime?;
 
                   return BlocProvider(
                     create: (context) => getIt<AttendanceBloc>()
                       ..add(LoadEnrolledStudentsEvent(courseId: courseId))
                       ..add(LoadAttendanceByDateEvent(
                         courseId: courseId,
-                        date: DateTime.now(),
-                      )),
+                        date: targetDate ?? DateTime.now(),
+                      ))
+                      ..add(LoadCourseSchedulesEvent(courseId: courseId)),
                     child: TakeAttendancePage(
                       courseId: courseId,
                       courseName: courseName,
+                      isUpdateMode: isUpdateMode,
+                      targetDate: targetDate,
                     ),
                   );
                 },
               ),
 
-              // Route for managing registration requests
+              // Edit attendance route
+              GoRoute(
+                path: 'courses/:courseId/attendance/edit',
+                name: RouteNames.editAttendance,
+                builder: (context, state) {
+                  final courseId = state.pathParameters['courseId'] ?? '';
+                  final extra = state.extra as Map<String, dynamic>?;
+
+                  if (extra == null) {
+                    // Error case - missing required data
+                    return Scaffold(
+                      appBar: AppBar(
+                        title: const Text('Edit Attendance'),
+                        backgroundColor: AppColors.primaryBlue,
+                        foregroundColor: Colors.white,
+                      ),
+                      body: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error, size: 64, color: AppColors.error),
+                            const SizedBox(height: 16),
+                            const Text('Missing attendance data'),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () => context.pop(),
+                              child: const Text('Go Back'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  try {
+                    // Extract parameters from extra data
+                    final courseName =
+                        extra['courseName'] as String? ?? 'Course';
+                    final attendanceDateStr =
+                        extra['attendanceDate'] as String?;
+                    final sessionId = extra['sessionId'] as String?;
+                    final existingRecordsData =
+                        extra['existingRecords'] as List<dynamic>?;
+
+                    // Parse attendance date
+                    DateTime? attendanceDate;
+                    if (attendanceDateStr != null) {
+                      attendanceDate = DateTime.parse(attendanceDateStr);
+                    }
+
+                    // Reconstruct attendance records from serialized data
+                    List<Attendance>? existingRecords;
+                    if (existingRecordsData != null) {
+                      existingRecords = existingRecordsData.map((recordData) {
+                        final data = recordData as Map<String, dynamic>;
+
+                        // Parse attendance status from string back to enum
+                        AttendanceStatus status = AttendanceStatus.absent;
+                        final statusStr = data['status'] as String?;
+                        if (statusStr != null) {
+                          // Convert string back to enum
+                          switch (statusStr) {
+                            case 'AttendanceStatus.present':
+                              status = AttendanceStatus.present;
+                              break;
+                            case 'AttendanceStatus.absent':
+                              status = AttendanceStatus.absent;
+                              break;
+                            case 'AttendanceStatus.late':
+                              status = AttendanceStatus.late;
+                              break;
+                            case 'AttendanceStatus.excused':
+                              status = AttendanceStatus.excused;
+                              break;
+                            default:
+                              status = AttendanceStatus.absent;
+                          }
+                        }
+
+                        // Parse date
+                        final dateStr = data['date'] as String?;
+                        DateTime recordDate = attendanceDate ?? DateTime.now();
+                        if (dateStr != null) {
+                          try {
+                            recordDate = DateTime.parse(dateStr);
+                          } catch (e) {
+                            print('Error parsing record date: $e');
+                          }
+                        }
+
+                        return AttendanceModel(
+                          id: data['id'] as String? ?? '',
+                          studentId: data['studentId'] as String? ?? '',
+                          courseId: courseId,
+                          date: recordDate,
+                          status: status,
+                          remarks: data['remarks'] as String?,
+                          createdAt: recordDate,
+                          // ✅ Use recordDate as createdAt fallback
+                          updatedAt: recordDate,
+                          // ✅ Use recordDate as updatedAt fallback
+                          scheduleMetadata:
+                              data['scheduleMetadata'] as Map<String, dynamic>?,
+                        );
+                      }).toList();
+                    }
+
+                    // Debug logging
+                    print('Route Config - EditAttendance Reconstructed:');
+                    print('  Course ID: $courseId');
+                    print('  Course Name: $courseName');
+                    print('  Attendance Date: $attendanceDate');
+                    print('  Session ID: $sessionId');
+                    print('  Records Count: ${existingRecords?.length ?? 0}');
+
+                    if (attendanceDate == null || existingRecords == null) {
+                      return Scaffold(
+                        appBar: AppBar(
+                          title: const Text('Edit Attendance'),
+                          backgroundColor: AppColors.primaryBlue,
+                          foregroundColor: Colors.white,
+                        ),
+                        body: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error,
+                                  size: 64, color: AppColors.error),
+                              const SizedBox(height: 16),
+                              const Text('Invalid attendance data'),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: () => context.pop(),
+                                child: const Text('Go Back'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    return BlocProvider(
+                      create: (context) => getIt<AttendanceBloc>(),
+                      child: EditAttendancePage(
+                        courseId: courseId,
+                        courseName: courseName,
+                        attendanceDate: attendanceDate,
+                        existingRecords: existingRecords,
+                        sessionId: sessionId,
+                      ),
+                    );
+                  } catch (e) {
+                    print('Error in editAttendance route: $e');
+                    return Scaffold(
+                      appBar: AppBar(
+                        title: const Text('Edit Attendance'),
+                        backgroundColor: AppColors.primaryBlue,
+                        foregroundColor: Colors.white,
+                      ),
+                      body: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error, size: 64, color: AppColors.error),
+                            const SizedBox(height: 16),
+                            Text('Error loading attendance data: $e'),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () => context.pop(),
+                              child: const Text('Go Back'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+
+              // Registration management routes
               GoRoute(
                 path: 'registrations',
-                name: 'tutorRegistrations',
+                name: RouteNames.tutorRegistrations,
                 builder: (context, state) => BlocProvider<RegistrationBloc>(
                   create: (context) => getIt<RegistrationBloc>(),
                   child: const RegistrationListPage(),
@@ -595,7 +741,7 @@ class AppRouter {
                 routes: [
                   GoRoute(
                     path: ':registrationId',
-                    name: 'registrationDetails',
+                    name: RouteNames.registrationDetails,
                     builder: (context, state) {
                       final registrationId =
                           state.pathParameters['registrationId'] ?? '';
@@ -608,6 +754,8 @@ class AppRouter {
                   ),
                 ],
               ),
+
+              // Tutor classes route
               GoRoute(
                 path: 'classes',
                 name: RouteNames.tutorClasses,
@@ -637,7 +785,7 @@ class AppRouter {
       // Legacy route for backward compatibility during transition
       GoRoute(
         path: '/courses/:courseId',
-        name: 'legacyCourseDetail',
+        name: RouteNames.legacyCourseDetail,
         builder: (context, state) {
           final courseId = state.pathParameters['courseId'] ?? '';
           final authState = context.read<AuthBloc>().state;
@@ -706,7 +854,7 @@ class AppRouter {
       case 2:
         GoRouter.of(context).goNamed(RouteNames.tutorStudents);
         break;
-      case 3: // Updated index
+      case 3:
         GoRouter.of(context).goNamed(RouteNames.tutorProfile);
         break;
     }

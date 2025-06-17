@@ -1,3 +1,6 @@
+// lib/features/attendance/presentation/pages/qr_scanner_page.dart
+// SCROLLABLE VERSION - QR scanner above, student records below
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -5,8 +8,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
 import 'package:mytuition/core/utils/student_id_validator.dart';
 import 'package:mytuition/features/attendance/domain/entities/attendance.dart';
-import 'package:mytuition/features/attendance/presentation/widgets/qr_scanner_overlay.dart';
-import 'package:mytuition/features/attendance/presentation/widgets/scanned_student_card.dart';
+import 'package:sizer/sizer.dart';
 
 class QRScannerPage extends StatefulWidget {
   final Map<String, Map<String, dynamic>> enrolledStudents;
@@ -26,34 +28,32 @@ class _QRScannerPageState extends State<QRScannerPage>
     with SingleTickerProviderStateMixin {
   final MobileScannerController _scannerController = MobileScannerController();
 
-  // Scanning animation
+  // Animation
   late AnimationController _animationController;
   late Animation<double> _scanLineAnimation;
 
-  // Tracking scanned students
-  final Map<String, AttendanceStatus> _scannedStudents = {};
+  // Student records (attendance map)
+  final Map<String, AttendanceStatus> _studentRecords = {};
+
+  // Scan feedback
   String? _lastScannedId;
   String? _lastErrorMessage;
   Timer? _feedbackTimer;
   bool _isProcessing = false;
   bool _showingError = false;
-
-  // Flashlight state
   bool _isTorchOn = false;
 
-  // Statistics
-  int _totalScanned = 0;
-  int _successfulScans = 0;
-  int _errorScans = 0;
+  // Statistics for actual scan attempts vs student records
+  int _totalScanAttempts = 0;
+  int _successfulScanAttempts = 0;
+  int _errorScanAttempts = 0;
 
   @override
   void initState() {
     super.initState();
 
     // Initialize with existing attendances
-    _scannedStudents.addAll(widget.initialAttendances);
-    _totalScanned = widget.initialAttendances.length;
-    _successfulScans = widget.initialAttendances.length;
+    _studentRecords.addAll(widget.initialAttendances);
 
     // Setup animation
     _animationController = AnimationController(
@@ -83,333 +83,612 @@ class _QRScannerPageState extends State<QRScannerPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scan Student QR Codes'),
+        title: Text(
+          'Scan Student QR Codes',
+          style: TextStyle(fontSize: 18.sp),
+        ),
+        backgroundColor: AppColors.primaryBlue,
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: Icon(_isTorchOn ? Icons.flash_off : Icons.flash_on),
+            icon: Icon(
+              _isTorchOn ? Icons.flash_on : Icons.flash_off,
+              size: 6.w,
+            ),
             onPressed: _toggleTorch,
             tooltip: 'Toggle Flashlight',
           ),
           IconButton(
-            icon: const Icon(Icons.info_outline),
+            icon: Icon(
+              Icons.help_outline,
+              size: 6.w,
+            ),
             onPressed: _showInstructions,
             tooltip: 'Instructions',
           ),
         ],
       ),
-      body: Stack(
+      body: CustomScrollView(
+        slivers: [
+          // QR Scanner Section
+          SliverToBoxAdapter(
+            child: _buildQRScannerSection(),
+          ),
+
+          // Student Records Section Header
+          SliverToBoxAdapter(
+            child: _buildStudentRecordsHeader(),
+          ),
+
+          // Student Records List
+          _studentRecords.isEmpty
+              ? SliverToBoxAdapter(child: _buildEmptyState())
+              : _buildStudentRecordsList(),
+
+          // Done Button
+          SliverToBoxAdapter(
+            child: _buildDoneButton(),
+          ),
+
+          // Bottom padding
+          SliverToBoxAdapter(
+            child: SizedBox(height: 4.h),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQRScannerSection() {
+    return Container(
+      height: 50.h, // 50% of screen height for QR scanner
+      child: Column(
         children: [
-          // QR Scanner
-          MobileScanner(
-            controller: _scannerController,
-            onDetect: _onDetectCode,
-          ),
-
-          // Scanning overlay with animation
-          AnimatedBuilder(
-            animation: _scanLineAnimation,
-            builder: (context, child) {
-              return CustomPaint(
-                painter: QRScannerOverlay(
-                  borderColor:
-                      _showingError ? AppColors.error : AppColors.primaryBlue,
-                  scanLineColor:
-                      _showingError ? AppColors.error : AppColors.accentTeal,
-                  scanLinePosition: _scanLineAnimation.value,
-                  showScanLine: !_isProcessing,
-                ),
-                child: Container(),
-              );
-            },
-          ),
-
-          // Scanning instructions overlay
-          Positioned(
-            top: 40,
-            left: 20,
-            right: 20,
-            child: Card(
-              color: Colors.black.withOpacity(0.7),
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Position student QR code in the frame',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Scanned: $_successfulScans | Errors: $_errorScans',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 12,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+          // Info panel
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(4.w),
+            decoration: BoxDecoration(
+              color: AppColors.primaryBlue.withOpacity(0.1),
+              border: Border(
+                bottom: BorderSide(
+                  color: AppColors.primaryBlue.withOpacity(0.2),
+                  width: 1,
                 ),
               ),
             ),
+            child: Column(
+              children: [
+                Text(
+                  'Position student QR code in the frame',
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textDark,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 1.h),
+                Text(
+                  'Scan Attempts: $_totalScanAttempts | Success: $_successfulScanAttempts | Errors: $_errorScanAttempts',
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    color: AppColors.textMedium,
+                  ),
+                ),
+              ],
+            ),
           ),
 
-          // Last scanned student feedback (success)
-          if (_lastScannedId != null && !_showingError)
-            _buildLastScannedFeedback(),
-
-          // Error feedback
-          if (_lastErrorMessage != null && _showingError) _buildErrorFeedback(),
-
-          // Scanned students list
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.35,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
+          // Camera scanner
+          Expanded(
+            child: Stack(
+              children: [
+                // Camera feed
+                MobileScanner(
+                  controller: _scannerController,
+                  onDetect: _onQRCodeDetected,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
+
+                // Scanning overlay
+                _buildScannerOverlay(),
+
+                // Feedback overlay
+                if (_lastScannedId != null || _showingError)
+                  _buildFeedbackOverlay(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScannerOverlay() {
+    return CustomPaint(
+      painter: QRScannerOverlayPainter(
+        animation: _scanLineAnimation,
+        isScanning: !_isProcessing,
+      ),
+      child: Container(),
+    );
+  }
+
+  Widget _buildFeedbackOverlay() {
+    if (_showingError && _lastErrorMessage != null) {
+      return _buildErrorFeedback();
+    } else if (_lastScannedId != null) {
+      return _buildSuccessFeedback();
+    }
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildErrorFeedback() {
+    return Container(
+      margin: EdgeInsets.all(4.w),
+      child: Center(
+        child: Container(
+          padding: EdgeInsets.all(4.w),
+          decoration: BoxDecoration(
+            color: AppColors.error.withOpacity(0.95),
+            borderRadius: BorderRadius.circular(3.w),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                spreadRadius: 2,
+                blurRadius: 8,
+                offset: const Offset(0, 4),
               ),
-              child: Column(
-                children: [
-                  // Handle bar
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.error_outline,
+                color: Colors.white,
+                size: 8.w,
+              ),
+              SizedBox(height: 1.h),
+              Text(
+                'Scan Error',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 0.5.h),
+              Text(
+                _lastErrorMessage!,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12.sp,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 1.h),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _lastErrorMessage = null;
+                    _showingError = false;
+                    _isProcessing = false;
+                  });
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: AppColors.error,
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 3.w, vertical: 0.5.h),
+                ),
+                child: Text(
+                  'Try again',
+                  style: TextStyle(fontSize: 11.sp),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-                  // Header
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Scanned Students (${_scannedStudents.length})',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            Text(
-                              'Success: $_successfulScans | Errors: $_errorScans',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            TextButton.icon(
-                              icon: const Icon(Icons.refresh, size: 16),
-                              label: const Text('Reset'),
-                              onPressed: _resetScannedStudents,
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1),
+  Widget _buildSuccessFeedback() {
+    final studentId = _lastScannedId!;
+    final studentData = widget.enrolledStudents[studentId];
+    final studentName = studentData?['name'] as String? ?? 'Student';
+    final status = _studentRecords[studentId] ?? AttendanceStatus.present;
 
-                  // Students list
-                  Expanded(
-                    child: _scannedStudents.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.qr_code_scanner,
-                                  size: 48,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'No students scanned yet',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Point camera at student QR codes',
-                                  style: TextStyle(
-                                    color: Colors.grey[500],
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : ListView(
-                            children: _scannedStudents.entries.map((entry) {
-                              final studentId = entry.key;
-                              final studentData =
-                                  widget.enrolledStudents[studentId];
-                              final studentName =
-                                  studentData?['name'] as String?;
+    return Container(
+      margin: EdgeInsets.all(4.w),
+      child: Center(
+        child: Container(
+          padding: EdgeInsets.all(3.w),
+          decoration: BoxDecoration(
+            color: AppColors.success.withOpacity(0.95),
+            borderRadius: BorderRadius.circular(3.w),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                spreadRadius: 2,
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.check_circle_outline,
+                color: Colors.white,
+                size: 8.w,
+              ),
+              SizedBox(height: 1.h),
+              Text(
+                'Scan Successful',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 0.5.h),
+              Text(
+                studentName,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              Text(
+                '$studentId - ${_getStatusText(status)}',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 11.sp,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-                              return ScannedStudentCard(
-                                studentId: studentId,
-                                studentName: studentName,
-                                status: entry.value,
-                                onDismiss: () =>
-                                    _removeScannedStudent(studentId),
-                                onChangeStatus: () =>
-                                    _cycleStudentStatus(studentId),
-                              );
-                            }).toList(),
-                          ),
-                  ),
-                ],
+  Widget _buildStudentRecordsHeader() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(4.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.grey.shade200,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Text(
+            'Student Records (${_studentRecords.length})',
+            style: TextStyle(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textDark,
+            ),
+          ),
+          const Spacer(),
+          TextButton(
+            onPressed: _studentRecords.isNotEmpty ? _resetStudentRecords : null,
+            child: Text(
+              'Reset',
+              style: TextStyle(
+                fontSize: 12.sp,
+                color: AppColors.error,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _completeScanning,
-        label: Text('Done (${_scannedStudents.length})'),
-        icon: const Icon(Icons.check),
-        backgroundColor: AppColors.primaryBlue,
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      height: 30.h,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.people_outline,
+              size: 12.w,
+              color: AppColors.textLight,
+            ),
+            SizedBox(height: 2.h),
+            Text(
+              'No student records yet',
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: AppColors.textLight,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 1.h),
+            Text(
+              'Scan QR codes or manually update attendance',
+              style: TextStyle(
+                fontSize: 12.sp,
+                color: AppColors.textLight,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  void _onDetectCode(BarcodeCapture capture) {
+  Widget _buildStudentRecordsList() {
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          final studentId = _studentRecords.keys.elementAt(index);
+          final status = _studentRecords[studentId]!;
+          final studentData = widget.enrolledStudents[studentId];
+          final studentName =
+              studentData?['name'] as String? ?? 'Unknown Student';
+
+          return Container(
+            margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+            child: _buildStudentCard(
+              studentId: studentId,
+              studentName: studentName,
+              status: status,
+            ),
+          );
+        },
+        childCount: _studentRecords.length,
+      ),
+    );
+  }
+
+  Widget _buildStudentCard({
+    required String studentId,
+    required String studentName,
+    required AttendanceStatus status,
+  }) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.w)),
+      child: Padding(
+        padding: EdgeInsets.all(3.w),
+        child: Row(
+          children: [
+            // Student avatar
+            CircleAvatar(
+              radius: 6.w,
+              backgroundColor: _getStatusColor(status),
+              child: Text(
+                studentName.isNotEmpty ? studentName[0].toUpperCase() : '?',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14.sp,
+                ),
+              ),
+            ),
+            SizedBox(width: 3.w),
+
+            // Student info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    studentName,
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  Text(
+                    studentId,
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      color: AppColors.textMedium,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Status button
+            ElevatedButton(
+              onPressed: () => _cycleStudentStatus(studentId),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _getStatusColor(status),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(2.w),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
+              ),
+              child: Text(
+                _getStatusText(status),
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+
+            SizedBox(width: 2.w),
+
+            // Remove button
+            IconButton(
+              onPressed: () => _removeStudentRecord(studentId),
+              icon: Icon(
+                Icons.close,
+                color: AppColors.error,
+                size: 5.w,
+              ),
+              tooltip: 'Remove',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDoneButton() {
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.all(4.w),
+      child: ElevatedButton(
+        onPressed: _studentRecords.isNotEmpty ? _completeScanning : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              _studentRecords.isNotEmpty ? AppColors.success : Colors.grey,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(vertical: 2.h),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(3.w),
+          ),
+          elevation: 0,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.check, size: 5.w),
+            SizedBox(width: 2.w),
+            Text(
+              'Done (${_studentRecords.length})',
+              style: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Event handlers
+  void _onQRCodeDetected(BarcodeCapture capture) {
     if (_isProcessing) return;
 
     final List<Barcode> barcodes = capture.barcodes;
-    for (final barcode in barcodes) {
-      final String? code = barcode.rawValue;
-      if (code != null) {
-        _processScannedCode(code);
-        break;
-      }
-    }
+    if (barcodes.isEmpty) return;
+
+    final String? scannedData = barcodes.first.rawValue;
+    if (scannedData == null || scannedData.isEmpty) return;
+
+    _processScannedCode(scannedData);
   }
 
-  ValidationResult _validateStudentId(String code) {
-    // Basic format check
-    if (!StudentIdValidator.isValidFormat(code)) {
-      return ValidationResult.invalid(
-        'Invalid ID format\nExpected: MT[YY]-[NNNN]',
-      );
-    }
-
-    // Year range check
-    if (!StudentIdValidator.isValidWithYearCheck(code,
-        minYear: 2020, maxYear: 2030)) {
-      final year = StudentIdValidator.extractYear(code);
-      return ValidationResult.invalid(
-        'Invalid year batch: $year\nExpected: 2020-2030',
-      );
-    }
-
-    // Enrollment check
-    final enrolledStudentsList = widget.enrolledStudents.values.toList();
-    if (!StudentIdValidator.existsInList(code, enrolledStudentsList)) {
-      return ValidationResult.invalid(
-        'Student not enrolled\nin this course',
-      );
-    }
-
-    // Check if already scanned
-    if (_scannedStudents.containsKey(code)) {
-      return ValidationResult.invalid(
-        'Student already scanned\nTap to change status',
-      );
-    }
-
-    return ValidationResult.valid(code);
-  }
-
-  Future<void> _processScannedCode(String studentId) async {
+  void _processScannedCode(String scannedCode) {
     setState(() {
       _isProcessing = true;
-      _showingError = false;
-      _lastScannedId = null;
       _lastErrorMessage = null;
+      _showingError = false;
+      _totalScanAttempts++;
     });
 
-    // Perform detailed validation
-    final validationResult = _validateStudentId(studentId);
-    _totalScanned++;
-
-    if (!validationResult.isValid) {
-      // Handle error case
-      setState(() {
-        _lastErrorMessage = validationResult.errorMessage;
-        _showingError = true;
-        _errorScans++;
-      });
-
-      // Vibrate for error feedback
-      HapticFeedback.lightImpact();
-
-      // Show error for longer duration
-      _feedbackTimer?.cancel();
-      _feedbackTimer = Timer(const Duration(seconds: 3), () {
-        if (mounted) {
-          setState(() {
-            _lastErrorMessage = null;
-            _showingError = false;
-            _isProcessing = false;
-          });
-        }
-      });
-
+    // Validate student ID format
+    if (!StudentIdValidator.isValidFormat(scannedCode)) {
+      _handleScanError('Invalid QR code format. Expected: MT[YY]-[NNNN]');
       return;
     }
 
-    // Handle success case
-    setState(() {
-      _lastScannedId = studentId;
-      _showingError = false;
-      _successfulScans++;
+    final studentId = scannedCode.trim().toUpperCase();
 
-      // Set status to present for new scan
-      _scannedStudents[studentId] = AttendanceStatus.present;
+    // Check if student is enrolled in this course
+    if (!widget.enrolledStudents.containsKey(studentId)) {
+      _handleScanError('Student $studentId is not enrolled in this course');
+      return;
+    }
+
+    // Simplified logic based on requirements
+    final currentStatus = _studentRecords[studentId];
+
+    if (currentStatus == null) {
+      // Student not in records - add as present
+      setState(() {
+        _lastScannedId = studentId;
+        _showingError = false;
+        _successfulScanAttempts++;
+        _studentRecords[studentId] = AttendanceStatus.present;
+      });
+      _showSuccessMessage('Student marked as Present');
+    } else if (currentStatus == AttendanceStatus.absent) {
+      // Student is absent - change to present
+      setState(() {
+        _lastScannedId = studentId;
+        _showingError = false;
+        _successfulScanAttempts++;
+        _studentRecords[studentId] = AttendanceStatus.present;
+      });
+      _showSuccessMessage('Status changed from Absent to Present');
+    } else {
+      // If student is Present/Late/Excused, just confirm status
+      setState(() {
+        _lastScannedId = studentId;
+        _showingError = false;
+        _successfulScanAttempts++;
+      });
+      _showSuccessMessage('${_getStatusText(currentStatus)} status confirmed');
+    }
+
+    // Success feedback
+    HapticFeedback.mediumImpact();
+    _startFeedbackTimer();
+  }
+
+  void _handleScanError(String message) {
+    setState(() {
+      _lastErrorMessage = message;
+      _showingError = true;
+      _errorScanAttempts++;
     });
 
-    // Vibrate for success feedback
-    HapticFeedback.mediumImpact();
+    HapticFeedback.heavyImpact();
 
-    // Cancel any existing feedback timer
     _feedbackTimer?.cancel();
+    _feedbackTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _lastErrorMessage = null;
+          _showingError = false;
+          _isProcessing = false;
+        });
+      }
+    });
+  }
 
-    // Set timer to clear feedback and allow next scan
+  void _showSuccessMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: TextStyle(fontSize: 14.sp),
+        ),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
+  void _startFeedbackTimer() {
+    _feedbackTimer?.cancel();
     _feedbackTimer = Timer(const Duration(seconds: 2), () {
       if (mounted) {
         setState(() {
@@ -420,76 +699,9 @@ class _QRScannerPageState extends State<QRScannerPage>
     });
   }
 
-  void _toggleTorch() {
-    _scannerController.toggleTorch();
-    setState(() {
-      _isTorchOn = !_isTorchOn;
-    });
-  }
-
-  void _resetScannedStudents() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Reset Scanned Students'),
-        content: const Text(
-            'Are you sure you want to clear all scanned students? This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _scannedStudents.clear();
-                _totalScanned = 0;
-                _successfulScans = 0;
-                _errorScans = 0;
-              });
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('All scanned students cleared'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Reset'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _removeScannedStudent(String studentId) {
-    setState(() {
-      _scannedStudents.remove(studentId);
-      if (_successfulScans > 0) _successfulScans--;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Removed $studentId from scan list'),
-        behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: 'Undo',
-          onPressed: () {
-            setState(() {
-              _scannedStudents[studentId] = AttendanceStatus.present;
-              _successfulScans++;
-            });
-          },
-        ),
-      ),
-    );
-  }
-
   void _cycleStudentStatus(String studentId) {
     final currentStatus =
-        _scannedStudents[studentId] ?? AttendanceStatus.present;
+        _studentRecords[studentId] ?? AttendanceStatus.present;
 
     AttendanceStatus nextStatus;
     switch (currentStatus) {
@@ -508,251 +720,319 @@ class _QRScannerPageState extends State<QRScannerPage>
     }
 
     setState(() {
-      _scannedStudents[studentId] = nextStatus;
+      _studentRecords[studentId] = nextStatus;
     });
 
-    // Light haptic feedback for status change
     HapticFeedback.selectionClick();
-  }
 
-  void _completeScanning() {
-    if (_scannedStudents.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No students scanned yet'),
-          behavior: SnackBarBehavior.floating,
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Status changed to ${_getStatusText(nextStatus)}',
+          style: TextStyle(fontSize: 14.sp),
         ),
-      );
-      return;
-    }
-
-    Navigator.pop(context, _scannedStudents);
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 1),
+      ),
+    );
   }
 
-  void _showInstructions() {
+  void _removeStudentRecord(String studentId) {
+    setState(() {
+      _studentRecords.remove(studentId);
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Removed $studentId from records',
+          style: TextStyle(fontSize: 14.sp),
+        ),
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () {
+            setState(() {
+              _studentRecords[studentId] = AttendanceStatus.present;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  void _toggleTorch() {
+    _scannerController.toggleTorch();
+    setState(() {
+      _isTorchOn = !_isTorchOn;
+    });
+  }
+
+  void _resetStudentRecords() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('QR Code Scanner Instructions'),
-        content: const SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('📱 Scanning:'),
-              Text('• Position student QR code in the square frame'),
-              Text('• Hold device steady until confirmation'),
-              Text('• Green feedback = successful scan'),
-              Text('• Red feedback = error (check message)'),
-              SizedBox(height: 12),
-              Text('✨ Features:'),
-              Text('• Tap flashlight icon to toggle light'),
-              Text('• View scanned students in bottom panel'),
-              Text('• Tap student cards to change status'),
-              Text('• Tap "Reset" to clear all scans'),
-              SizedBox(height: 12),
-              Text('🎯 Expected QR Format:'),
-              Text('• MT[YY]-[NNNN] (e.g., MT25-0001)'),
-              Text('• Must be enrolled in this course'),
-              Text('• Year range: 2020-2030'),
-            ],
-          ),
+        title: Text(
+          'Reset Student Records',
+          style: TextStyle(fontSize: 16.sp),
+        ),
+        content: Text(
+          'Are you sure you want to clear all student records? This action cannot be undone.',
+          style: TextStyle(fontSize: 14.sp),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Got it'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(fontSize: 13.sp),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _studentRecords.clear();
+              });
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'All student records cleared',
+                    style: TextStyle(fontSize: 14.sp),
+                  ),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: Text(
+              'Reset',
+              style: TextStyle(fontSize: 13.sp),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildLastScannedFeedback() {
-    final studentId = _lastScannedId!;
-    final studentData = widget.enrolledStudents[studentId];
-    final studentName = studentData?['name'] as String? ?? 'Student';
-    final status = _scannedStudents[studentId] ?? AttendanceStatus.present;
-    final year = StudentIdValidator.extractYear(studentId);
-
-    Color statusColor;
-    IconData statusIcon;
-    String statusText;
-
-    switch (status) {
-      case AttendanceStatus.present:
-        statusColor = AppColors.success;
-        statusIcon = Icons.check_circle;
-        statusText = 'Marked Present';
-        break;
-      case AttendanceStatus.late:
-        statusColor = AppColors.warning;
-        statusIcon = Icons.access_time;
-        statusText = 'Marked Late';
-        break;
-      case AttendanceStatus.excused:
-        statusColor = AppColors.accentTeal;
-        statusIcon = Icons.assignment_late;
-        statusText = 'Marked Excused';
-        break;
-      case AttendanceStatus.absent:
-        statusColor = AppColors.error;
-        statusIcon = Icons.cancel;
-        statusText = 'Marked Absent';
-        break;
+  void _completeScanning() {
+    if (_studentRecords.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'No student records yet',
+            style: TextStyle(fontSize: 14.sp),
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
     }
 
-    return Positioned(
-      top: 100,
-      left: 20,
-      right: 20,
-      child: Card(
-        color: statusColor,
-        elevation: 8,
-        shadowColor: Colors.black38,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    Navigator.pop(context, _studentRecords);
+  }
+
+  void _showInstructions() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'QR Code Scanner Instructions',
+          style: TextStyle(fontSize: 16.sp),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
+        content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(statusIcon, color: Colors.white, size: 32),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          studentName,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Text(
-                          '$studentId${year != null ? ' (Class of $year)' : ''}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  statusText,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+              _buildInstructionSection('📱 Scanning:', [
+                '• Position student QR code in the frame',
+                '• Hold device steady until confirmation',
+                '• Green feedback = successful scan',
+                '• Red feedback = error (check message)',
+              ]),
+              SizedBox(height: 2.h),
+              _buildInstructionSection('🔄 Smart Logic:', [
+                '• Scanning absent students → changes to present',
+                '• Scanning new students → adds as present',
+                '• Scanning present/late/excused → confirms status',
+                '• Manual status cycling available via buttons',
+              ]),
+              SizedBox(height: 2.h),
+              _buildInstructionSection('✨ Features:', [
+                '• Scroll down to view student records',
+                '• Tap student cards to change status',
+                '• Remove students from records',
+                '• Reset all records if needed',
+              ]),
+              SizedBox(height: 2.h),
+              _buildInstructionSection('🎯 Expected QR Format:', [
+                '• MT[YY]-[NNNN] (e.g., MT25-0001)',
+                '• Must be enrolled in this course',
+                '• Year range: 2020-2030',
+              ]),
             ],
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Got it',
+              style: TextStyle(fontSize: 14.sp),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildErrorFeedback() {
-    return Positioned(
-      top: 100,
-      left: 20,
-      right: 20,
-      child: Card(
-        color: AppColors.error,
-        elevation: 8,
-        shadowColor: Colors.black38,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child:
-                        const Icon(Icons.error, color: Colors.white, size: 32),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Scan Error',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Text(
-                          _lastErrorMessage ?? 'Unknown error',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  'Try scanning again',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
+  Widget _buildInstructionSection(String title, List<String> points) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 14.sp,
+            fontWeight: FontWeight.bold,
           ),
         ),
-      ),
+        ...points
+            .map((point) => Text(
+                  point,
+                  style: TextStyle(fontSize: 13.sp),
+                ))
+            .toList(),
+      ],
     );
+  }
+
+  // Helper methods
+  Color _getStatusColor(AttendanceStatus status) {
+    switch (status) {
+      case AttendanceStatus.present:
+        return Colors.green;
+      case AttendanceStatus.absent:
+        return Colors.red;
+      case AttendanceStatus.late:
+        return Colors.orange;
+      case AttendanceStatus.excused:
+        return Colors.blue;
+    }
+  }
+
+  String _getStatusText(AttendanceStatus status) {
+    switch (status) {
+      case AttendanceStatus.present:
+        return 'Present';
+      case AttendanceStatus.absent:
+        return 'Absent';
+      case AttendanceStatus.late:
+        return 'Late';
+      case AttendanceStatus.excused:
+        return 'Excused';
+    }
+  }
+}
+
+// QR Scanner Overlay Painter
+class QRScannerOverlayPainter extends CustomPainter {
+  final Animation<double> animation;
+  final bool isScanning;
+
+  QRScannerOverlayPainter({
+    required this.animation,
+    required this.isScanning,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 3.0
+      ..style = PaintingStyle.stroke;
+
+    final scannerSize = size.width * 0.7;
+    final left = (size.width - scannerSize) / 2;
+    final top = (size.height - scannerSize) / 2;
+    final cornerLength = scannerSize * 0.1;
+
+    // Draw corners
+    final corners = [
+      // Top-left
+      Path()
+        ..moveTo(left, top + cornerLength)
+        ..lineTo(left, top)
+        ..lineTo(left + cornerLength, top),
+      // Top-right
+      Path()
+        ..moveTo(left + scannerSize - cornerLength, top)
+        ..lineTo(left + scannerSize, top)
+        ..lineTo(left + scannerSize, top + cornerLength),
+      // Bottom-left
+      Path()
+        ..moveTo(left, top + scannerSize - cornerLength)
+        ..lineTo(left, top + scannerSize)
+        ..lineTo(left + cornerLength, top + scannerSize),
+      // Bottom-right
+      Path()
+        ..moveTo(left + scannerSize - cornerLength, top + scannerSize)
+        ..lineTo(left + scannerSize, top + scannerSize)
+        ..lineTo(left + scannerSize, top + scannerSize - cornerLength),
+    ];
+
+    for (final corner in corners) {
+      canvas.drawPath(corner, paint);
+    }
+
+    // Draw scanning line animation
+    if (isScanning) {
+      final scanLinePaint = Paint()
+        ..color = Colors.red
+        ..strokeWidth = 2.0;
+
+      final scanLineY = top + (scannerSize * animation.value);
+      canvas.drawLine(
+        Offset(left + 20, scanLineY),
+        Offset(left + scannerSize - 20, scanLineY),
+        scanLinePaint,
+      );
+    }
+
+    // Draw overlay
+    final overlayPaint = Paint()..color = Colors.black.withOpacity(0.5);
+
+    // Top overlay
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, top),
+      overlayPaint,
+    );
+
+    // Bottom overlay
+    canvas.drawRect(
+      Rect.fromLTWH(
+          0, top + scannerSize, size.width, size.height - (top + scannerSize)),
+      overlayPaint,
+    );
+
+    // Left overlay
+    canvas.drawRect(
+      Rect.fromLTWH(0, top, left, scannerSize),
+      overlayPaint,
+    );
+
+    // Right overlay
+    canvas.drawRect(
+      Rect.fromLTWH(left + scannerSize, top, size.width - (left + scannerSize),
+          scannerSize),
+      overlayPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return true;
   }
 }

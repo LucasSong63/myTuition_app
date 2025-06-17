@@ -1,13 +1,19 @@
+// lib/features/attendance/presentation/bloc/attendance_bloc.dart
 import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mytuition/features/attendance/domain/usecases/check_schedule_attendance_usecase.dart';
+import 'package:mytuition/features/attendance/domain/usecases/get_schedule_attendance_status_usecase.dart';
+import 'package:mytuition/features/attendance/domain/usecases/update_attendance_usecase.dart';
+import 'package:mytuition/features/attendance/domain/utils/schedule_date_utils.dart';
 import 'package:mytuition/features/courses/domain/entities/schedule.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:mytuition/core/errors/error_handler.dart';
+import '../../data/models/attendance_model.dart';
 import '../../domain/entities/attendance.dart';
 import '../../domain/usecases/get_attendance_by_date_usecase.dart';
 import '../../domain/usecases/get_course_schedules_usecase.dart';
 import '../../domain/usecases/get_enrolled_students_usecase.dart';
+import '../../domain/usecases/get_past_seven_days_attendance_usecase.dart';
 import '../../domain/usecases/record_bulk_attendance_usecase.dart';
 import '../../domain/usecases/get_student_attendance_usecase.dart';
 import '../../domain/usecases/get_course_attendance_stats_usecase.dart';
@@ -21,6 +27,10 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
   final GetStudentAttendanceUseCase getStudentAttendanceUseCase;
   final GetCourseAttendanceStatsUseCase getCourseAttendanceStatsUseCase;
   final GetCourseSchedulesUseCase getCourseSchedulesUseCase;
+  final CheckScheduleAttendanceUseCase checkScheduleAttendanceUseCase;
+  final GetScheduleAttendanceStatusUseCase getScheduleAttendanceStatusUseCase;
+  final GetPast7DaysAttendanceUseCase getPast7DaysAttendanceUseCase;
+  final UpdateAttendanceUseCase updateAttendanceUseCase;
 
   AttendanceBloc({
     required this.getAttendanceByDateUseCase,
@@ -29,10 +39,15 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     required this.getStudentAttendanceUseCase,
     required this.getCourseAttendanceStatsUseCase,
     required this.getCourseSchedulesUseCase,
+    // NEW: Add these to constructor
+    required this.checkScheduleAttendanceUseCase,
+    required this.getScheduleAttendanceStatusUseCase,
+    required this.getPast7DaysAttendanceUseCase,
+    required this.updateAttendanceUseCase,
   }) : super(AttendanceInitial()) {
+    // Existing event handlers
     on<LoadAttendanceByDateEvent>(_onLoadAttendanceByDate);
     on<LoadEnrolledStudentsEvent>(_onLoadEnrolledStudents);
-    on<RecordBulkAttendanceEvent>(_onRecordBulkAttendance);
     on<LoadStudentAttendanceEvent>(_onLoadStudentAttendance);
     on<LoadCourseAttendanceStatsEvent>(_onLoadCourseAttendanceStats);
     on<LoadCourseSchedulesEvent>(_onLoadCourseSchedules);
@@ -42,6 +57,271 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     on<LoadCourseAttendanceStatsWithDateRangeEvent>(
         _onLoadCourseAttendanceStatsWithDateRange);
     on<LoadAttendanceWeeklyTrendsEvent>(_onLoadAttendanceWeeklyTrends);
+
+    // NEW: Add new event handlers
+    on<CheckScheduleAttendanceStatusEvent>(_onCheckScheduleAttendanceStatus);
+    on<LoadMultipleScheduleAttendanceStatusEvent>(
+        _onLoadMultipleScheduleAttendanceStatus);
+    on<LoadPast7DaysAttendanceEvent>(_onLoadPast7DaysAttendance);
+    on<LoadPast7DaysAttendanceWithSummaryEvent>(
+        _onLoadPast7DaysAttendanceWithSummary);
+    on<LoadScheduleAttendanceStatusEvent>(_onLoadScheduleAttendanceStatus);
+    on<CheckScheduleAttendanceBeforeTakingEvent>(
+        _onCheckScheduleAttendanceBeforeTaking);
+    on<RecordScheduledAttendanceWithDateResolutionEvent>(
+        _onRecordScheduledAttendanceWithDateResolution);
+    on<LoadMultipleScheduleStatusEvent>(_onLoadMultipleScheduleStatus);
+    on<LoadAttendanceForEditEvent>(_onLoadAttendanceForEdit);
+    on<UpdateAttendanceRecordsEvent>(_onUpdateAttendanceRecords);
+    on<ValidateEditPermissionEvent>(_onValidateEditPermission);
+  }
+
+  // NEW: Event handler implementations
+
+  Future<void> _onCheckScheduleAttendanceStatus(
+    CheckScheduleAttendanceStatusEvent event,
+    Emitter<AttendanceState> emit,
+  ) async {
+    try {
+      final status = await getScheduleAttendanceStatusUseCase.execute(
+        event.courseId,
+        event.date,
+        event.scheduleId,
+      );
+
+      emit(ScheduleAttendanceStatusLoaded(
+        scheduleId: event.scheduleId,
+        isTaken: status['isTaken'] as bool,
+        attendanceCount: status['count'] as int,
+        totalStudents: status['totalStudents'] as int,
+        completionRate: status['completionRate'] as double,
+      ));
+    } catch (e) {
+      String errorMessage;
+      if (e is Exception) {
+        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+      } else {
+        errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      }
+      emit(AttendanceError(message: errorMessage));
+    }
+  }
+
+  Future<void> _onLoadMultipleScheduleAttendanceStatus(
+    LoadMultipleScheduleAttendanceStatusEvent event,
+    Emitter<AttendanceState> emit,
+  ) async {
+    emit(AttendanceLoading());
+    try {
+      final scheduleStatuses =
+          await getScheduleAttendanceStatusUseCase.executeForMultipleSchedules(
+        event.courseId,
+        event.date,
+        event.scheduleIds,
+      );
+
+      emit(MultipleScheduleAttendanceStatusLoaded(
+        scheduleStatuses: scheduleStatuses,
+        date: event.date,
+      ));
+    } catch (e) {
+      String errorMessage;
+      if (e is Exception) {
+        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+      } else {
+        errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      }
+      emit(AttendanceError(message: errorMessage));
+    }
+  }
+
+  Future<void> _onLoadPast7DaysAttendance(
+    LoadPast7DaysAttendanceEvent event,
+    Emitter<AttendanceState> emit,
+  ) async {
+    emit(AttendanceLoading());
+    try {
+      // Check connectivity
+      final isConnected = await ErrorHandler.isConnected();
+      if (!isConnected) {
+        // Try to get cached data
+        final cachedAttendance =
+            await _getCachedPast7DaysAttendance(event.courseId);
+
+        if (cachedAttendance.isNotEmpty) {
+          emit(Past7DaysAttendanceLoaded(attendanceMap: cachedAttendance));
+
+          final lastSynced = await _getLastSyncTime();
+          final hasUnsynced = await _hasUnsyncedData();
+
+          emit(AttendanceOfflineMode(
+            lastSynced: lastSynced,
+            hasUnsynced: hasUnsynced,
+          ));
+          return;
+        }
+      }
+
+      final attendanceMap = await ErrorHandler.retryWithBackoff(
+        operation: () => getPast7DaysAttendanceUseCase.execute(event.courseId),
+      );
+
+      // Cache the result
+      await _cachePast7DaysAttendance(event.courseId, attendanceMap);
+
+      emit(Past7DaysAttendanceLoaded(attendanceMap: attendanceMap));
+    } catch (e) {
+      String errorMessage;
+      if (e is Exception) {
+        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+      } else {
+        errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      }
+      emit(AttendanceError(message: errorMessage));
+    }
+  }
+
+  Future<void> _onLoadPast7DaysAttendanceWithSummary(
+    LoadPast7DaysAttendanceWithSummaryEvent event,
+    Emitter<AttendanceState> emit,
+  ) async {
+    emit(AttendanceLoading());
+    try {
+      final result = await ErrorHandler.retryWithBackoff(
+        operation: () =>
+            getPast7DaysAttendanceUseCase.executeWithSummary(event.courseId),
+      );
+
+      emit(Past7DaysAttendanceWithSummaryLoaded(
+        attendanceMap: result['attendanceMap'] as Map<String, List<Attendance>>,
+        summary: result['summary'] as Map<String, dynamic>,
+      ));
+    } catch (e) {
+      String errorMessage;
+      if (e is Exception) {
+        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+      } else {
+        errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      }
+      emit(AttendanceError(message: errorMessage));
+    }
+  }
+
+  Future<void> _onLoadScheduleAttendanceStatus(
+    LoadScheduleAttendanceStatusEvent event,
+    Emitter<AttendanceState> emit,
+  ) async {
+    try {
+      // Extract schedule IDs from schedules
+      final scheduleIds = event.schedules.map((s) => s.id).toList();
+
+      final scheduleStatuses =
+          await getScheduleAttendanceStatusUseCase.executeForMultipleSchedules(
+        event.courseId,
+        event.date,
+        scheduleIds,
+      );
+
+      // Convert to simpler maps for UI consumption
+      final Map<String, bool> statusMap = {};
+      final Map<String, int> countMap = {};
+
+      scheduleStatuses.forEach((scheduleId, status) {
+        statusMap[scheduleId] = status['isTaken'] as bool;
+        countMap[scheduleId] = status['count'] as int;
+      });
+
+      emit(ScheduleAttendanceStatusForTakeAttendanceLoaded(
+        schedules: event.schedules,
+        scheduleStatuses: statusMap,
+        attendanceCounts: countMap,
+        date: event.date,
+      ));
+    } catch (e) {
+      String errorMessage;
+      if (e is Exception) {
+        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+      } else {
+        errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      }
+      emit(AttendanceError(message: errorMessage));
+    }
+  }
+
+  // Helper methods for caching (add these to your existing helper methods)
+
+  Future<Map<String, List<Attendance>>> _getCachedPast7DaysAttendance(
+    String courseId,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'past_7_days_attendance_$courseId';
+      final cached = prefs.getString(key);
+
+      if (cached != null) {
+        final Map<String, dynamic> rawData =
+            jsonDecode(cached) as Map<String, dynamic>;
+        final Map<String, List<Attendance>> result = {};
+
+        rawData.forEach((dateKey, recordsList) {
+          final List<dynamic> records = recordsList as List<dynamic>;
+          result[dateKey] = records.map<Attendance>((item) {
+            final Map<String, dynamic> data =
+                Map<String, dynamic>.from(item as Map);
+            return Attendance(
+              id: data['id'] as String,
+              courseId: data['courseId'] as String,
+              studentId: data['studentId'] as String,
+              date: DateTime.fromMillisecondsSinceEpoch(data['date'] as int),
+              status: _parseAttendanceStatus(data['status'] as String),
+              remarks: data['remarks'] as String?,
+              createdAt:
+                  DateTime.fromMillisecondsSinceEpoch(data['createdAt'] as int),
+              updatedAt:
+                  DateTime.fromMillisecondsSinceEpoch(data['updatedAt'] as int),
+            );
+          }).toList();
+        });
+
+        return result;
+      }
+    } catch (e) {
+      print('Error getting cached past 7 days attendance: $e');
+    }
+    return {};
+  }
+
+  Future<void> _cachePast7DaysAttendance(
+    String courseId,
+    Map<String, List<Attendance>> attendanceMap,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'past_7_days_attendance_$courseId';
+
+      // Convert to JSON-serializable format
+      final Map<String, dynamic> serializedData = {};
+
+      attendanceMap.forEach((dateKey, records) {
+        serializedData[dateKey] = records
+            .map((record) => {
+                  'id': record.id,
+                  'courseId': record.courseId,
+                  'studentId': record.studentId,
+                  'date': record.date.millisecondsSinceEpoch,
+                  'status': record.status.toString().split('.').last,
+                  'remarks': record.remarks,
+                  'createdAt': record.createdAt.millisecondsSinceEpoch,
+                  'updatedAt': record.updatedAt.millisecondsSinceEpoch,
+                })
+            .toList();
+      });
+
+      await prefs.setString(key, jsonEncode(serializedData));
+    } catch (e) {
+      print('Error caching past 7 days attendance: $e');
+      // Don't rethrow as caching is not critical
+    }
   }
 
   Future<void> _onLoadAttendanceByDate(
@@ -142,65 +422,6 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
       await _cacheStudents(event.courseId, students);
 
       emit(EnrolledStudentsLoaded(students: students));
-    } catch (e) {
-      String errorMessage;
-      if (e is Exception) {
-        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
-      } else {
-        errorMessage = 'An unexpected error occurred: ${e.toString()}';
-      }
-      emit(AttendanceError(message: errorMessage));
-    }
-  }
-
-  Future<void> _onRecordBulkAttendance(
-    RecordBulkAttendanceEvent event,
-    Emitter<AttendanceState> emit,
-  ) async {
-    emit(AttendanceLoading());
-    try {
-      // Check connectivity
-      final isConnected = await ErrorHandler.isConnected();
-
-      if (isConnected) {
-        await recordBulkAttendanceUseCase.execute(
-          event.courseId,
-          event.date,
-          event.studentAttendances,
-          remarks: event.remarks,
-        );
-
-        // Update last sync time
-        await _updateLastSyncTime();
-
-        emit(const AttendanceRecordSuccess(
-          message: 'Attendance recorded successfully',
-        ));
-      } else {
-        // Store attendance record locally for later sync
-        await _storeOfflineAttendance(
-          event.courseId,
-          event.date,
-          event.studentAttendances,
-          event.remarks,
-        );
-
-        emit(const AttendanceRecordSuccess(
-          message: 'Attendance stored offline. Will sync when online.',
-        ));
-
-        final lastSynced = await _getLastSyncTime();
-        emit(AttendanceOfflineMode(
-          lastSynced: lastSynced,
-          hasUnsynced: true,
-        ));
-      }
-
-      // Reload the attendance for this date
-      add(LoadAttendanceByDateEvent(
-        courseId: event.courseId,
-        date: event.date,
-      ));
     } catch (e) {
       String errorMessage;
       if (e is Exception) {
@@ -415,23 +636,35 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
 
       if (isConnected) {
         // Get schedules to add schedule metadata
-        final schedules =
+        final allSchedules =
             await getCourseSchedulesUseCase.execute(event.courseId);
 
+        // IMPORTANT FIX: Filter schedules relevant for the attendance date
+        final relevantSchedules = allSchedules.where((schedule) {
+          return schedule.isRelevantForDate(event.date) && schedule.isActive;
+        }).toList();
+
+        // Use the filtered schedules list with the selectedScheduleIndex
         if (event.scheduleIndex >= 0 &&
-            event.scheduleIndex < schedules.length) {
-          final schedule = schedules[event.scheduleIndex];
+            event.scheduleIndex < relevantSchedules.length) {
+          final schedule =
+              relevantSchedules[event.scheduleIndex]; // Use filtered list
           final scheduleMeta = {
             'scheduleIndex': event.scheduleIndex,
+            'scheduleId': schedule.id,
             'scheduleDay': schedule.day,
             'scheduleLocation': schedule.location,
+            'scheduleType': schedule.type.toString().split('.').last,
+            'scheduleStartTime': schedule.startTime.toIso8601String(),
+            'scheduleEndTime': schedule.endTime.toIso8601String(),
           };
 
-          // Add schedule metadata to remarks
+          // Add schedule metadata to remarks for proper database recording
           Map<String, String> extendedRemarks =
               event.remarks?.map((k, v) => MapEntry(k, v)) ?? {};
           extendedRemarks['_scheduleMeta'] = jsonEncode(scheduleMeta);
 
+          // Use the existing recordBulkAttendance but with schedule metadata
           await recordBulkAttendanceUseCase.execute(
             event.courseId,
             event.date,
@@ -649,13 +882,14 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
               remarks: remarks,
             ));
           } else {
-            // Handle regular attendance
-            add(RecordBulkAttendanceEvent(
-              courseId: courseId,
-              date: date,
-              studentAttendances: studentAttendances,
+            // This should not happen anymore since we always require schedule
+            // But keep for backward compatibility
+            await recordBulkAttendanceUseCase.execute(
+              courseId,
+              date,
+              studentAttendances,
               remarks: remarks,
-            ));
+            );
           }
         }
 
@@ -990,5 +1224,420 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
       print('Error getting cached schedules: $e');
     }
     return [];
+  }
+
+  /// Check if attendance exists for a specific schedule before taking
+  Future<void> _onCheckScheduleAttendanceBeforeTaking(
+    CheckScheduleAttendanceBeforeTakingEvent event,
+    Emitter<AttendanceState> emit,
+  ) async {
+    try {
+      final schedule = event.schedule;
+      final attendanceDate =
+          ScheduleDateUtils.getScheduleDateForCurrentWeek(schedule);
+
+      // Use your existing use case instead of direct repository access
+      final status = await getScheduleAttendanceStatusUseCase.execute(
+        event.courseId,
+        attendanceDate,
+        schedule.id,
+      );
+
+      final hasAttendance = status['isTaken'] as bool;
+      final count = status['count'] as int;
+
+      if (hasAttendance) {
+        emit(ScheduleAttendanceAlreadyExists(
+          schedule: schedule,
+          attendanceDate: attendanceDate,
+          existingCount: count,
+        ));
+      } else {
+        emit(ScheduleAttendanceCanBeTaken(
+          schedule: schedule,
+          attendanceDate: attendanceDate,
+        ));
+      }
+    } catch (e) {
+      String errorMessage;
+      if (e is Exception) {
+        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+      } else {
+        errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      }
+      emit(AttendanceError(message: errorMessage));
+    }
+  }
+
+  /// Record attendance with automatic date resolution from schedule
+  Future<void> _onRecordScheduledAttendanceWithDateResolution(
+    RecordScheduledAttendanceWithDateResolutionEvent event,
+    Emitter<AttendanceState> emit,
+  ) async {
+    emit(AttendanceLoading());
+    try {
+      final schedule = event.schedule;
+      final attendanceDate =
+          ScheduleDateUtils.getScheduleDateForCurrentWeek(schedule);
+
+      // Double-check for duplicates before recording (unless overwrite is allowed)
+      if (!event.allowOverwrite) {
+        final status = await getScheduleAttendanceStatusUseCase.execute(
+          event.courseId,
+          attendanceDate,
+          schedule.id,
+        );
+
+        final hasAttendance = status['isTaken'] as bool;
+
+        if (hasAttendance) {
+          emit(const AttendanceError(
+              message: 'Attendance has already been taken for this schedule. '
+                  'Use edit mode to modify existing records.'));
+          return;
+        }
+      }
+
+      // Create enhanced schedule metadata
+      final scheduleMetadata = {
+        'scheduleId': schedule.id,
+        'scheduleDay': schedule.day,
+        'scheduleType': schedule.type.toString().split('.').last,
+        'scheduleLocation': schedule.location,
+        'scheduleStartTime': schedule.startTime.toIso8601String(),
+        'scheduleEndTime': schedule.endTime.toIso8601String(),
+        'attendanceDate': attendanceDate.toIso8601String(),
+        'scheduleIndex': 0, // For backward compatibility
+      };
+
+      // Add schedule metadata to remarks
+      Map<String, String> extendedRemarks =
+          event.remarks?.map((k, v) => MapEntry(k, v)) ?? {};
+      extendedRemarks['_scheduleMeta'] = jsonEncode(scheduleMetadata);
+
+      // Use your existing use case
+      await recordBulkAttendanceUseCase.execute(
+        event.courseId,
+        attendanceDate,
+        event.studentAttendances,
+        remarks: extendedRemarks,
+      );
+
+      // Update last sync time
+      await _updateLastSyncTime();
+
+      emit(AttendanceRecordSuccess(
+        message:
+            'Attendance recorded for ${schedule.displayTitle} on ${ScheduleDateUtils.getScheduleDateDisplay(schedule)}',
+      ));
+
+      // Reload attendance data
+      add(LoadAttendanceByDateEvent(
+        courseId: event.courseId,
+        date: attendanceDate,
+      ));
+    } catch (e) {
+      String errorMessage;
+      if (e is Exception) {
+        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+      } else {
+        errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      }
+      emit(AttendanceError(message: errorMessage));
+    }
+  }
+
+  /// Load attendance status for multiple schedules on a specific date
+  Future<void> _onLoadMultipleScheduleStatus(
+    LoadMultipleScheduleStatusEvent event,
+    Emitter<AttendanceState> emit,
+  ) async {
+    try {
+      final scheduleIds = event.schedules.map((s) => s.id).toList();
+
+      // Use your existing use case for multiple schedules
+      final statusMap =
+          await getScheduleAttendanceStatusUseCase.executeForMultipleSchedules(
+        event.courseId,
+        event.date,
+        scheduleIds,
+      );
+
+      // Extract status and count information
+      final Map<String, bool> scheduleStatuses = {};
+      final Map<String, int> attendanceCounts = {};
+
+      statusMap.forEach((scheduleId, status) {
+        scheduleStatuses[scheduleId] = status['isTaken'] as bool;
+        attendanceCounts[scheduleId] = status['count'] as int;
+      });
+
+      emit(MultipleScheduleStatusLoaded(
+        scheduleStatuses: scheduleStatuses,
+        attendanceCounts: attendanceCounts,
+        date: event.date,
+      ));
+    } catch (e) {
+      String errorMessage;
+      if (e is Exception) {
+        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+      } else {
+        errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      }
+      emit(AttendanceError(message: errorMessage));
+    }
+  }
+
+  /// Load attendance records for editing with validation
+  Future<void> _onLoadAttendanceForEdit(
+    LoadAttendanceForEditEvent event,
+    Emitter<AttendanceState> emit,
+  ) async {
+    emit(AttendanceEditPreparing(
+        message: 'Preparing attendance for editing...'));
+
+    try {
+      // First validate if editing is allowed (7-day rule)
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final recordDate = DateTime(
+        event.attendanceDate.year,
+        event.attendanceDate.month,
+        event.attendanceDate.day,
+      );
+      final daysDifference = today.difference(recordDate).inDays;
+      final canEdit = daysDifference >= 0 && daysDifference <= 7;
+
+      if (!canEdit) {
+        emit(EditPermissionValidated(
+          attendanceDate: event.attendanceDate,
+          canEdit: false,
+          reason: 'Records older than 7 days cannot be edited',
+          daysOld: daysDifference,
+        ));
+        return;
+      }
+
+      // Load enrolled students for this course
+      final enrolledStudents = await ErrorHandler.retryWithBackoff(
+        operation: () => getEnrolledStudentsUseCase.execute(event.courseId),
+      );
+
+      // Extract schedule information from the first attendance record
+      Map<String, dynamic>? scheduleInfo;
+      if (event.existingRecords.isNotEmpty) {
+        scheduleInfo =
+            _extractScheduleInfoFromRecord(event.existingRecords.first);
+      }
+
+      emit(AttendanceLoadedForEdit(
+        courseId: event.courseId,
+        attendanceDate: event.attendanceDate,
+        attendanceRecords: event.existingRecords,
+        enrolledStudents: enrolledStudents,
+        scheduleInfo: scheduleInfo,
+        canEdit: canEdit,
+      ));
+    } catch (e) {
+      String errorMessage;
+      if (e is Exception) {
+        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+      } else {
+        errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      }
+      emit(AttendanceError(message: errorMessage));
+    }
+  }
+
+  /// Update attendance records with change tracking
+  Future<void> _onUpdateAttendanceRecords(
+    UpdateAttendanceRecordsEvent event,
+    Emitter<AttendanceState> emit,
+  ) async {
+    emit(AttendanceLoading());
+    print('DEBUG: Starting attendance update...');
+
+    try {
+      // Detect changes for tracking
+      final Map<String, String> changes = {};
+      int changedStudentCount = 0;
+
+      print('DEBUG: Checking for changes...');
+      event.updatedAttendances.forEach((studentId, newStatus) {
+        final originalStatus = event.originalAttendances[studentId];
+        if (originalStatus != null && originalStatus != newStatus) {
+          changes[studentId] =
+              '${_getStatusText(originalStatus)} → ${_getStatusText(newStatus)}';
+          changedStudentCount++;
+          print('DEBUG: Change detected for $studentId: ${changes[studentId]}');
+        }
+      });
+
+      // If no changes detected, show message and return
+      if (changedStudentCount == 0) {
+        print('DEBUG: No changes detected');
+        emit(AttendanceRecordsUpdated(
+          message: 'No changes detected. Attendance remains the same.',
+          changedStudentCount: 0,
+          changes: {},
+        ));
+        return;
+      }
+
+      print(
+          'DEBUG: Found $changedStudentCount changes, proceeding with update...');
+
+      // SIMPLIFIED: Use the existing use case directly instead of helper method
+      await updateAttendanceUseCase.executeMultiple(
+        event.courseId,
+        event.attendanceDate,
+        event.updatedAttendances,
+        event.updatedRemarks,
+      );
+
+      print('DEBUG: Update completed successfully');
+
+      // Update last sync time
+      await _updateLastSyncTime();
+
+      emit(AttendanceRecordsUpdated(
+        message:
+            'Attendance updated successfully! Changed $changedStudentCount student(s).',
+        changedStudentCount: changedStudentCount,
+        changes: changes,
+      ));
+
+      print('DEBUG: Success state emitted');
+
+      // Reload the attendance data to reflect changes
+      add(LoadAttendanceByDateEvent(
+        courseId: event.courseId,
+        date: event.attendanceDate,
+      ));
+
+      print('DEBUG: Reload event added');
+    } catch (e) {
+      print('DEBUG: Error occurred: $e');
+      print('DEBUG: Error type: ${e.runtimeType}');
+
+      String errorMessage;
+      if (e is Exception) {
+        errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+      } else {
+        errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      }
+
+      print('DEBUG: Emitting error: $errorMessage');
+      emit(AttendanceError(message: errorMessage));
+    }
+  }
+
+  /// Validate edit permission based on 7-day rule
+  Future<void> _onValidateEditPermission(
+    ValidateEditPermissionEvent event,
+    Emitter<AttendanceState> emit,
+  ) async {
+    try {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final recordDate = DateTime(
+        event.attendanceDate.year,
+        event.attendanceDate.month,
+        event.attendanceDate.day,
+      );
+      final daysDifference = today.difference(recordDate).inDays;
+      final canEdit = daysDifference >= 0 && daysDifference <= 7;
+
+      String reason = '';
+      if (!canEdit) {
+        if (daysDifference < 0) {
+          reason = 'Cannot edit future attendance records';
+        } else {
+          reason = 'Records older than 7 days cannot be edited';
+        }
+      } else {
+        reason = 'Record can be edited';
+      }
+
+      emit(EditPermissionValidated(
+        attendanceDate: event.attendanceDate,
+        canEdit: canEdit,
+        reason: reason,
+        daysOld: daysDifference,
+      ));
+    } catch (e) {
+      emit(AttendanceError(message: 'Error validating edit permission: $e'));
+    }
+  }
+
+  /// Helper method to extract schedule info from attendance record
+  Map<String, dynamic>? _extractScheduleInfoFromRecord(Attendance record) {
+    if (record is AttendanceModel && record.scheduleMetadata != null) {
+      return record.scheduleMetadata;
+    }
+    return null;
+  }
+
+  /// Helper method to get status text
+  String _getStatusText(AttendanceStatus status) {
+    switch (status) {
+      case AttendanceStatus.present:
+        return 'Present';
+      case AttendanceStatus.absent:
+        return 'Absent';
+      case AttendanceStatus.late:
+        return 'Late';
+      case AttendanceStatus.excused:
+        return 'Excused';
+    }
+  }
+
+  // REPLACE the _updateExistingAttendanceRecords method in AttendanceBloc:
+
+  /// Update existing attendance records (handles existing document IDs)
+  Future<void> _updateExistingAttendanceRecords(
+    String courseId,
+    DateTime date,
+    Map<String, AttendanceStatus> updatedAttendances,
+    Map<String, String>? updatedRemarks,
+  ) async {
+    try {
+      // Get existing attendance records to find which ones need updating
+      final existingRecords =
+          await getAttendanceByDateUseCase.execute(courseId, date);
+
+      // For each existing record that needs updating, use the repository's update method
+      for (var record in existingRecords) {
+        final studentId = record.studentId;
+
+        if (updatedAttendances.containsKey(studentId)) {
+          final newStatus = updatedAttendances[studentId]!;
+          final newRemarks = updatedRemarks?[studentId];
+
+          // FIXED: Use the UpdateAttendanceUseCase instead of calling repository directly
+          await updateAttendanceUseCase.execute(
+            record.id,
+            newStatus,
+            remarks: newRemarks,
+          );
+        }
+      }
+    } catch (e) {
+      print('Error in _updateExistingAttendanceRecords: $e');
+      throw Exception('Failed to update attendance records: $e');
+    }
+  }
+
+  /// Helper method to update a single attendance record
+  Future<void> _updateSingleAttendanceRecord(
+    String attendanceId,
+    AttendanceStatus newStatus,
+    String? newRemarks,
+  ) async {
+    // Use the existing repository method through the use case pattern
+    // We need to access the repository through dependency injection
+    // For now, we'll throw an error to indicate this needs to be implemented
+    throw UnimplementedError(
+        'Need to add UpdateAttendanceUseCase or access repository directly');
   }
 }

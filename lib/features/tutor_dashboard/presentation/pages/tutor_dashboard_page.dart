@@ -1,10 +1,11 @@
-// lib/features/auth/presentation/pages/tutor_dashboard_page.dart
+// lib/features/tutor_dashboard/presentation/pages/tutor_dashboard_page.dart
 
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mytuition/features/attendance/presentation/widgets/quick_attendance_dialog.dart';
 import 'package:mytuition/features/tutor_dashboard/domain/entities/dashboard_stats.dart';
 import 'package:mytuition/features/tutor_dashboard/presentation/bloc/dashboard_bloc.dart';
 import 'package:mytuition/features/tutor_dashboard/presentation/bloc/dashboard_event.dart';
@@ -254,6 +255,10 @@ class _TutorDashboardPageState extends State<TutorDashboardPage> {
             _buildWelcomeSection(),
             SizedBox(height: 3.h),
 
+            // Quick Attendance Button (Replaces Today's Classes)
+            _buildQuickAttendanceSection(),
+            SizedBox(height: 3.h),
+
             // Stats cards grid
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 4.w),
@@ -346,6 +351,141 @@ class _TutorDashboardPageState extends State<TutorDashboardPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // NEW: Quick Attendance Section
+  Widget _buildQuickAttendanceSection() {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 4.w),
+      child: Card(
+        elevation: 0.5.w,
+        shadowColor: AppColors.accentTeal.withOpacity(0.3),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4.w),
+        ),
+        child: InkWell(
+          onTap: () => QuickAttendanceDialog.show(context),
+          borderRadius: BorderRadius.circular(4.w),
+          child: Container(
+            padding: EdgeInsets.all(5.w),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4.w),
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.accentTeal.withOpacity(0.1),
+                  AppColors.accentTeal.withOpacity(0.05),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(3.w),
+                      decoration: BoxDecoration(
+                        color: AppColors.accentTeal.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(2.w),
+                      ),
+                      child: Text(
+                        '📝',
+                        style: TextStyle(fontSize: 6.w),
+                      ),
+                    ),
+                    SizedBox(width: 3.w),
+                    Expanded(
+                      child: Text(
+                        'Quick Attendance',
+                        style: TextStyle(
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
+                      decoration: BoxDecoration(
+                        color: AppColors.accentTeal.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(1.5.w),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.arrow_forward,
+                            color: AppColors.accentTeal,
+                            size: 4.w,
+                          ),
+                          SizedBox(width: 1.w),
+                          Text(
+                            'Take Now',
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: AppColors.accentTeal,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 3.h),
+                Container(
+                  padding: EdgeInsets.all(3.w),
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(3.w),
+                    border: Border.all(
+                      color: AppColors.accentTeal.withOpacity(0.2),
+                      width: 0.3.w,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.how_to_reg,
+                        color: AppColors.accentTeal,
+                        size: 5.w,
+                      ),
+                      SizedBox(width: 3.w),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Fast Track to Attendance',
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                            SizedBox(height: 0.5.h),
+                            Text(
+                              'Select class → Take attendance immediately',
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: AppColors.textMedium,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

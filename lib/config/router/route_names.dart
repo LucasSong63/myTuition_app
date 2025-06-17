@@ -1,10 +1,5 @@
-/// Route name constants for the application
-///
-/// This file contains all route names used with GoRouter
-/// Each route has both a name (for references in code)
-/// and a path (for the actual URL path)
+// lib/config/route/route_names.dart
 class RouteNames {
-  // Don't allow instantiation
   RouteNames._();
 
   // Auth routes
@@ -14,6 +9,12 @@ class RouteNames {
   static const String verifyEmail = 'verifyEmail';
   static const String register = 'register';
   static const String forgotPassword = 'forgotPassword';
+
+  // Admin routes
+  static const String adminSetup = 'adminSetup';
+
+  // Notification routes
+  static const String notifications = 'notifications';
 
   // Student routes
   static const String studentRoot = 'studentRoot';
@@ -27,9 +28,6 @@ class RouteNames {
   static const String studentAttendance = 'studentAttendance';
   static const String studentPayments = 'studentPayments';
 
-  // Notification routes
-  static const String notifications = 'notifications';
-
   // Tutor routes
   static const String tutorRoot = 'tutorRoot';
   static const String tutorDashboard = 'tutorDashboard';
@@ -40,11 +38,25 @@ class RouteNames {
   static const String tutorStudentDetails = 'tutorStudentDetails';
   static const String tutorClasses = 'tutorClasses';
   static const String tutorClassDetails = 'tutorClassDetails';
+  static const String tutorCourseDetails = 'tutorCourseDetails';
   static const String tutorTasks = 'tutorTasks';
   static const String tutorTaskDetails = 'tutorTaskDetails';
   static const String tutorAttendance = 'tutorAttendance';
   static const String tutorPayments = 'tutorPayments';
-  static const String tutorCourseDetails = 'tutorCourseDetails';
   static const String tutorSubjectCosts = 'tutorSubjectCosts';
   static const String tutorPaymentInfo = 'tutorPaymentInfo';
+  static const String tutorRegistrations = 'tutorRegistrations';
+  static const String registrationDetails = 'registrationDetails';
+
+  // Course management routes
+  static const String tutorCourseTaskManagement = 'tutorCourseTaskManagement';
+  static const String tutorTaskProgress = 'tutorTaskProgress';
+
+  // Attendance routes
+  static const String manageAttendance = 'manageAttendance';
+  static const String takeAttendance = 'takeAttendance';
+  static const String editAttendance = 'editAttendance';
+
+  // Legacy routes
+  static const String legacyCourseDetail = 'legacyCourseDetail';
 }

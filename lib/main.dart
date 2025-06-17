@@ -9,7 +9,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mytuition/core/services/fcm_service.dart';
+import 'package:mytuition/features/attendance/domain/usecases/check_schedule_attendance_usecase.dart';
 import 'package:mytuition/features/attendance/domain/usecases/get_course_schedules_usecase.dart';
+import 'package:mytuition/features/attendance/domain/usecases/get_past_seven_days_attendance_usecase.dart';
+import 'package:mytuition/features/attendance/domain/usecases/get_schedule_attendance_status_usecase.dart';
+import 'package:mytuition/features/attendance/domain/usecases/update_attendance_usecase.dart';
 import 'package:mytuition/features/profile/domain/usecases/get_student_payment_summary_usecase.dart';
 import 'package:mytuition/features/student_dashboard/data/repositories/student_dashboard_repository_impl.dart';
 import 'package:mytuition/features/student_dashboard/domain/repositories/student_dashboard_repository.dart';
@@ -416,6 +420,23 @@ Future<void> initDependencies() async {
     () => GetCourseSchedulesUseCase(getIt<AttendanceRepository>()),
   );
 
+  // NEW: Schedule-specific attendance use cases
+  getIt.registerLazySingleton(
+    () => CheckScheduleAttendanceUseCase(getIt<AttendanceRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => GetScheduleAttendanceStatusUseCase(getIt<AttendanceRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => GetPast7DaysAttendanceUseCase(getIt<AttendanceRepository>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => UpdateAttendanceUseCase(getIt<AttendanceRepository>()),
+  );
+
   // Attendance BLoC
   getIt.registerFactory(
     () => AttendanceBloc(
@@ -425,6 +446,11 @@ Future<void> initDependencies() async {
       getStudentAttendanceUseCase: getIt<GetStudentAttendanceUseCase>(),
       getCourseAttendanceStatsUseCase: getIt<GetCourseAttendanceStatsUseCase>(),
       getCourseSchedulesUseCase: getIt<GetCourseSchedulesUseCase>(),
+      checkScheduleAttendanceUseCase: getIt<CheckScheduleAttendanceUseCase>(),
+      getScheduleAttendanceStatusUseCase:
+          getIt<GetScheduleAttendanceStatusUseCase>(),
+      getPast7DaysAttendanceUseCase: getIt<GetPast7DaysAttendanceUseCase>(),
+      updateAttendanceUseCase: getIt<UpdateAttendanceUseCase>(),
     ),
   );
 
