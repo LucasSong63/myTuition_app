@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
+import 'package:sizer/sizer.dart';
 import '../bloc/student_management_bloc.dart';
 import '../bloc/student_management_event.dart';
 import '../bloc/student_management_state.dart';
@@ -82,10 +84,10 @@ class _StudentEditSheetState extends State<StudentEditSheet> {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: EdgeInsets.only(
-        left: 16.0,
-        right: 16.0,
-        top: 16.0,
-        bottom: 16.0 + MediaQuery.of(context).viewInsets.bottom,
+        left: 4.w,
+        right: 4.w,
+        top: 4.w,
+        bottom: 4.w + MediaQuery.of(context).viewInsets.bottom,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -98,17 +100,18 @@ class _StudentEditSheetState extends State<StudentEditSheet> {
                 'Edit Student Profile',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
+                      fontSize: 18.sp,
                     ),
               ),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.close),
+                icon: Icon(Icons.close, size: 6.w),
                 onPressed: () => Navigator.pop(context),
                 tooltip: 'Close',
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 4.w),
 
           // Name field
           _buildTextField(
@@ -117,7 +120,7 @@ class _StudentEditSheetState extends State<StudentEditSheet> {
             icon: Icons.person_outline,
             hint: 'Enter full name',
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 4.w),
 
           // Phone field
           _buildTextField(
@@ -127,7 +130,7 @@ class _StudentEditSheetState extends State<StudentEditSheet> {
             hint: 'Enter phone number (optional)',
             keyboardType: TextInputType.phone,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 4.w),
 
           // Email field (read-only)
           _buildTextField(
@@ -138,7 +141,7 @@ class _StudentEditSheetState extends State<StudentEditSheet> {
             readOnly: true,
             helperText: 'Email cannot be changed',
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 4.w),
 
           // Grade selector
           Semantics(
@@ -151,11 +154,12 @@ class _StudentEditSheetState extends State<StudentEditSheet> {
                   style: TextStyle(
                     fontWeight: FontWeight.w500,
                     color: AppColors.textDark,
+                    fontSize: 14.sp,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 2.w),
                 SizedBox(
-                  height: 48,
+                  height: 12.w,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: 6,
@@ -163,7 +167,7 @@ class _StudentEditSheetState extends State<StudentEditSheet> {
                       final grade = index + 1;
                       final isSelected = grade == _selectedGrade;
                       return Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
+                        padding: EdgeInsets.only(right: 2.w),
                         child: ChoiceChip(
                           label: Text('Grade $grade'),
                           selected: isSelected,
@@ -183,7 +187,9 @@ class _StudentEditSheetState extends State<StudentEditSheet> {
                             fontWeight: isSelected
                                 ? FontWeight.bold
                                 : FontWeight.normal,
+                            fontSize: 12.sp,
                           ),
+                          padding: EdgeInsets.symmetric(horizontal: 3.w),
                         ),
                       );
                     },
@@ -192,7 +198,7 @@ class _StudentEditSheetState extends State<StudentEditSheet> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 4.w),
 
           // Subject selector
           Semantics(
@@ -205,12 +211,13 @@ class _StudentEditSheetState extends State<StudentEditSheet> {
                   style: TextStyle(
                     fontWeight: FontWeight.w500,
                     color: AppColors.textDark,
+                    fontSize: 14.sp,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 2.w),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 2.w,
+                  runSpacing: 2.w,
                   children: _allSubjects.map((subject) {
                     final isSelected = _selectedSubjects.contains(subject);
                     return FilterChip(
@@ -235,19 +242,22 @@ class _StudentEditSheetState extends State<StudentEditSheet> {
                             : AppColors.textMedium,
                         fontWeight:
                             isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontSize: 12.sp,
                       ),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
                     );
                   }).toList(),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 6.w),
 
           // Save button
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: 12.w,
             child: ElevatedButton(
               onPressed: _isLoading ? null : _updateProfile,
               style: ElevatedButton.styleFrom(
@@ -255,28 +265,28 @@ class _StudentEditSheetState extends State<StudentEditSheet> {
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: AppColors.primaryBlue.withOpacity(0.6),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(2.w),
                 ),
               ),
               child: _isLoading
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
+                  ? SizedBox(
+                      width: 6.w,
+                      height: 6.w,
                       child: CircularProgressIndicator(
                         color: Colors.white,
-                        strokeWidth: 2,
+                        strokeWidth: 0.5.w,
                       ),
                     )
-                  : const Text(
+                  : Text(
                       'Save Changes',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 2.w),
         ],
       ),
     );
@@ -299,38 +309,73 @@ class _StudentEditSheetState extends State<StudentEditSheet> {
           style: TextStyle(
             fontWeight: FontWeight.w500,
             color: AppColors.textDark,
+            fontSize: 14.sp,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 2.w),
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
           readOnly: readOnly,
+          inputFormatters: keyboardType == TextInputType.phone
+              ? [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(15),
+                ]
+              : null,
+          validator: keyboardType == TextInputType.phone
+              ? (value) {
+                  if (value != null && value.isNotEmpty) {
+                    if (value.length < 6) {
+                      return 'Phone number must be at least 6 digits';
+                    }
+                  }
+                  return null;
+                }
+              : null,
           decoration: InputDecoration(
             hintText: hint,
-            prefixIcon: Icon(icon),
+            hintStyle: TextStyle(fontSize: 13.sp),
+            prefixIcon: Icon(icon, size: 5.w),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(2.w),
               borderSide: BorderSide(color: AppColors.divider),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(2.w),
               borderSide: BorderSide(color: AppColors.divider),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: AppColors.primaryBlue),
+              borderRadius: BorderRadius.circular(2.w),
+              borderSide:
+                  BorderSide(color: AppColors.primaryBlue, width: 0.5.w),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(2.w),
+              borderSide: BorderSide(color: AppColors.error),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(2.w),
+              borderSide: BorderSide(color: AppColors.error),
             ),
             filled: true,
             fillColor: readOnly ? AppColors.backgroundLight : Colors.white,
             helperText: helperText,
             helperStyle: TextStyle(
-              fontSize: 12,
+              fontSize: 10.sp,
               color: AppColors.textMedium,
+            ),
+            errorStyle: TextStyle(
+              fontSize: 10.sp,
+            ),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 3.w,
+              vertical: 3.w,
             ),
           ),
           style: TextStyle(
             color: readOnly ? AppColors.textMedium : AppColors.textDark,
+            fontSize: 15.sp,
           ),
         ),
       ],

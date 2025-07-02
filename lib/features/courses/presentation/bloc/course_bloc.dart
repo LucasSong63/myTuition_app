@@ -5,6 +5,7 @@ import 'package:mytuition/features/courses/domain/usecases/get_tutor_courses_use
 import 'package:mytuition/features/courses/domain/usecases/update_course_active_status_usecase.dart';
 import 'package:mytuition/features/courses/domain/usecases/update_course_capacity_usecase.dart';
 import 'package:mytuition/features/courses/domain/usecases/update_schedule_usecase.dart';
+import 'package:mytuition/features/courses/domain/usecases/get_recent_activities_usecase.dart';
 import '../../domain/usecases/get_course_by_id_usecase.dart';
 import '../../domain/usecases/get_enrolled_courses_usecase.dart';
 import '../../domain/usecases/get_upcoming_schedules_usecase.dart';
@@ -21,6 +22,7 @@ class CourseBloc extends Bloc<CourseEvent, CourseState> {
   final DeleteScheduleUseCase deleteScheduleUseCase;
   final UpdateCourseActiveStatusUseCase updateCourseActiveStatusUseCase;
   final UpdateCourseCapacityUseCase updateCourseCapacityUseCase;
+  final GetRecentActivitiesUseCase getRecentActivitiesUseCase;
 
   CourseBloc({
     required this.getEnrolledCoursesUseCase,
@@ -32,6 +34,7 @@ class CourseBloc extends Bloc<CourseEvent, CourseState> {
     required this.deleteScheduleUseCase,
     required this.updateCourseActiveStatusUseCase,
     required this.updateCourseCapacityUseCase,
+    required this.getRecentActivitiesUseCase,
   }) : super(CourseInitial()) {
     on<LoadEnrolledCoursesEvent>(_onLoadEnrolledCourses);
     on<LoadCourseDetailsEvent>(_onLoadCourseDetails);
@@ -42,6 +45,7 @@ class CourseBloc extends Bloc<CourseEvent, CourseState> {
     on<DeleteScheduleEvent>(_onDeleteSchedule);
     on<UpdateCourseActiveStatusEvent>(_onUpdateCourseActiveStatus);
     on<UpdateCourseCapacityEvent>(_onUpdateCourseCapacity);
+    on<LoadRecentActivitiesEvent>(_onLoadRecentActivities);
   }
 
   Future<void> _onLoadEnrolledCourses(
@@ -65,6 +69,9 @@ class CourseBloc extends Bloc<CourseEvent, CourseState> {
     try {
       final course = await getCourseByIdUseCase.execute(event.courseId);
       emit(CourseDetailsLoaded(course: course));
+
+      // Automatically load recent activities after course details
+      add(LoadRecentActivitiesEvent(courseId: event.courseId));
     } catch (e) {
       emit(CourseError(message: e.toString()));
     }
@@ -181,6 +188,29 @@ class CourseBloc extends Bloc<CourseEvent, CourseState> {
       add(LoadCourseDetailsEvent(courseId: event.courseId));
     } catch (e) {
       emit(CourseError(message: e.toString()));
+    }
+  }
+
+  Future<void> _onLoadRecentActivities(
+    LoadRecentActivitiesEvent event,
+    Emitter<CourseState> emit,
+  ) async {
+    try {
+      final activities =
+          await getRecentActivitiesUseCase.execute(event.courseId);
+
+      // If current state is CourseDetailsLoaded, update it with activities
+      if (state is CourseDetailsLoaded) {
+        final currentState = state as CourseDetailsLoaded;
+        emit(currentState.copyWith(recentActivities: activities));
+      } else {
+        // Otherwise emit the separate state (for backward compatibility)
+        emit(RecentActivitiesLoaded(activities: activities));
+      }
+    } catch (e) {
+      print('Error loading recent activities: $e');
+      // Don't emit error state to avoid disrupting the UI
+      // Just log the error
     }
   }
 }

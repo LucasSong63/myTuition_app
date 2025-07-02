@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:sizer/sizer.dart';
 import 'package:wolt_modal_sheet/wolt_modal_sheet.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
 import 'package:mytuition/features/courses/domain/entities/course.dart';
@@ -20,23 +21,24 @@ class CapacityEditBottomSheet {
       return WoltModalSheetPage(
         hasSabGradient: false,
         backgroundColor: Theme.of(context).colorScheme.background,
-        topBarTitle: const Text(
+        topBarTitle: Text(
           'Edit Class Capacity',
           style: TextStyle(
             fontWeight: FontWeight.bold,
+            fontSize: 16.sp,
           ),
         ),
         isTopBarLayerAlwaysVisible: true,
         trailingNavBarWidget: IconButton(
-          padding: const EdgeInsets.all(16),
-          icon: const Icon(Icons.close),
+          padding: EdgeInsets.all(4.w),
+          icon: Icon(Icons.close, size: 6.w),
           onPressed: () => Navigator.of(context).pop(),
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
             return Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(
+                constraints: BoxConstraints(
                   maxWidth: 600, // Limit width on larger screens
                 ),
                 // Use BlocProvider.value to share the existing bloc
@@ -100,14 +102,17 @@ class _CapacityEditContentState extends State<_CapacityEditContent> {
           // Show error but don't close sheet
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
+              content: Text(
+                state.message,
+                style: TextStyle(fontSize: 14.sp),
+              ),
               backgroundColor: AppColors.error,
             ),
           );
         }
       },
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(4.w),
         child: Form(
           key: _formKey,
           child: Column(
@@ -117,29 +122,29 @@ class _CapacityEditContentState extends State<_CapacityEditContent> {
               // Class information
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: EdgeInsets.all(4.w),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
                           Container(
-                            width: 10,
-                            height: 40,
+                            width: 2.5.w,
+                            height: 10.w,
                             decoration: BoxDecoration(
                               color: _getSubjectColor(widget.course.subject),
-                              borderRadius: BorderRadius.circular(5),
+                              borderRadius: BorderRadius.circular(1.25.w),
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          SizedBox(width: 4.w),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   widget.course.subject,
-                                  style: const TextStyle(
-                                    fontSize: 18,
+                                  style: TextStyle(
+                                    fontSize: 18.sp,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -147,6 +152,7 @@ class _CapacityEditContentState extends State<_CapacityEditContent> {
                                   'Grade ${widget.course.grade}',
                                   style: TextStyle(
                                     color: AppColors.textMedium,
+                                    fontSize: 14.sp,
                                   ),
                                 ),
                               ],
@@ -159,41 +165,47 @@ class _CapacityEditContentState extends State<_CapacityEditContent> {
                 ),
               ),
 
-              const SizedBox(height: 24),
+              SizedBox(height: 6.w),
 
               // Current enrollment info
               Text(
                 'Current Enrollment Status',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textDark,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 2.w),
               _buildEnrollmentStatusRow(),
 
-              const SizedBox(height: 24),
+              SizedBox(height: 6.w),
 
               // Capacity input
               Text(
                 'New Capacity',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textDark,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 2.w),
               TextFormField(
                 controller: _capacityController,
                 keyboardType: TextInputType.number,
+                style: TextStyle(fontSize: 15.sp),
                 decoration: InputDecoration(
                   hintText: 'Enter new capacity',
+                  hintStyle: TextStyle(fontSize: 14.sp),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(2.w),
                   ),
-                  suffixIcon: const Icon(Icons.people),
+                  suffixIcon: Icon(Icons.people, size: 5.w),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 3.w,
+                    vertical: 3.w,
+                  ),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -216,17 +228,17 @@ class _CapacityEditContentState extends State<_CapacityEditContent> {
                   return null;
                 },
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 2.w),
               Text(
                 '* Capacity cannot be less than current enrollment',
                 style: TextStyle(
                   color: AppColors.textMedium,
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   fontStyle: FontStyle.italic,
                 ),
               ),
 
-              const SizedBox(height: 32),
+              SizedBox(height: 8.w),
 
               // Update button
               BlocBuilder<CourseBloc, CourseState>(
@@ -238,26 +250,26 @@ class _CapacityEditContentState extends State<_CapacityEditContent> {
                     child: ElevatedButton(
                       onPressed: isLoading ? null : _updateCapacity,
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: EdgeInsets.symmetric(vertical: 4.w),
                         backgroundColor: AppColors.primaryBlue,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(2.w),
                         ),
                       ),
                       child: isLoading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
+                          ? SizedBox(
+                              width: 6.w,
+                              height: 6.w,
+                              child: const CircularProgressIndicator(
                                 color: Colors.white,
                                 strokeWidth: 2,
                               ),
                             )
-                          : const Text(
+                          : Text(
                               'Update Capacity',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 16.sp,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -283,7 +295,7 @@ class _CapacityEditContentState extends State<_CapacityEditContent> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(4.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -295,6 +307,7 @@ class _CapacityEditContentState extends State<_CapacityEditContent> {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: AppColors.textDark,
+                    fontSize: 14.sp,
                   ),
                 ),
                 Text(
@@ -302,29 +315,30 @@ class _CapacityEditContentState extends State<_CapacityEditContent> {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: statusColor,
+                    fontSize: 14.sp,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 3.w),
             // Progress bar
             ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(2.w),
               child: LinearProgressIndicator(
                 value: widget.course.enrollmentPercentage / 100,
-                minHeight: 10,
+                minHeight: 2.5.w,
                 backgroundColor: AppColors.backgroundDark,
                 color: statusColor,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 2.w),
             // Status text
             Text(
               _getCapacityStatusText(),
               style: TextStyle(
                 color: statusColor,
                 fontStyle: FontStyle.italic,
-                fontSize: 12,
+                fontSize: 12.sp,
               ),
               textAlign: TextAlign.end,
             ),

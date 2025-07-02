@@ -14,8 +14,9 @@ import 'package:mytuition/features/courses/presentation/bloc/course_state.dart';
 import 'package:mytuition/features/courses/presentation/utils/course_detail_utils.dart';
 import 'package:mytuition/features/courses/presentation/widgets/capacity_edit_bottom_sheet.dart';
 import 'package:mytuition/features/courses/presentation/widgets/course_tasks_section.dart';
-import 'package:mytuition/features/courses/presentation/widgets/schedule_dialog.dart';
+import 'package:mytuition/features/courses/presentation/widgets/schedule_bottom_sheet.dart';
 import 'package:mytuition/features/courses/presentation/widgets/replacement_schedule_bottom_sheet.dart';
+import 'package:mytuition/features/courses/domain/entities/activity.dart';
 
 class TutorCourseDetailPage extends StatefulWidget {
   final String courseId;
@@ -44,7 +45,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
     // Add scroll listener to control app bar title visibility
     _scrollController.addListener(() {
       setState(() {
-        _showTitle = _scrollController.offset > 120;
+        _showTitle = _scrollController.offset > 30.w;
       });
     });
   }
@@ -63,7 +64,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
         if (state is CourseActionSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
+              content: Text(state.message, style: TextStyle(fontSize: 14.sp)),
               backgroundColor: AppColors.success,
             ),
           );
@@ -72,7 +73,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
         if (state is CourseError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
+              content: Text(state.message, style: TextStyle(fontSize: 14.sp)),
               backgroundColor: AppColors.error,
             ),
           );
@@ -89,6 +90,10 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
           context.read<CourseBloc>().add(
                 LoadCourseDetailsEvent(courseId: widget.courseId),
               );
+          // Also load recent activities
+          context.read<CourseBloc>().add(
+                LoadRecentActivitiesEvent(courseId: widget.courseId),
+              );
           return _buildLoadingScreen();
         }
 
@@ -100,7 +105,8 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
 
   Widget _buildErrorScreen(String message) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Course Details')),
+      appBar: AppBar(
+          title: Text('Course Details', style: TextStyle(fontSize: 18.sp))),
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -114,6 +120,9 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
               onPressed: () => context.read<CourseBloc>().add(
                     LoadCourseDetailsEvent(courseId: widget.courseId),
                   ),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.w),
+              ),
               child: Text('Retry', style: TextStyle(fontSize: 14.sp)),
             ),
           ],
@@ -124,7 +133,8 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
 
   Widget _buildLoadingScreen() {
     return Scaffold(
-      appBar: AppBar(title: const Text('Course Details')),
+      appBar: AppBar(
+          title: Text('Course Details', style: TextStyle(fontSize: 18.sp))),
       body: const Center(child: CircularProgressIndicator()),
     );
   }
@@ -173,30 +183,30 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
                   indicatorSize: TabBarIndicatorSize.tab,
                   dividerColor: Colors.transparent,
                   indicatorColor: AppColors.primaryBlue,
-                  indicator: const BoxDecoration(
+                  indicator: BoxDecoration(
                     border: Border(
                       bottom: BorderSide(
                         color: AppColors.primaryBlue,
-                        width: 3.0,
+                        width: 0.75.w,
                       ),
                     ),
                   ),
                   labelStyle:
                       TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600),
                   unselectedLabelStyle: TextStyle(fontSize: 12.sp),
-                  tabs: const [
+                  tabs: [
                     Tab(
                         text: 'Overview',
-                        icon: Icon(Icons.dashboard_outlined, size: 20)),
+                        icon: Icon(Icons.dashboard_outlined, size: 5.w)),
                     Tab(
                         text: 'Schedule',
-                        icon: Icon(Icons.schedule_outlined, size: 20)),
+                        icon: Icon(Icons.schedule_outlined, size: 5.w)),
                     Tab(
                         text: 'Tasks',
-                        icon: Icon(Icons.assignment_outlined, size: 20)),
+                        icon: Icon(Icons.assignment_outlined, size: 5.w)),
                     Tab(
                         text: 'Settings',
-                        icon: Icon(Icons.settings_outlined, size: 20)),
+                        icon: Icon(Icons.settings_outlined, size: 5.w)),
                   ],
                 ),
               ),
@@ -241,7 +251,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
                   padding: EdgeInsets.all(2.w),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(3.w),
                   ),
                   child: Icon(
                     CourseDetailUtils.getSubjectIcon(course.subject),
@@ -283,7 +293,9 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
                     '${course.enrollmentCount}/${course.capacity}',
                     Icons.people),
                 SizedBox(width: 4.w),
-                _buildStatCard('Sessions', '${course.schedules.length}/week',
+                _buildStatCard(
+                    'Sessions',
+                    '${course.schedules.where((s) => s.isRegular).length}/week',
                     Icons.schedule),
                 SizedBox(width: 4.w),
                 _buildStatCard('Active', course.isActive ? 'Yes' : 'No',
@@ -305,10 +317,10 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
           color: course.isActive
               ? Colors.green.withOpacity(0.2)
               : Colors.red.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(5.w),
           border: Border.all(
             color: course.isActive ? Colors.green : Colors.red,
-            width: 1.5,
+            width: 0.4.w,
           ),
         ),
         child: Row(
@@ -340,7 +352,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
         padding: EdgeInsets.all(2.w),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(2.w),
         ),
         child: Column(
           children: [
@@ -375,7 +387,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
         children: [
           Expanded(
             child: _buildActionButton(
-              'Take Attendance',
+              'Manage Attendance',
               Icons.people_alt,
               AppColors.primaryBlue,
               () => _navigateToAttendanceManagement(context),
@@ -412,7 +424,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         padding: EdgeInsets.symmetric(vertical: 1.5.h),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.w)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -423,7 +435,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
             label,
             style: TextStyle(
               color: Colors.white,
-              fontSize: 11.sp, // Increased from 10.sp
+              fontSize: 11.sp,
               fontWeight: FontWeight.w600,
             ),
             textAlign: TextAlign.center,
@@ -465,7 +477,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
 
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.w)),
       child: Padding(
         padding: EdgeInsets.all(4.w),
         child: Column(
@@ -482,7 +494,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.edit),
+                  icon: Icon(Icons.edit, size: 5.w),
                   onPressed: () => CapacityEditBottomSheet.show(
                     context: context,
                     course: course,
@@ -512,7 +524,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
             ),
             SizedBox(height: 1.h),
             ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(2.w),
               child: LinearProgressIndicator(
                 value: capacityPercentage / 100,
                 minHeight: 2.h,
@@ -538,34 +550,90 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
   Widget _buildRecentActivities() {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.w)),
       child: Padding(
         padding: EdgeInsets.all(4.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Recent Activities',
-              style: TextStyle(
-                fontSize: 16.sp,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Recent Activities',
+                  style: TextStyle(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.refresh, size: 5.w),
+                  onPressed: () {
+                    // Reload recent activities
+                    context.read<CourseBloc>().add(
+                          LoadRecentActivitiesEvent(courseId: widget.courseId),
+                        );
+                  },
+                  color: AppColors.primaryBlue,
+                ),
+              ],
             ),
             SizedBox(height: 2.h),
-            _buildActivityItem(Icons.people, 'Attendance taken', '2 hours ago',
-                AppColors.success),
-            _buildActivityItem(Icons.assignment, 'New task assigned',
-                'Yesterday', AppColors.primaryBlue),
-            _buildActivityItem(Icons.schedule, 'Schedule updated', '3 days ago',
-                AppColors.accentOrange),
+
+            // Use BlocBuilder to handle the real-time data
+            BlocBuilder<CourseBloc, CourseState>(
+              builder: (context, state) {
+                // Check if we have course details with activities
+                if (state is CourseDetailsLoaded) {
+                  final activities = state.recentActivities;
+
+                  if (activities == null) {
+                    // Activities not loaded yet
+                    return _buildActivitiesLoadingState();
+                  }
+
+                  if (activities.isEmpty) {
+                    return _buildEmptyActivitiesState();
+                  }
+
+                  return Column(
+                    children: activities
+                        .map((activity) => _buildRealActivityItem(activity))
+                        .toList(),
+                  );
+                }
+
+                // Fallback for other states
+                return _buildActivitiesLoadingState();
+              },
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildActivityItem(
-      IconData icon, String title, String time, Color color) {
+  // Updated _buildActivityItem method to use real Activity objects
+  Widget _buildRealActivityItem(Activity activity) {
+    // Get color based on activity type
+    Color color;
+    IconData icon;
+
+    switch (activity.type) {
+      case ActivityType.attendance:
+        color = AppColors.success;
+        icon = Icons.people;
+        break;
+      case ActivityType.task:
+        color = AppColors.primaryBlue;
+        icon = Icons.assignment;
+        break;
+      case ActivityType.schedule:
+        color = AppColors.accentOrange;
+        icon = Icons.schedule;
+        break;
+    }
+
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 1.h),
       child: Row(
@@ -574,7 +642,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
             padding: EdgeInsets.all(2.w),
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(2.w),
             ),
             child: Icon(icon, color: color, size: 5.w),
           ),
@@ -584,17 +652,99 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  activity.title,
                   style:
                       TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500),
                 ),
+                if (activity.description.isNotEmpty)
+                  Text(
+                    activity.description,
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      color: AppColors.textMedium,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 Text(
-                  time,
-                  style:
-                      TextStyle(fontSize: 12.sp, color: AppColors.textMedium),
+                  activity.relativeTime,
+                  style: TextStyle(fontSize: 11.sp, color: AppColors.textLight),
                 ),
               ],
             ),
+          ),
+          // Optional: Add a tap handler for more details
+          if (activity.type == ActivityType.task)
+            IconButton(
+              icon: Icon(Icons.arrow_forward_ios, size: 4.w),
+              onPressed: () {
+                // Navigate to task details if it's a task activity
+                final taskId = activity.metadata?['taskId'] as String?;
+                if (taskId != null) {
+                  context.push('/tutor/tasks/\$taskId');
+                }
+              },
+              color: AppColors.textLight,
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Add these helper methods for loading and empty states
+  Widget _buildActivitiesLoadingState() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4.h),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 5.w,
+            height: 5.w,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.primaryBlue,
+            ),
+          ),
+          SizedBox(width: 3.w),
+          Text(
+            'Loading activities...',
+            style: TextStyle(
+              color: AppColors.textMedium,
+              fontSize: 12.sp,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyActivitiesState() {
+    return Center(
+      child: Column(
+        children: [
+          Icon(
+            Icons.history,
+            size: 12.w,
+            color: AppColors.textLight,
+          ),
+          SizedBox(height: 2.h),
+          Text(
+            'No recent activities',
+            style: TextStyle(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textMedium,
+            ),
+          ),
+          SizedBox(height: 1.h),
+          Text(
+            'Activities will appear here when you take attendance,\nassign tasks, or update schedules',
+            style: TextStyle(
+              fontSize: 12.sp,
+              color: AppColors.textLight,
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -612,7 +762,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
         Expanded(
           child: _buildStatisticCard(
               'Weekly Sessions',
-              '${course.schedules.length}',
+              '${course.schedules.where((s) => s.isRegular).length}',
               Icons.schedule,
               AppColors.accentTeal),
         ),
@@ -624,7 +774,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
       String title, String value, IconData icon, Color color) {
     return Card(
       elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.w)),
       child: Padding(
         padding: EdgeInsets.all(4.w),
         child: Column(
@@ -665,7 +815,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () => _showAddScheduleDialog(context, course.id),
-                  icon: const Icon(Icons.add),
+                  icon: Icon(Icons.add, size: 5.w),
                   label: Text('Regular Schedule',
                       style: TextStyle(fontSize: 12.sp)),
                   style: ElevatedButton.styleFrom(
@@ -679,7 +829,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
                 child: ElevatedButton.icon(
                   onPressed: () =>
                       _showAddReplacementScheduleBottomSheet(context, course),
-                  icon: const Icon(Icons.event_repeat),
+                  icon: Icon(Icons.event_repeat, size: 5.w),
                   label: Text('Replacement', style: TextStyle(fontSize: 12.sp)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accentOrange,
@@ -728,7 +878,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
                 padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 0.5.h),
                 decoration: BoxDecoration(
                   color: AppColors.accentOrange.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(3.w),
                 ),
                 child: Text(
                   '${schedules.length}',
@@ -745,8 +895,8 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
         SizedBox(height: 2.h),
         if (schedules.isEmpty)
           Card(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(3.w)),
             child: Padding(
               padding: EdgeInsets.all(4.w),
               child: Center(
@@ -826,19 +976,6 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
             () =>
                 CapacityEditBottomSheet.show(context: context, course: course),
           ),
-
-          // Export data
-          _buildSettingCard(
-            'Export Data',
-            'Download attendance and progress reports',
-            Icons.download,
-            () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Export functionality coming soon!')),
-              );
-            },
-          ),
         ],
       ),
     );
@@ -849,13 +986,13 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
       {Widget? trailing}) {
     return Card(
       margin: EdgeInsets.only(bottom: 2.h),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.w)),
       child: ListTile(
         leading: Container(
           padding: EdgeInsets.all(2.w),
           decoration: BoxDecoration(
             color: AppColors.primaryBlue.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(2.w),
           ),
           child: Icon(icon, color: AppColors.primaryBlue, size: 6.w),
         ),
@@ -878,7 +1015,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(3.w),
         side: isReplacement
             ? BorderSide(
                 color: AppColors.accentOrange.withOpacity(0.3), width: 1)
@@ -898,7 +1035,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
                         ? AppColors.accentOrange.withOpacity(0.2)
                         : CourseDetailUtils.getSubjectColor(schedule.subject)
                             .withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(2.w),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -1007,7 +1144,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
     showModalBottomSheet(
       context: context,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(5.w)),
       ),
       builder: (context) => Container(
         padding: EdgeInsets.all(4.w),
@@ -1020,7 +1157,8 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
             ),
             SizedBox(height: 3.h),
             ListTile(
-              leading: Icon(Icons.schedule, color: AppColors.primaryBlue),
+              leading:
+                  Icon(Icons.schedule, color: AppColors.primaryBlue, size: 6.w),
               title:
                   Text('Regular Schedule', style: TextStyle(fontSize: 14.sp)),
               subtitle: Text('Weekly recurring class',
@@ -1031,7 +1169,8 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
               },
             ),
             ListTile(
-              leading: Icon(Icons.event_repeat, color: AppColors.accentOrange),
+              leading: Icon(Icons.event_repeat,
+                  color: AppColors.accentOrange, size: 6.w),
               title: Text('Replacement Schedule',
                   style: TextStyle(fontSize: 14.sp)),
               subtitle: Text('One-time makeup or extension class',
@@ -1092,69 +1231,18 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
   }
 
   void _showAddScheduleDialog(BuildContext context, String courseId) {
-    final courseBloc = context.read<CourseBloc>();
-    showDialog(
+    ScheduleBottomSheet.show(
       context: context,
-      builder: (dialogContext) => ScheduleDialog(
-        courseId: courseId,
-        onSave: (day, startTime, endTime, location) {
-          final now = DateTime.now();
-          final startDateTime = DateTime(
-              now.year, now.month, now.day, startTime.hour, startTime.minute);
-          final endDateTime = DateTime(
-              now.year, now.month, now.day, endTime.hour, endTime.minute);
-
-          final schedule = Schedule(
-            id: '$courseId-schedule-new',
-            courseId: courseId,
-            day: day,
-            startTime: startDateTime,
-            endTime: endDateTime,
-            location: location,
-            subject: 'Subject',
-            grade: 0,
-          );
-
-          courseBloc
-              .add(AddScheduleEvent(courseId: courseId, schedule: schedule));
-        },
-      ),
+      courseId: courseId,
     );
   }
 
   void _showEditScheduleDialog(
       BuildContext context, String courseId, Schedule schedule) {
-    final courseBloc = context.read<CourseBloc>();
-    showDialog(
+    ScheduleBottomSheet.show(
       context: context,
-      builder: (context) => ScheduleDialog(
-        existingSchedule: schedule,
-        courseId: courseId,
-        onSave: (day, startTime, endTime, location) {
-          final now = DateTime.now();
-          final startDateTime = DateTime(
-              now.year, now.month, now.day, startTime.hour, startTime.minute);
-          final endDateTime = DateTime(
-              now.year, now.month, now.day, endTime.hour, endTime.minute);
-
-          final updatedSchedule = Schedule(
-            id: schedule.id,
-            courseId: courseId,
-            day: day,
-            startTime: startDateTime,
-            endTime: endDateTime,
-            location: location,
-            subject: schedule.subject,
-            grade: schedule.grade,
-          );
-
-          courseBloc.add(UpdateScheduleEvent(
-            courseId: courseId,
-            scheduleId: schedule.id,
-            updatedSchedule: updatedSchedule,
-          ));
-        },
-      ),
+      courseId: courseId,
+      existingSchedule: schedule,
     );
   }
 

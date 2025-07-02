@@ -14,6 +14,10 @@ import 'package:mytuition/features/attendance/domain/usecases/get_course_schedul
 import 'package:mytuition/features/attendance/domain/usecases/get_past_seven_days_attendance_usecase.dart';
 import 'package:mytuition/features/attendance/domain/usecases/get_schedule_attendance_status_usecase.dart';
 import 'package:mytuition/features/attendance/domain/usecases/update_attendance_usecase.dart';
+import 'package:mytuition/features/attendance/domain/usecases/get_all_student_attendance_usecase.dart';
+import 'package:mytuition/features/attendance/presentation/bloc/student_attendance_history_bloc.dart';
+import 'package:mytuition/features/attendance/presentation/bloc/student_attendance_history_event.dart';
+import 'package:mytuition/features/attendance/presentation/bloc/student_attendance_history_state.dart';
 import 'package:mytuition/features/profile/domain/usecases/get_student_payment_summary_usecase.dart';
 import 'package:mytuition/features/student_dashboard/data/repositories/student_dashboard_repository_impl.dart';
 import 'package:mytuition/features/student_dashboard/domain/repositories/student_dashboard_repository.dart';
@@ -94,6 +98,7 @@ import 'features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'features/auth/domain/usecases/submit_registration_usecase.dart';
 import 'features/courses/domain/usecases/get_tutor_courses_usecase.dart';
 import 'features/courses/domain/usecases/update_schedule_usecase.dart';
+import 'features/courses/domain/usecases/get_recent_activities_usecase.dart';
 import 'features/tasks/data/repositories/task_repository_impl.dart';
 import 'features/tasks/domain/repositories/task_repository.dart';
 import 'features/tasks/domain/usecases/get_tasks_by_course_usecase.dart';
@@ -310,6 +315,10 @@ Future<void> initDependencies() async {
     () => UpdateCourseCapacityUseCase(getIt<CourseRepository>()),
   );
 
+  getIt.registerLazySingleton(
+    () => GetRecentActivitiesUseCase(FirebaseFirestore.instance),
+  );
+
 // Course BLoC
   getIt.registerFactory(
     () => CourseBloc(
@@ -323,6 +332,7 @@ Future<void> initDependencies() async {
       deleteScheduleUseCase: getIt<DeleteScheduleUseCase>(),
       updateCourseActiveStatusUseCase: getIt<UpdateCourseActiveStatusUseCase>(),
       updateCourseCapacityUseCase: getIt<UpdateCourseCapacityUseCase>(),
+      getRecentActivitiesUseCase: getIt<GetRecentActivitiesUseCase>(),
     ),
   );
 
@@ -435,6 +445,18 @@ Future<void> initDependencies() async {
 
   getIt.registerLazySingleton(
     () => UpdateAttendanceUseCase(getIt<AttendanceRepository>()),
+  );
+
+  // Student attendance history use case
+  getIt.registerLazySingleton(
+    () => GetAllStudentAttendanceUseCase(getIt<AttendanceRepository>()),
+  );
+
+  // Student Attendance History BLoC
+  getIt.registerFactory(
+    () => StudentAttendanceHistoryBloc(
+      getAllStudentAttendanceUseCase: getIt<GetAllStudentAttendanceUseCase>(),
+    ),
   );
 
   // Attendance BLoC

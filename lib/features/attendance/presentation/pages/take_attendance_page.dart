@@ -506,7 +506,7 @@ class _TakeAttendancePageState extends State<TakeAttendancePage> {
                   Text(
                     'No sessions available for ${DateFormat('EEEE, MMM d').format(_resolvedAttendanceDate!)}',
                     style: TextStyle(
-                      fontSize: 14.sp,
+                      fontSize: 15.sp,
                       color: AppColors.warning,
                       fontWeight: FontWeight.w500,
                     ),
@@ -516,7 +516,7 @@ class _TakeAttendancePageState extends State<TakeAttendancePage> {
                   Text(
                     'Either no classes are scheduled for this date, or attendance has already been taken for all sessions.',
                     style: TextStyle(
-                      fontSize: 10.sp,
+                      fontSize: 12.sp,
                       color: AppColors.textMedium,
                     ),
                     textAlign: TextAlign.center,

@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
 import 'package:mytuition/features/student_management/presentation/widgets/course_enrollment_bottom_sheet.dart';
 import 'package:mytuition/features/student_management/presentation/widgets/student_edit_sheet.dart';
+import 'package:sizer/sizer.dart';
 import '../bloc/student_management_bloc.dart';
 import '../bloc/student_management_event.dart';
 import '../bloc/student_management_state.dart';
@@ -65,20 +66,25 @@ class _StudentDetailPageState extends State<StudentDetailPage>
   }
 
   void _showEditProfileSheet(BuildContext context, Student student) {
+    // Get the bloc from the current context before showing the modal
+    final bloc = context.read<StudentManagementBloc>();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) {
-        return StudentEditSheet(student: student);
+      builder: (bottomSheetContext) {
+        // Provide the existing bloc to the bottom sheet
+        return BlocProvider.value(
+          value: bloc,
+          child: StudentEditSheet(student: student),
+        );
       },
     ).then((_) {
       // Refresh student details when edit sheet closes
-      context.read<StudentManagementBloc>().add(
-            LoadStudentDetailsEvent(studentId: student.studentId),
-          );
+      bloc.add(LoadStudentDetailsEvent(studentId: student.studentId));
     });
   }
 
@@ -87,13 +93,24 @@ class _StudentDetailPageState extends State<StudentDetailPage>
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Remove from Course'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(3.w),
+        ),
+        title: Text(
+          'Remove from Course',
+          style: TextStyle(fontSize: 16.sp),
+        ),
         content: Text(
-            'Are you sure you want to remove this student from "$courseName"?'),
+          'Are you sure you want to remove this student from "$courseName"?',
+          style: TextStyle(fontSize: 13.sp),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(fontSize: 13.sp),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -108,8 +125,14 @@ class _StudentDetailPageState extends State<StudentDetailPage>
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(2.w),
+              ),
             ),
-            child: const Text('Remove'),
+            child: Text(
+              'Remove',
+              style: TextStyle(fontSize: 13.sp),
+            ),
           ),
         ],
       ),
@@ -129,7 +152,10 @@ class _StudentDetailPageState extends State<StudentDetailPage>
         if (state is StudentManagementError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
+              content: Text(
+                state.message,
+                style: TextStyle(fontSize: 13.sp),
+              ),
               backgroundColor: AppColors.error,
             ),
           );
@@ -138,7 +164,10 @@ class _StudentDetailPageState extends State<StudentDetailPage>
         if (state is StudentManagementActionSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
+              content: Text(
+                state.message,
+                style: TextStyle(fontSize: 13.sp),
+              ),
               backgroundColor: AppColors.success,
             ),
           );
@@ -159,9 +188,12 @@ class _StudentDetailPageState extends State<StudentDetailPage>
         }
 
         if (_student == null) {
-          return const Scaffold(
+          return Scaffold(
             body: Center(
-              child: Text('Student not found'),
+              child: Text(
+                'Student not found',
+                style: TextStyle(fontSize: 14.sp),
+              ),
             ),
           );
         }
@@ -175,7 +207,7 @@ class _StudentDetailPageState extends State<StudentDetailPage>
             headerSliverBuilder: (context, innerBoxIsScrolled) {
               return [
                 SliverAppBar(
-                  expandedHeight: 220.0,
+                  expandedHeight: 55.w,
                   floating: false,
                   pinned: true,
                   backgroundColor: AppColors.primaryBlue,
@@ -190,19 +222,20 @@ class _StudentDetailPageState extends State<StudentDetailPage>
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const SizedBox(height: 12),
+                          SizedBox(height: 3.w),
                           // Profile picture with hero animation
                           Hero(
                             tag: 'student_avatar_${_student!.studentId}',
-                            child: _buildProfilePicture(_student!, radius: 50),
+                            child:
+                                _buildProfilePicture(_student!, radius: 12.w),
                           ),
-                          const SizedBox(height: 12),
+                          SizedBox(height: 3.w),
 
                           // Student name
                           Text(
                             _student!.name,
-                            style: const TextStyle(
-                              fontSize: 22,
+                            style: TextStyle(
+                              fontSize: 19.sp,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
@@ -211,28 +244,28 @@ class _StudentDetailPageState extends State<StudentDetailPage>
                           // Student ID
                           Text(
                             'ID: ${_student!.studentId}',
-                            style: const TextStyle(
-                              fontSize: 16,
+                            style: TextStyle(
+                              fontSize: 15.sp,
                               color: Colors.white70,
                             ),
                           ),
 
-                          const SizedBox(height: 8),
+                          SizedBox(height: 2.w),
 
                           // Grade pill
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 3.w,
+                              vertical: 1.5.w,
                             ),
                             decoration: BoxDecoration(
                               color: Colors.white24,
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(4.w),
                             ),
                             child: Text(
                               'Grade ${_student!.grade}',
-                              style: const TextStyle(
-                                fontSize: 14,
+                              style: TextStyle(
+                                fontSize: 13.sp,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
@@ -252,21 +285,21 @@ class _StudentDetailPageState extends State<StudentDetailPage>
                       indicatorSize: TabBarIndicatorSize.tab,
                       dividerColor: Colors.transparent,
                       indicatorColor: AppColors.primaryBlue,
-                      indicator: const BoxDecoration(
+                      indicator: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
                             color: AppColors.primaryBlue,
-                            width: 3.0,
+                            width: 0.8.w,
                           ),
                         ),
                       ),
-                      tabs: const [
+                      tabs: [
                         Tab(
-                          icon: Icon(Icons.person_outline),
+                          icon: Icon(Icons.person_outline, size: 5.w),
                           text: 'Profile',
                         ),
                         Tab(
-                          icon: Icon(Icons.school_outlined),
+                          icon: Icon(Icons.school_outlined, size: 5.w),
                           text: 'Courses',
                         ),
                       ],
@@ -310,7 +343,7 @@ class _StudentDetailPageState extends State<StudentDetailPage>
         },
         child: ListView(
           physics: _scrollPhysics,
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(4.w),
           children: [
             // Contact Information Card
             _buildSectionCard(
@@ -344,7 +377,7 @@ class _StudentDetailPageState extends State<StudentDetailPage>
               ],
             ),
 
-            const SizedBox(height: 16),
+            SizedBox(height: 4.w),
 
             // Academic Information Card
             _buildSectionCard(
@@ -370,11 +403,6 @@ class _StudentDetailPageState extends State<StudentDetailPage>
                   _buildSubjectsList(student.subjects!),
               ],
             ),
-
-            const SizedBox(height: 24),
-
-            // Quick Actions Card
-            _buildQuickActionsCard(context, student),
 
             const SizedBox(height: 16),
           ],
@@ -416,21 +444,24 @@ class _StudentDetailPageState extends State<StudentDetailPage>
                     children: [
                       // Add to Course Button
                       Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: EdgeInsets.all(4.w),
                         child: ElevatedButton.icon(
                           onPressed: () => CourseEnrollmentBottomSheet.show(
                             context: context,
                             studentId: student.studentId,
                             studentName: student.name,
                           ),
-                          icon: const Icon(Icons.add),
-                          label: const Text('Add to Course'),
+                          icon: Icon(Icons.add, size: 5.w),
+                          label: Text(
+                            'Add to Course',
+                            style: TextStyle(fontSize: 15.sp),
+                          ),
                           style: ElevatedButton.styleFrom(
-                            minimumSize: const Size(double.infinity, 48),
+                            minimumSize: Size(double.infinity, 12.w),
                             backgroundColor: AppColors.primaryBlue,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(2.w),
                             ),
                             elevation: 2,
                           ),
@@ -510,163 +541,40 @@ class _StudentDetailPageState extends State<StudentDetailPage>
     );
   }
 
-  Widget _buildQuickActionsCard(BuildContext context, Student student) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.bolt_outlined,
-                  color: AppColors.accentOrange,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Quick Actions',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildQuickAction(
-                  icon: Icons.add_circle_outline,
-                  label: 'Add Course',
-                  color: AppColors.primaryBlue,
-                  onTap: () {
-                    CourseEnrollmentBottomSheet.show(
-                      context: context,
-                      studentId: student.studentId,
-                      studentName: student.name,
-                    );
-                  },
-                ),
-                _buildQuickAction(
-                  icon: Icons.calendar_today_outlined,
-                  label: 'Attendance',
-                  color: AppColors.accentTeal,
-                  onTap: () {
-                    // Navigate to attendance screen
-                    // This could be replaced with actual navigation when implemented
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Attendance feature coming soon'),
-                      ),
-                    );
-                  },
-                ),
-                _buildQuickAction(
-                  icon: Icons.assignment_outlined,
-                  label: 'Tasks',
-                  color: AppColors.accentOrange,
-                  onTap: () {
-                    // Navigate to tasks screen
-                    // This could be replaced with actual navigation when implemented
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Tasks feature coming soon'),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickAction({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Semantics(
-      button: true,
-      label: label,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  color: AppColors.textDark,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildEmptyCoursesView() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(6.w),
             decoration: BoxDecoration(
               color: AppColors.backgroundLight,
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.school_outlined,
-              size: 64,
+              size: 16.w,
               color: AppColors.primaryBlue.withOpacity(0.7),
             ),
           ),
-          const SizedBox(height: 24),
-          const Text(
+          SizedBox(height: 6.w),
+          Text(
             'No Enrolled Courses',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 16.sp,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 3.w),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 48),
+            padding: EdgeInsets.symmetric(horizontal: 12.w),
             child: Text(
               'This student is not enrolled in any courses yet. Use the button above to add them to a course.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.textMedium,
-                fontSize: 16,
+                fontSize: 13.sp,
               ),
             ),
           ),
@@ -734,8 +642,8 @@ class _StudentDetailPageState extends State<StudentDetailPage>
                           children: [
                             Text(
                               course['subject'],
-                              style: const TextStyle(
-                                fontSize: 18,
+                              style: TextStyle(
+                                fontSize: 18.sp,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -743,6 +651,7 @@ class _StudentDetailPageState extends State<StudentDetailPage>
                               'Grade ${course['grade']}',
                               style: TextStyle(
                                 color: AppColors.textMedium,
+                                fontSize: 14.sp,
                               ),
                             ),
                           ],
@@ -752,6 +661,7 @@ class _StudentDetailPageState extends State<StudentDetailPage>
                         icon: Icon(
                           Icons.delete_outline,
                           color: AppColors.error,
+                          size: 6.w,
                         ),
                         tooltip: 'Remove from course',
                         onPressed: () => _confirmRemoveFromCourse(
@@ -764,7 +674,7 @@ class _StudentDetailPageState extends State<StudentDetailPage>
                     ],
                   ),
 
-                  const SizedBox(height: 12),
+                  SizedBox(height: 3.w),
 
                   // Capacity indicator
                   Column(
@@ -778,6 +688,7 @@ class _StudentDetailPageState extends State<StudentDetailPage>
                             style: TextStyle(
                               fontWeight: FontWeight.w500,
                               color: AppColors.textMedium,
+                              fontSize: 14.sp,
                             ),
                           ),
                           Text(
@@ -789,13 +700,14 @@ class _StudentDetailPageState extends State<StudentDetailPage>
                                   : enrollmentPercentage >= 0.7
                                       ? AppColors.warning
                                       : AppColors.success,
+                              fontSize: 14.sp,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 1.5.w),
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(1.w),
                         child: LinearProgressIndicator(
                           value: enrollmentPercentage,
                           backgroundColor: AppColors.backgroundDark,
@@ -804,7 +716,7 @@ class _StudentDetailPageState extends State<StudentDetailPage>
                               : enrollmentPercentage >= 0.7
                                   ? AppColors.warning
                                   : AppColors.success,
-                          minHeight: 6,
+                          minHeight: 1.5.w,
                         ),
                       ),
                     ],
@@ -819,20 +731,22 @@ class _StudentDetailPageState extends State<StudentDetailPage>
                       children: [
                         Icon(
                           Icons.person_outline,
-                          size: 16,
+                          size: 4.w,
                           color: AppColors.textMedium,
                         ),
-                        const SizedBox(width: 6),
+                        SizedBox(width: 1.5.w),
                         Text(
                           'Tutor: ',
                           style: TextStyle(
                             color: AppColors.textMedium,
+                            fontSize: 14.sp,
                           ),
                         ),
                         Text(
                           course['tutorName'],
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w500,
+                            fontSize: 14.sp,
                           ),
                         ),
                       ],
@@ -856,23 +770,24 @@ class _StudentDetailPageState extends State<StudentDetailPage>
     return Semantics(
       label: semantic ?? '$label is $value',
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        padding: EdgeInsets.symmetric(vertical: 2.w),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
               icon,
-              size: 20,
+              size: 5.w,
               color: AppColors.textMedium,
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 2.w),
             SizedBox(
-              width: 100,
+              width: 25.w,
               child: Text(
                 label,
                 style: TextStyle(
                   color: AppColors.textMedium,
                   fontWeight: FontWeight.w500,
+                  fontSize: 14.sp,
                 ),
               ),
             ),
@@ -882,6 +797,7 @@ class _StudentDetailPageState extends State<StudentDetailPage>
                 style: TextStyle(
                   color: valueColor ?? AppColors.textDark,
                   fontWeight: FontWeight.w500,
+                  fontSize: 14.sp,
                 ),
               ),
             ),
@@ -900,10 +816,10 @@ class _StudentDetailPageState extends State<StudentDetailPage>
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(3.w),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(4.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -912,18 +828,19 @@ class _StudentDetailPageState extends State<StudentDetailPage>
                 Icon(
                   icon,
                   color: iconColor,
+                  size: 6.w,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 2.w),
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 18,
+                  style: TextStyle(
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 4.w),
             ...children,
           ],
         ),
@@ -931,7 +848,7 @@ class _StudentDetailPageState extends State<StudentDetailPage>
     );
   }
 
-  Widget _buildProfilePicture(Student student, {double radius = 40}) {
+  Widget _buildProfilePicture(Student student, {double radius = 12.0}) {
     if (student.profilePictureUrl != null &&
         student.profilePictureUrl!.isNotEmpty) {
       return CircleAvatar(

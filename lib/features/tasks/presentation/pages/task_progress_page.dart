@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+import 'package:sizer/sizer.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
 import 'package:mytuition/core/utils/task_utils.dart';
 import '../../domain/entities/task.dart';
@@ -21,19 +23,49 @@ class TaskProgressPage extends StatefulWidget {
   State<TaskProgressPage> createState() => _TaskProgressPageState();
 }
 
-class _TaskProgressPageState extends State<TaskProgressPage> {
+class _TaskProgressPageState extends State<TaskProgressPage> 
+    with SingleTickerProviderStateMixin {
   Task? _task;
   List<StudentTask> _studentTasks = [];
-
-  // Add a map to store student names
+  
+  // Student names map
   final Map<String, String> _studentNames = {};
   bool _isLoading = true;
   bool _isReloading = false;
+  
+  // Bulk selection
+  bool _isSelectionMode = false;
+  final Set<String> _selectedStudentIds = {};
+  
+  // Animation controller for selection mode
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  
+  // Filter and sort
+  String _filterBy = 'all'; // 'all', 'completed', 'pending'
+  String _sortBy = 'name'; // 'name', 'status'
 
   @override
   void initState() {
     super.initState();
+    
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
+    
     _loadTaskData();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadTaskData() async {
@@ -71,8 +103,8 @@ class _TaskProgressPageState extends State<TaskProgressPage> {
       } else if (mounted) {
         // If task doesn't exist
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Task not found'),
+          SnackBar(
+            content: Text('Task not found', style: TextStyle(fontSize: 14.sp)),
             backgroundColor: Colors.red,
           ),
         );
@@ -84,7 +116,8 @@ class _TaskProgressPageState extends State<TaskProgressPage> {
         if (!_isReloading) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error loading task details: $e'),
+              content: Text('Error loading task details: $e', 
+                style: TextStyle(fontSize: 14.sp)),
               backgroundColor: AppColors.error,
             ),
           );
@@ -160,7 +193,7 @@ class _TaskProgressPageState extends State<TaskProgressPage> {
         } else {
           // Create a placeholder task
           final studentTask = StudentTask(
-            id: '$widget.taskId-$studentId',
+            id: '${widget.taskId}-$studentId',
             taskId: widget.taskId,
             studentId: studentId,
             remarks: '',
@@ -214,18 +247,301 @@ class _TaskProgressPageState extends State<TaskProgressPage> {
     }
   }
 
+  List<StudentTask> _sortAndFilterTasks(List<StudentTask> tasks) {
+    // First filter
+    List<StudentTask> filteredTasks = tasks;
+    
+    switch (_filterBy) {
+      case 'completed':
+        filteredTasks = tasks.where((task) => task.isCompleted).toList();
+        break;
+      case 'pending':
+        filteredTasks = tasks.where((task) => !task.isCompleted).toList();
+        break;
+    }
+
+    // Then sort
+    switch (_sortBy) {
+      case 'name':
+        filteredTasks.sort((a, b) {
+          final nameA = _studentNames[a.studentId] ?? a.studentId;
+          final nameB = _studentNames[b.studentId] ?? b.studentId;
+          return nameA.compareTo(nameB);
+        });
+        break;
+      case 'status':
+        filteredTasks.sort((a, b) {
+          if (a.isCompleted == b.isCompleted) {
+            // If same status, sort by name
+            final nameA = _studentNames[a.studentId] ?? a.studentId;
+            final nameB = _studentNames[b.studentId] ?? b.studentId;
+            return nameA.compareTo(nameB);
+          }
+          return a.isCompleted ? 1 : -1; // Pending first
+        });
+        break;
+    }
+
+    return filteredTasks;
+  }
+
+  void _toggleSelectionMode() {
+    setState(() {
+      _isSelectionMode = !_isSelectionMode;
+      if (!_isSelectionMode) {
+        _selectedStudentIds.clear();
+        _animationController.reverse();
+      } else {
+        _animationController.forward();
+      }
+    });
+  }
+
+  void _toggleStudentSelection(String studentId) {
+    setState(() {
+      if (_selectedStudentIds.contains(studentId)) {
+        _selectedStudentIds.remove(studentId);
+      } else {
+        _selectedStudentIds.add(studentId);
+      }
+    });
+  }
+
+  void _selectAll() {
+    setState(() {
+      _selectedStudentIds.clear();
+      final filteredTasks = _sortAndFilterTasks(_studentTasks);
+      _selectedStudentIds.addAll(filteredTasks.map((task) => task.studentId));
+    });
+  }
+
+  void _bulkMarkComplete() {
+    if (_selectedStudentIds.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Mark ${_selectedStudentIds.length} Tasks Complete?', 
+          style: TextStyle(fontSize: 16.sp)),
+        content: Text(
+          'This will mark the selected students\' tasks as completed.',
+          style: TextStyle(fontSize: 14.sp),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(fontSize: 14.sp)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _processBulkAction(true);
+            },
+            child: Text('Mark Complete', style: TextStyle(fontSize: 14.sp)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _bulkMarkIncomplete() {
+    if (_selectedStudentIds.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Mark ${_selectedStudentIds.length} Tasks Incomplete?',
+          style: TextStyle(fontSize: 16.sp)),
+        content: Text(
+          'This will mark the selected students\' tasks as incomplete.',
+          style: TextStyle(fontSize: 14.sp),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(fontSize: 14.sp)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _processBulkAction(false);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.warning,
+            ),
+            child: Text('Mark Incomplete', style: TextStyle(fontSize: 14.sp)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _processBulkAction(bool markAsComplete) {
+    setState(() {
+      _isReloading = true;
+    });
+
+    for (final studentId in _selectedStudentIds) {
+      final studentTask = _studentTasks.firstWhere(
+        (task) => task.studentId == studentId,
+      );
+
+      if (markAsComplete) {
+        context.read<TaskBloc>().add(
+              MarkTaskAsCompletedEvent(
+                taskId: studentTask.taskId,
+                studentId: studentTask.studentId,
+                remarks: studentTask.remarks,
+              ),
+            );
+      } else {
+        context.read<TaskBloc>().add(
+              MarkTaskAsIncompleteEvent(
+                taskId: studentTask.taskId,
+                studentId: studentTask.studentId,
+              ),
+            );
+      }
+    }
+
+    _toggleSelectionMode();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: const Text('Task Progress'),
+        title: Text('Task Progress', style: TextStyle(fontSize: 16.sp)),
+        actions: [
+          if (!_isSelectionMode) ...[
+            PopupMenuButton<String>(
+              icon: Icon(Icons.filter_list, size: 6.w),
+              onSelected: (value) {
+                setState(() {
+                  if (value.startsWith('filter_')) {
+                    _filterBy = value.substring(7);
+                  } else if (value.startsWith('sort_')) {
+                    _sortBy = value.substring(5);
+                  }
+                });
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'header_filter',
+                  enabled: false,
+                  child: Text(
+                    'Filter By',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'filter_all',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.all_inclusive),
+                      SizedBox(width: 2.w),
+                      const Text('All Students'),
+                      if (_filterBy == 'all') ...[
+                        const Spacer(),
+                        const Icon(Icons.check, color: AppColors.primaryBlue),
+                      ],
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'filter_completed',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: AppColors.success),
+                      SizedBox(width: 2.w),
+                      const Text('Completed'),
+                      if (_filterBy == 'completed') ...[
+                        const Spacer(),
+                        const Icon(Icons.check, color: AppColors.primaryBlue),
+                      ],
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'filter_pending',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.pending, color: AppColors.warning),
+                      SizedBox(width: 2.w),
+                      const Text('Pending'),
+                      if (_filterBy == 'pending') ...[
+                        const Spacer(),
+                        const Icon(Icons.check, color: AppColors.primaryBlue),
+                      ],
+                    ],
+                  ),
+                ),
+                const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: 'header_sort',
+                  enabled: false,
+                  child: Text(
+                    'Sort By',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'sort_name',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.sort_by_alpha),
+                      SizedBox(width: 2.w),
+                      const Text('Name'),
+                      if (_sortBy == 'name') ...[
+                        const Spacer(),
+                        const Icon(Icons.check, color: AppColors.primaryBlue),
+                      ],
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'sort_status',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.flag),
+                      SizedBox(width: 2.w),
+                      const Text('Status'),
+                      if (_sortBy == 'status') ...[
+                        const Spacer(),
+                        const Icon(Icons.check, color: AppColors.primaryBlue),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            IconButton(
+              icon: Icon(Icons.checklist, size: 6.w),
+              onPressed: _toggleSelectionMode,
+              tooltip: 'Bulk Actions',
+            ),
+          ] else ...[
+            TextButton(
+              onPressed: _selectAll,
+              child: Text(
+                'Select All',
+                style: TextStyle(color: Colors.white, fontSize: 14.sp),
+              ),
+            ),
+            IconButton(
+              icon: Icon(Icons.close, size: 6.w),
+              onPressed: _toggleSelectionMode,
+            ),
+          ],
+        ],
       ),
       body: BlocListener<TaskBloc, TaskState>(
         listener: (context, state) {
           if (state is TaskActionSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.message),
+                content: Text(state.message, style: TextStyle(fontSize: 14.sp)),
                 backgroundColor: AppColors.success,
               ),
             );
@@ -243,7 +559,7 @@ class _TaskProgressPageState extends State<TaskProgressPage> {
             if (!_isReloading) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(state.message),
+                  content: Text(state.message, style: TextStyle(fontSize: 14.sp)),
                   backgroundColor: AppColors.error,
                 ),
               );
@@ -253,138 +569,224 @@ class _TaskProgressPageState extends State<TaskProgressPage> {
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _task == null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 64,
-                          color: AppColors.error,
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Task not found',
-                          style: TextStyle(fontSize: 18),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _loadTaskData,
-                          child: const Text('Retry'),
-                        ),
-                      ],
-                    ),
-                  )
+                ? _buildErrorState()
                 : _buildContent(),
       ),
-      bottomSheet: _task != null && _studentTasks.isNotEmpty
-          ? Container(
-              width: double.infinity,
-              color: _task!.isCompleted ? AppColors.success : null,
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-              child: Text(
-                _task!.isCompleted ? 'Task marked as completed' : '',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            )
-          : null,
+      bottomNavigationBar: AnimatedBuilder(
+        animation: _fadeAnimation,
+        builder: (context, child) {
+          return _isSelectionMode
+              ? FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: _buildBulkActionsBar(),
+                )
+              : const SizedBox.shrink();
+        },
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error_outline,
+            size: 16.w,
+            color: AppColors.error,
+          ),
+          SizedBox(height: 2.h),
+          Text(
+            'Task not found',
+            style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 2.h),
+          ElevatedButton(
+            onPressed: _loadTaskData,
+            child: Text('Retry', style: TextStyle(fontSize: 14.sp)),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildContent() {
+    final filteredTasks = _sortAndFilterTasks(_studentTasks);
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Task details card
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _task?.title ?? 'Task Details',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _task?.description ?? '',
-                    style: TextStyle(
-                      color: AppColors.textMedium,
-                    ),
-                  ),
-                  if (_task?.dueDate != null) ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.event,
-                          size: 16,
-                          color: TaskUtils.isTaskOverdue(_task!.dueDate!, false)
-                              ? AppColors.error
-                              : AppColors.textMedium,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Due: ${TaskUtils.shortDateFormat.format(_task!.dueDate!)}',
-                          style: TextStyle(
-                            color:
-                                TaskUtils.isTaskOverdue(_task!.dueDate!, false)
-                                    ? AppColors.error
-                                    : AppColors.textMedium,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
+        _buildTaskDetailsCard(),
+        
+        // Progress summary
+        _buildProgressSummary(),
+
+        // Students list
+        Expanded(
+          child: filteredTasks.isEmpty 
+            ? _buildEmptyState() 
+            : _buildStudentList(filteredTasks),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTaskDetailsCard() {
+    final isOverdue = TaskUtils.isTaskOverdue(_task!.dueDate, false);
+    
+    return Container(
+      margin: EdgeInsets.all(4.w),
+      padding: EdgeInsets.all(4.w),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primaryBlue.withOpacity(0.8),
+            AppColors.primaryBlueDark,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(4.w),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryBlue.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _task!.title,
+            style: TextStyle(
+              fontSize: 18.sp,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
           ),
-        ),
+          if (_task!.description.isNotEmpty) ...[
+            SizedBox(height: 1.h),
+            Text(
+              _task!.description,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 13.sp,
+              ),
+            ),
+          ],
+          SizedBox(height: 2.h),
+          Row(
+            children: [
+              Icon(
+                Icons.calendar_today,
+                size: 4.w,
+                color: Colors.white.withOpacity(0.9),
+              ),
+              SizedBox(width: 2.w),
+              Text(
+                _task!.dueDate != null
+                    ? 'Due: ${DateFormat('MMM d, yyyy').format(_task!.dueDate!)}'
+                    : 'No due date',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 12.sp,
+                ),
+              ),
+              if (isOverdue) ...[
+                SizedBox(width: 3.w),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 0.5.h),
+                  decoration: BoxDecoration(
+                    color: Colors.orange,
+                    borderRadius: BorderRadius.circular(2.w),
+                  ),
+                  child: Text(
+                    'Overdue',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11.sp,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
-        // Progress header
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
+  Widget _buildProgressSummary() {
+    final completedCount = _studentTasks.where((task) => task.isCompleted).length;
+    final totalCount = _studentTasks.length;
+    final percentage = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 4.w),
+      padding: EdgeInsets.all(4.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(3.w),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Student Progress',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
-                '${_getCompletedCount()} / ${_studentTasks.length} completed',
+                '$completedCount / $totalCount completed',
                 style: TextStyle(
                   color: AppColors.textMedium,
+                  fontSize: 14.sp,
                 ),
               ),
             ],
           ),
-        ),
-
-        // Progress list
-        Expanded(
-          child:
-              _studentTasks.isEmpty ? _buildEmptyState() : _buildStudentList(),
-        ),
-      ],
+          SizedBox(height: 2.h),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2.w),
+            child: LinearProgressIndicator(
+              value: percentage / 100,
+              minHeight: 2.h,
+              backgroundColor: AppColors.backgroundDark,
+              color: percentage == 100 
+                ? AppColors.success 
+                : percentage >= 70 
+                  ? AppColors.primaryBlue
+                  : AppColors.warning,
+            ),
+          ),
+          SizedBox(height: 1.h),
+          Text(
+            '${percentage.toStringAsFixed(0)}% Complete',
+            style: TextStyle(
+              fontSize: 12.sp,
+              color: AppColors.textMedium,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -395,20 +797,25 @@ class _TaskProgressPageState extends State<TaskProgressPage> {
         children: [
           Icon(
             Icons.people_outline,
-            size: 64,
+            size: 16.w,
             color: AppColors.textLight,
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'No student progress available',
-            style: TextStyle(fontSize: 18),
+          SizedBox(height: 2.h),
+          Text(
+            _filterBy == 'all'
+              ? 'No student progress available'
+              : 'No ${_filterBy} tasks',
+            style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Students need to be enrolled in this course',
+          SizedBox(height: 1.h),
+          Text(
+            _filterBy == 'all'
+              ? 'Students need to be enrolled in this course'
+              : 'Try changing the filter to see more tasks',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppColors.textMedium,
+              fontSize: 14.sp,
             ),
           ),
         ],
@@ -416,12 +823,12 @@ class _TaskProgressPageState extends State<TaskProgressPage> {
     );
   }
 
-  Widget _buildStudentList() {
+  Widget _buildStudentList(List<StudentTask> filteredTasks) {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _studentTasks.length,
+      padding: EdgeInsets.all(4.w),
+      itemCount: filteredTasks.length,
       itemBuilder: (context, index) {
-        final studentTask = _studentTasks[index];
+        final studentTask = filteredTasks[index];
         return _buildStudentTaskCard(studentTask);
       },
     );
@@ -431,121 +838,231 @@ class _TaskProgressPageState extends State<TaskProgressPage> {
     // Get student name from our map, or use student ID if name not found
     final studentName = _studentNames[studentTask.studentId] ??
         'Student ${studentTask.studentId}';
+    
+    final isSelected = _selectedStudentIds.contains(studentTask.studentId);
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: 3.w),
+      elevation: isSelected ? 4 : 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(3.w),
+        side: isSelected 
+          ? BorderSide(color: AppColors.primaryBlue, width: 2)
+          : BorderSide.none,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Student name and toggle
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        studentName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(3.w),
+        onTap: _isSelectionMode
+          ? () => _toggleStudentSelection(studentTask.studentId)
+          : null,
+        onLongPress: !_isSelectionMode
+          ? () {
+              _toggleSelectionMode();
+              _toggleStudentSelection(studentTask.studentId);
+            }
+          : null,
+        child: Padding(
+          padding: EdgeInsets.all(4.w),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Student name and toggle
+              Row(
+                children: [
+                  if (_isSelectionMode) ...[
+                    Checkbox(
+                      value: isSelected,
+                      onChanged: (_) => _toggleStudentSelection(studentTask.studentId),
+                      activeColor: AppColors.primaryBlue,
+                    ),
+                    SizedBox(width: 2.w),
+                  ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          studentName,
+                          style: TextStyle(
+                            fontSize: 15.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        overflow: TextOverflow.ellipsis,
+                        Text(
+                          studentTask.studentId,
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            color: AppColors.textMedium,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!_isSelectionMode)
+                    Switch(
+                      value: studentTask.isCompleted,
+                      activeColor: AppColors.success,
+                      onChanged: (value) {
+                        if (value) {
+                          _markTaskAsCompleted(studentTask);
+                        } else {
+                          _markTaskAsIncomplete(studentTask);
+                        }
+                      },
+                    ),
+                ],
+              ),
+
+              SizedBox(height: 2.h),
+
+              // Completion status
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
+                decoration: BoxDecoration(
+                  color: studentTask.isCompleted
+                      ? AppColors.success.withOpacity(0.1)
+                      : AppColors.warning.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(2.w),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      studentTask.isCompleted ? Icons.check_circle : Icons.pending,
+                      color: studentTask.isCompleted
+                          ? AppColors.success
+                          : AppColors.warning,
+                      size: 4.w,
+                    ),
+                    SizedBox(width: 2.w),
+                    Text(
+                      studentTask.isCompleted ? 'Completed' : 'Pending',
+                      style: TextStyle(
+                        color: studentTask.isCompleted
+                            ? AppColors.success
+                            : AppColors.warning,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12.sp,
                       ),
+                    ),
+                    if (studentTask.completedAt != null) ...[
+                      SizedBox(width: 2.w),
                       Text(
-                        studentTask.studentId,
+                        '• ${DateFormat('MMM d, h:mm a').format(studentTask.completedAt!)}',
                         style: TextStyle(
-                          fontSize: 12,
                           color: AppColors.textMedium,
+                          fontSize: 11.sp,
                         ),
                       ),
                     ],
-                  ),
+                  ],
                 ),
-                Switch(
-                  value: studentTask.isCompleted,
-                  activeColor: AppColors.success,
-                  onChanged: (value) {
-                    if (value) {
-                      _markTaskAsCompleted(studentTask);
-                    } else {
-                      _markTaskAsIncomplete(studentTask);
-                    }
-                  },
-                ),
-              ],
-            ),
+              ),
 
-            // Completion status
-            Row(
-              children: [
-                Icon(
-                  studentTask.isCompleted ? Icons.check_circle : Icons.pending,
-                  color: studentTask.isCompleted
-                      ? AppColors.success
-                      : AppColors.warning,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  studentTask.isCompleted ? 'Completed' : 'Pending',
-                  style: TextStyle(
-                    color: studentTask.isCompleted
-                        ? AppColors.success
-                        : AppColors.warning,
+              // Remarks section
+              SizedBox(height: 2.h),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(3.w),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundLight,
+                  borderRadius: BorderRadius.circular(2.w),
+                  border: Border.all(
+                    color: AppColors.backgroundDark.withOpacity(0.5),
                   ),
                 ),
-                if (studentTask.completedAt != null) ...[
-                  const SizedBox(width: 8),
-                  Text(
-                    'on ${TaskUtils.completedDateFormat.format(studentTask.completedAt!)}',
-                    style: TextStyle(
-                      color: AppColors.textMedium,
-                      fontSize: 12,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Tutor Remarks',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13.sp,
+                          ),
+                        ),
+                        if (!_isSelectionMode)
+                          IconButton(
+                            icon: Icon(
+                              Icons.edit,
+                              size: 4.w,
+                              color: AppColors.primaryBlue,
+                            ),
+                            onPressed: () => _showRemarksDialog(studentTask),
+                            padding: EdgeInsets.zero,
+                            constraints: BoxConstraints(),
+                          ),
+                      ],
                     ),
-                  ),
-                ],
-              ],
-            ),
-
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 8),
-
-            // Remarks section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Remarks',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
+                    SizedBox(height: 1.h),
+                    Text(
+                      studentTask.remarks.isEmpty
+                          ? 'No remarks yet. Tap edit to add feedback.'
+                          : studentTask.remarks,
+                      style: TextStyle(
+                        color: studentTask.remarks.isEmpty 
+                          ? AppColors.textLight 
+                          : AppColors.textDark,
+                        fontStyle: studentTask.remarks.isEmpty 
+                          ? FontStyle.italic 
+                          : null,
+                        fontSize: 12.sp,
+                      ),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.edit,
-                    size: 20,
-                  ),
-                  onPressed: () => _showRemarksDialog(studentTask),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBulkActionsBar() {
+    return Container(
+      padding: EdgeInsets.all(4.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
             Text(
-              studentTask.remarks.isEmpty
-                  ? 'No remarks yet'
-                  : studentTask.remarks,
+              '${_selectedStudentIds.length} selected',
               style: TextStyle(
-                color: studentTask.remarks.isEmpty ? AppColors.textLight : null,
-                fontStyle:
-                    studentTask.remarks.isEmpty ? FontStyle.italic : null,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const Spacer(),
+            OutlinedButton.icon(
+              onPressed: _selectedStudentIds.isEmpty ? null : _bulkMarkIncomplete,
+              icon: Icon(Icons.unpublished, size: 4.w),
+              label: Text('Mark Incomplete', style: TextStyle(fontSize: 12.sp)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.warning,
+                side: BorderSide(color: AppColors.warning),
+              ),
+            ),
+            SizedBox(width: 2.w),
+            ElevatedButton.icon(
+              onPressed: _selectedStudentIds.isEmpty ? null : _bulkMarkComplete,
+              icon: Icon(Icons.check_circle, size: 4.w),
+              label: Text('Mark Complete', style: TextStyle(fontSize: 12.sp)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.success,
               ),
             ),
           ],
@@ -556,39 +1073,57 @@ class _TaskProgressPageState extends State<TaskProgressPage> {
 
   void _showRemarksDialog(StudentTask studentTask) {
     final remarksController = TextEditingController(text: studentTask.remarks);
+    final studentName = _studentNames[studentTask.studentId] ?? studentTask.studentId;
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
-            'Remarks for ${_studentNames[studentTask.studentId] ?? studentTask.studentId}'),
-        content: TextField(
-          controller: remarksController,
-          decoration: const InputDecoration(
-            hintText: 'Add remarks for this student',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 3,
+          'Remarks for $studentName',
+          style: TextStyle(fontSize: 16.sp),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Add feedback that will be visible to the student',
+              style: TextStyle(
+                color: AppColors.textMedium,
+                fontSize: 12.sp,
+              ),
+            ),
+            SizedBox(height: 2.h),
+            TextField(
+              controller: remarksController,
+              decoration: InputDecoration(
+                hintText: 'Enter your feedback here...',
+                hintStyle: TextStyle(fontSize: 14.sp),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(2.w),
+                ),
+                contentPadding: EdgeInsets.all(3.w),
+              ),
+              maxLines: 4,
+              textCapitalization: TextCapitalization.sentences,
+              style: TextStyle(fontSize: 14.sp),
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: TextStyle(fontSize: 14.sp)),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               _updateRemarks(studentTask, remarksController.text);
             },
-            child: const Text('Save'),
+            child: Text('Save', style: TextStyle(fontSize: 14.sp)),
           ),
         ],
       ),
     );
-  }
-
-  int _getCompletedCount() {
-    return _studentTasks.where((task) => task.isCompleted).length;
   }
 
   void _markTaskAsCompleted(StudentTask studentTask) {

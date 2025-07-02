@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
+import 'package:sizer/sizer.dart';
 import '../../domain/entities/student.dart';
 
 class StudentListItem extends StatelessWidget {
@@ -19,21 +20,21 @@ class StudentListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 3.w),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(3.w),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(3.w),
         onTap: onTap,
         onLongPress: onLongPress,
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(4.w),
           child: Row(
             children: [
               // Profile picture or avatar
               _buildAvatar(student.name, student.profilePictureUrl),
-              const SizedBox(width: 16),
+              SizedBox(width: 4.w),
 
               // Student info
               Expanded(
@@ -42,14 +43,14 @@ class StudentListItem extends StatelessWidget {
                   children: [
                     Text(
                       student.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 16.sp,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 1.w),
                     Row(
                       children: [
                         // Student ID
@@ -58,28 +59,28 @@ class StudentListItem extends StatelessWidget {
                             'ID: ${student.studentId}',
                             style: TextStyle(
                               color: AppColors.textMedium,
-                              fontSize: 14,
+                              fontSize: 14.sp,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 2.w),
 
                         // Grade
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 1.5.w,
+                            vertical: 0.5.w,
                           ),
                           decoration: BoxDecoration(
                             color: AppColors.primaryBlueLight.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(2.w),
                           ),
                           child: Text(
                             'Grade ${student.grade}',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 12.sp,
                               color: AppColors.primaryBlue,
                             ),
                           ),
@@ -102,7 +103,7 @@ class StudentListItem extends StatelessWidget {
       return Hero(
         tag: 'student_avatar_${student.studentId}',
         child: CircleAvatar(
-          radius: 24,
+          radius: 6.w,
           backgroundImage: NetworkImage(profilePictureUrl),
         ),
       );
@@ -112,14 +113,14 @@ class StudentListItem extends StatelessWidget {
     return Hero(
       tag: 'student_avatar_${student.studentId}',
       child: CircleAvatar(
-        radius: 24,
+        radius: 6.w,
         backgroundColor: _getAvatarColor(name),
         child: Text(
           name.isNotEmpty ? name[0].toUpperCase() : '?',
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
-            fontSize: 18,
+            fontSize: 18.sp,
           ),
         ),
       ),

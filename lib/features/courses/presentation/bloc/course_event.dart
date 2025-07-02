@@ -112,3 +112,12 @@ class UpdateCourseCapacityEvent extends CourseEvent {
   @override
   List<Object?> get props => [courseId, capacity];
 }
+
+class LoadRecentActivitiesEvent extends CourseEvent {
+  final String courseId;
+
+  const LoadRecentActivitiesEvent({required this.courseId});
+
+  @override
+  List<Object?> get props => [courseId];
+}

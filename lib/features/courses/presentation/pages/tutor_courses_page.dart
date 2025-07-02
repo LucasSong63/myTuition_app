@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sizer/sizer.dart';
 import 'package:mytuition/config/router/route_names.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
 import 'package:mytuition/features/auth/presentation/bloc/auth_bloc.dart';
@@ -139,7 +140,7 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
+              content: Text(state.message, style: TextStyle(fontSize: 14.sp)),
               backgroundColor: AppColors.success,
               duration: const Duration(seconds: 2),
             ),
@@ -170,7 +171,7 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
+              content: Text(state.message, style: TextStyle(fontSize: 14.sp)),
               backgroundColor: AppColors.error,
               duration: const Duration(seconds: 3),
             ),
@@ -188,10 +189,10 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('My Classes'),
+          title: Text('My Classes', style: TextStyle(fontSize: 18.sp)),
           actions: [
             PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert),
+              icon: Icon(Icons.more_vert, size: 6.w),
               tooltip: 'More options',
               onSelected: (value) {
                 switch (value) {
@@ -204,23 +205,26 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
                 }
               },
               itemBuilder: (context) => [
-                const PopupMenuItem<String>(
+                PopupMenuItem<String>(
                   value: 'subject_costs',
                   child: Row(
                     children: [
-                      Icon(Icons.attach_money, color: AppColors.accentOrange),
-                      SizedBox(width: 12),
-                      Text('Manage Subject Costs'),
+                      Icon(Icons.attach_money,
+                          color: AppColors.accentOrange, size: 5.w),
+                      SizedBox(width: 3.w),
+                      Text('Manage Subject Costs',
+                          style: TextStyle(fontSize: 14.sp)),
                     ],
                   ),
                 ),
-                const PopupMenuItem<String>(
+                PopupMenuItem<String>(
                   value: 'refresh',
                   child: Row(
                     children: [
-                      Icon(Icons.refresh, color: AppColors.primaryBlue),
-                      SizedBox(width: 12),
-                      Text('Refresh'),
+                      Icon(Icons.refresh,
+                          color: AppColors.primaryBlue, size: 5.w),
+                      SizedBox(width: 3.w),
+                      Text('Refresh', style: TextStyle(fontSize: 14.sp)),
                     ],
                   ),
                 ),
@@ -280,7 +284,7 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
                         // Courses list
                         Expanded(
                           child: ListView.builder(
-                            padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.all(4.w),
                             itemCount: sortedGrades.length,
                             itemBuilder: (context, index) {
                               final grade = sortedGrades[index];
@@ -309,28 +313,36 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
                               children: [
                                 Icon(
                                   Icons.error_outline,
-                                  size: 64,
+                                  size: 16.w,
                                   color: AppColors.error,
                                 ),
-                                const SizedBox(height: 16),
-                                const Text(
+                                SizedBox(height: 4.w),
+                                Text(
                                   'Failed to load courses',
-                                  style: TextStyle(fontSize: 18),
+                                  style: TextStyle(fontSize: 18.sp),
                                 ),
                                 if (_uiState.errorMessage != null)
                                   Padding(
-                                    padding: const EdgeInsets.all(8.0),
+                                    padding: EdgeInsets.all(2.w),
                                     child: Text(
                                       _uiState.errorMessage!,
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
-                                          color: AppColors.textMedium),
+                                          color: AppColors.textMedium,
+                                          fontSize: 14.sp),
                                     ),
                                   ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 4.w),
                                 ElevatedButton(
                                   onPressed: _loadCourses,
-                                  child: const Text('Try Again'),
+                                  style: ElevatedButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 6.w,
+                                      vertical: 3.w,
+                                    ),
+                                  ),
+                                  child: Text('Try Again',
+                                      style: TextStyle(fontSize: 14.sp)),
                                 ),
                               ],
                             ),
@@ -349,7 +361,8 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
                       // Show a centered loading or message
                       Expanded(
                         child: Center(
-                          child: const Text('Loading courses...'),
+                          child: Text('Loading courses...',
+                              style: TextStyle(fontSize: 16.sp)),
                         ),
                       ),
                     ],
@@ -366,16 +379,17 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
                   child: Card(
                     elevation: 4,
                     child: Padding(
-                      padding: const EdgeInsets.all(24),
+                      padding: EdgeInsets.all(6.w),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const CircularProgressIndicator(),
-                          const SizedBox(height: 16),
-                          const Text(
+                          SizedBox(height: 4.w),
+                          Text(
                             'Updating...',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
+                              fontSize: 14.sp,
                             ),
                           ),
                         ],
@@ -420,7 +434,7 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
 
   Widget _buildSearchAndFilterSection() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(4.w),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -436,25 +450,27 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
           // Search bar
           TextField(
             controller: _searchController,
+            style: TextStyle(fontSize: 14.sp),
             decoration: InputDecoration(
               hintText: 'Search courses...',
-              prefixIcon: const Icon(Icons.search),
+              hintStyle: TextStyle(fontSize: 14.sp),
+              prefixIcon: Icon(Icons.search, size: 5.w),
               suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.clear),
+                      icon: Icon(Icons.clear, size: 5.w),
                       onPressed: () => _searchController.clear(),
                     )
                   : null,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(3.w),
                 borderSide: BorderSide(color: AppColors.backgroundDark),
               ),
               filled: true,
               fillColor: AppColors.backgroundLight,
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              contentPadding: EdgeInsets.symmetric(vertical: 3.w),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 3.w),
 
           // Filter row
           Row(
@@ -474,7 +490,7 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
                   },
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 3.w),
               Expanded(
                 child: _buildFilterDropdown(
                   icon: Icons.toggle_on,
@@ -498,7 +514,7 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
               _subjectFilter != 'All' ||
               _statusFilter != 'All')
             Padding(
-              padding: const EdgeInsets.only(top: 8.0),
+              padding: EdgeInsets.only(top: 2.w),
               child: Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
@@ -509,8 +525,9 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
                       _statusFilter = 'All';
                     });
                   },
-                  icon: const Icon(Icons.filter_alt_off, size: 16),
-                  label: const Text('Clear Filters'),
+                  icon: Icon(Icons.filter_alt_off, size: 4.w),
+                  label:
+                      Text('Clear Filters', style: TextStyle(fontSize: 13.sp)),
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.primaryBlue,
                     visualDensity: VisualDensity.compact,
@@ -532,18 +549,18 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(3.w),
         color: AppColors.backgroundLight,
         border: Border.all(color: AppColors.backgroundDark),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: EdgeInsets.symmetric(horizontal: 3.w),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          icon: const Icon(Icons.arrow_drop_down),
-          hint: Text(hint),
-          style: const TextStyle(color: Colors.black, fontSize: 14),
+          icon: Icon(Icons.arrow_drop_down, size: 6.w),
+          hint: Text(hint, style: TextStyle(fontSize: 14.sp)),
+          style: TextStyle(color: Colors.black, fontSize: 14.sp),
           items: items.map((String item) {
             return DropdownMenuItem<String>(
               value: item,
@@ -551,13 +568,13 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
                 children: [
                   Icon(
                     icon,
-                    size: 16,
+                    size: 4.w,
                     color: item != 'All'
                         ? _getFilterIconColor(item, icon)
                         : AppColors.primaryBlue,
                   ),
-                  const SizedBox(width: 8),
-                  Text(item),
+                  SizedBox(width: 2.w),
+                  Text(item, style: TextStyle(fontSize: 14.sp)),
                 ],
               ),
             );
@@ -584,26 +601,27 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
     return ListView(
       children: [
         _buildSearchAndFilterSection(),
-        SizedBox(height: MediaQuery.of(context).size.height / 4),
+        SizedBox(height: 20.h),
         Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 Icons.class_outlined,
-                size: 64,
+                size: 16.w,
                 color: AppColors.textLight,
               ),
-              const SizedBox(height: 16),
-              const Text(
+              SizedBox(height: 4.w),
+              Text(
                 'No classes found',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 2.w),
               Text(
                 'Tap the + button to add your first class',
                 style: TextStyle(
                   color: AppColors.textMedium,
+                  fontSize: 14.sp,
                 ),
               ),
             ],
@@ -624,19 +642,19 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
               children: [
                 Icon(
                   Icons.search_off,
-                  size: 64,
+                  size: 16.w,
                   color: AppColors.textLight,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 4.w),
                 Text(
                   'No classes match your filters',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textDark,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 2.w),
                 TextButton.icon(
                   onPressed: () {
                     setState(() {
@@ -645,8 +663,9 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
                       _statusFilter = 'All';
                     });
                   },
-                  icon: const Icon(Icons.filter_alt_off),
-                  label: const Text('Clear Filters'),
+                  icon: Icon(Icons.filter_alt_off, size: 5.w),
+                  label:
+                      Text('Clear Filters', style: TextStyle(fontSize: 14.sp)),
                 ),
               ],
             ),
@@ -663,8 +682,8 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
       children: [
         // Improved grade section header
         Container(
-          margin: const EdgeInsets.only(bottom: 12, top: 16),
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          margin: EdgeInsets.only(bottom: 3.w, top: 4.w),
+          padding: EdgeInsets.symmetric(vertical: 2.w, horizontal: 4.w),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -674,7 +693,7 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(3.w),
             boxShadow: [
               BoxShadow(
                 color: AppColors.primaryBlue.withOpacity(0.2),
@@ -685,30 +704,31 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
           ),
           child: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.school,
                 color: Colors.white,
+                size: 5.w,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 2.w),
               Text(
                 'Grade $grade',
-                style: const TextStyle(
-                  fontSize: 18,
+                style: TextStyle(
+                  fontSize: 18.sp,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 2.w),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 0.5.w),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(3.w),
                 ),
                 child: Text(
                   '${courses.length} Classes',
-                  style: const TextStyle(
-                    fontSize: 12,
+                  style: TextStyle(
+                    fontSize: 12.sp,
                     color: Colors.white,
                   ),
                 ),
@@ -719,7 +739,7 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
 
         // Course cards for this grade
         ...courses.map((course) => _buildCourseCard(context, course)).toList(),
-        const SizedBox(height: 16),
+        SizedBox(height: 4.w),
       ],
     );
   }
@@ -734,10 +754,10 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
     }
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: 4.w),
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(4.w),
         side: BorderSide(
           color: course.isActive
               ? AppColors.backgroundDark.withOpacity(0.3)
@@ -746,7 +766,7 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
         ),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(4.w),
         onTap: () {
           context.pushNamed(
             RouteNames.tutorCourseDetails,
@@ -759,18 +779,18 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
             Container(
               decoration: BoxDecoration(
                 color: _getSubjectColor(course.subject).withOpacity(0.1),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(4.w),
+                  topRight: Radius.circular(4.w),
                 ),
               ),
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(4.w),
               child: Row(
                 children: [
                   // Subject icon circle
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 12.w,
+                    height: 12.w,
                     decoration: BoxDecoration(
                       color: _getSubjectColor(course.subject),
                       shape: BoxShape.circle,
@@ -779,11 +799,11 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
                       child: Icon(
                         _getSubjectIcon(course.subject),
                         color: Colors.white,
-                        size: 24,
+                        size: 6.w,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 4.w),
 
                   // Subject and grade info
                   Expanded(
@@ -792,8 +812,8 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
                       children: [
                         Text(
                           course.subject,
-                          style: const TextStyle(
-                            fontSize: 18,
+                          style: TextStyle(
+                            fontSize: 18.sp,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -801,6 +821,7 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
                           'Grade ${course.grade}',
                           style: TextStyle(
                             color: AppColors.textMedium,
+                            fontSize: 14.sp,
                           ),
                         ),
                       ],
@@ -810,28 +831,28 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
                   // Status indicator
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.w),
                     decoration: BoxDecoration(
                       color: course.isActive
                           ? AppColors.success.withOpacity(0.2)
                           : AppColors.error.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(3.w),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           course.isActive ? Icons.check_circle : Icons.cancel,
-                          size: 16,
+                          size: 4.w,
                           color: course.isActive
                               ? AppColors.success
                               : AppColors.error,
                         ),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 1.w),
                         Text(
                           course.isActive ? 'Active' : 'Inactive',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 12.sp,
                             fontWeight: FontWeight.bold,
                             color: course.isActive
                                 ? AppColors.success
@@ -847,7 +868,7 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
 
             // Middle section with capacity info
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(4.w),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -856,22 +877,22 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
                     children: [
                       Icon(
                         Icons.event,
-                        size: 16,
+                        size: 4.w,
                         color: AppColors.textMedium,
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 2.w),
                       Expanded(
                         child: Text(
                           'Next class: $scheduleInfo',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 12.sp,
                             color: AppColors.textMedium,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 3.w),
 
                   // Capacity indicator
                   CapacityIndicator(course: course),
@@ -884,7 +905,7 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
 
             // Quick actions section
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.w),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -925,22 +946,22 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
     return Expanded(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(2.w),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: EdgeInsets.symmetric(vertical: 2.w),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 icon,
                 color: AppColors.primaryBlue,
-                size: 20,
+                size: 5.w,
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 1.w),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   color: AppColors.textMedium,
                 ),
               ),
@@ -969,9 +990,12 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
     // This would navigate to a student enrollment page for this course
     // This is a placeholder for future implementation
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Enrollment management coming soon'),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: Text(
+          'Enrollment management coming soon',
+          style: TextStyle(fontSize: 14.sp),
+        ),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -982,9 +1006,9 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
 
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
-          top: Radius.circular(16),
+          top: Radius.circular(4.w),
         ),
       ),
       builder: (context) => Column(
@@ -994,9 +1018,12 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
             leading: Icon(
               course.isActive ? Icons.visibility_off : Icons.visibility,
               color: course.isActive ? AppColors.error : AppColors.success,
+              size: 6.w,
             ),
-            title:
-                Text(course.isActive ? 'Deactivate Course' : 'Activate Course'),
+            title: Text(
+              course.isActive ? 'Deactivate Course' : 'Activate Course',
+              style: TextStyle(fontSize: 16.sp),
+            ),
             onTap: () {
               // Close the bottom sheet first
               Navigator.of(context).pop();
@@ -1011,17 +1038,20 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Row(
-                    children: const [
+                    children: [
                       SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
+                        width: 5.w,
+                        height: 5.w,
+                        child: const CircularProgressIndicator(
                           strokeWidth: 2,
                           color: Colors.white,
                         ),
                       ),
-                      SizedBox(width: 16),
-                      Text('Updating course status...'),
+                      SizedBox(width: 4.w),
+                      Text(
+                        'Updating course status...',
+                        style: TextStyle(fontSize: 14.sp),
+                      ),
                     ],
                   ),
                   duration: const Duration(seconds: 2),
@@ -1041,15 +1071,6 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
           // ... rest of your list tiles remain the same
         ],
       ),
-    );
-  }
-
-  // This function would be implemented to show the capacity edit dialog
-  void _showCapacityEditDialog(BuildContext context, Course course) {
-    // Navigate to the course detail page or use a dedicated bottom sheet
-    context.pushNamed(
-      RouteNames.tutorCourseDetails,
-      pathParameters: {'courseId': course.id},
     );
   }
 

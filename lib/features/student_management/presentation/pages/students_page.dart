@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
 import 'package:mytuition/features/student_management/presentation/widgets/course_enrollment_bottom_sheet.dart';
+import 'package:sizer/sizer.dart';
 import '../bloc/student_management_bloc.dart';
 import '../bloc/student_management_event.dart';
 import '../bloc/student_management_state.dart';
@@ -121,46 +122,49 @@ class _StudentsPageState extends State<StudentsPage> {
     print('Student ID field: ${student.studentId}');
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(4.w)),
       ),
       builder: (context) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          padding: EdgeInsets.symmetric(vertical: 4.w),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                padding: EdgeInsets.symmetric(horizontal: 4.w),
                 child: Row(
                   children: [
                     CircleAvatar(
-                      radius: 20,
+                      radius: 5.w,
                       backgroundColor: _getAvatarColor(student.name),
                       child: Text(
                         student.name.isNotEmpty
                             ? student.name[0].toUpperCase()
                             : '?',
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14.sp,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 3.w),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             student.name,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              fontSize: 16.sp,
                             ),
                           ),
                           Text(
                             'ID: ${student.studentId}',
                             style: TextStyle(
                               color: AppColors.textMedium,
-                              fontSize: 12,
+                              fontSize: 12.sp,
                             ),
                           ),
                         ],
@@ -169,7 +173,7 @@ class _StudentsPageState extends State<StudentsPage> {
                   ],
                 ),
               ),
-              const Divider(height: 24),
+              Divider(height: 6.w),
               _buildActionTile(
                 icon: Icons.person,
                 title: 'View Profile',
@@ -214,10 +218,11 @@ class _StudentsPageState extends State<StudentsPage> {
     required VoidCallback onTap,
   }) {
     return ListTile(
-      leading: Icon(icon, color: AppColors.primaryBlue),
-      title: Text(title),
+      leading: Icon(icon, color: AppColors.primaryBlue, size: 6.w),
+      title: Text(title, style: TextStyle(fontSize: 14.sp)),
       onTap: onTap,
       dense: true,
+      contentPadding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
     );
   }
 
@@ -225,20 +230,20 @@ class _StudentsPageState extends State<StudentsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Students'),
+        title: Text('Students', style: TextStyle(fontSize: 18.sp)),
       ),
       body: Column(
         children: [
           // Manage Payments Card
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(4.w),
             child: Card(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(3.w),
               ),
               elevation: 3,
               child: InkWell(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(3.w),
                 onTap: () {
                   context.push('/tutor/payments', extra: {
                     'month': DateTime.now().month,
@@ -246,39 +251,39 @@ class _StudentsPageState extends State<StudentsPage> {
                   });
                 },
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      vertical: 16.0, horizontal: 20.0),
+                  padding: EdgeInsets.symmetric(
+                      vertical: 4.w, horizontal: 5.w),
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(10),
+                        padding: EdgeInsets.all(2.5.w),
                         decoration: BoxDecoration(
                           color: AppColors.primaryBlue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(2.w),
                         ),
                         child: Icon(
                           Icons.payments_rounded,
                           color: AppColors.primaryBlue,
-                          size: 26,
+                          size: 6.5.w,
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      SizedBox(width: 4.w),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Manage Payments',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 16.sp,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            SizedBox(height: 1.w),
                             Text(
                               'View and update payment records',
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 13.sp,
                                 color: AppColors.textMedium,
                               ),
                             ),
@@ -288,6 +293,7 @@ class _StudentsPageState extends State<StudentsPage> {
                       Icon(
                         Icons.chevron_right,
                         color: AppColors.primaryBlue,
+                        size: 6.w,
                       ),
                     ],
                   ),
@@ -298,31 +304,33 @@ class _StudentsPageState extends State<StudentsPage> {
 
           // Search and Filter Row
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: EdgeInsets.symmetric(horizontal: 4.w),
             child: Row(
               children: [
                 // Search Field
                 Expanded(
                   child: TextField(
                     controller: _searchController,
+                    style: TextStyle(fontSize: 14.sp),
                     decoration: InputDecoration(
                       hintText: 'Search students...',
-                      prefixIcon: const Icon(Icons.search),
+                      hintStyle: TextStyle(fontSize: 14.sp),
+                      prefixIcon: Icon(Icons.search, size: 5.w),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(2.w),
                         borderSide: BorderSide(color: AppColors.divider),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(2.w),
                         borderSide: BorderSide(color: AppColors.divider),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(2.w),
                         borderSide: BorderSide(color: AppColors.primaryBlue),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      contentPadding: EdgeInsets.symmetric(vertical: 3.w),
                     ),
                   ),
                 ),
@@ -336,6 +344,7 @@ class _StudentsPageState extends State<StudentsPage> {
                     color: _showFilterPanel
                         ? AppColors.primaryBlue
                         : AppColors.textMedium,
+                    size: 6.w,
                   ),
                   onPressed: () {
                     setState(() {
@@ -343,28 +352,32 @@ class _StudentsPageState extends State<StudentsPage> {
                     });
                   },
                   tooltip: _showFilterPanel ? 'Hide filters' : 'Show filters',
+                  padding: EdgeInsets.all(3.w),
                 ),
               ],
             ),
           ),
 
-          const SizedBox(height: 8),
+          SizedBox(height: 2.w),
 
           // Filter Panel (expandable)
           AnimatedContainer(
             duration: const Duration(milliseconds: 300),
-            height: _showFilterPanel ? 140 : 0,
+            height: _showFilterPanel ? 35.w : 0,
             child: SingleChildScrollView(
               physics: const NeverScrollableScrollPhysics(),
               child: Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                    EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.w),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Filter & Sort',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
+                    Text('Filter & Sort',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14.sp,
+                        )),
+                    SizedBox(height: 2.w),
 
                     // Filter Options
                     Row(
@@ -377,9 +390,12 @@ class _StudentsPageState extends State<StudentsPage> {
                             items: [null, 1, 2, 3, 4, 5, 6].map((grade) {
                               return DropdownMenuItem<int?>(
                                 value: grade,
-                                child: Text(grade == null
-                                    ? 'All Grades'
-                                    : 'Grade $grade'),
+                                child: Text(
+                                  grade == null
+                                      ? 'All Grades'
+                                      : 'Grade $grade',
+                                  style: TextStyle(fontSize: 13.sp),
+                                ),
                               );
                             }).toList(),
                             onChanged: (value) {
@@ -389,7 +405,7 @@ class _StudentsPageState extends State<StudentsPage> {
                             },
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 3.w),
 
                         // Subject Filter
                         Expanded(
@@ -397,9 +413,10 @@ class _StudentsPageState extends State<StudentsPage> {
                             label: 'Subject',
                             value: _subjectFilter,
                             items: [
-                              const DropdownMenuItem<String?>(
+                              DropdownMenuItem<String?>(
                                 value: null,
-                                child: Text('All Subjects'),
+                                child: Text('All Subjects',
+                                    style: TextStyle(fontSize: 13.sp)),
                               ),
                               ...[
                                 'Mathematics',
@@ -410,7 +427,8 @@ class _StudentsPageState extends State<StudentsPage> {
                               ]
                                   .map((subject) => DropdownMenuItem<String?>(
                                         value: subject,
-                                        child: Text(subject),
+                                        child: Text(subject,
+                                            style: TextStyle(fontSize: 13.sp)),
                                       ))
                                   .toList()
                             ],
@@ -424,7 +442,7 @@ class _StudentsPageState extends State<StudentsPage> {
                       ],
                     ),
 
-                    const SizedBox(height: 12),
+                    SizedBox(height: 3.w),
 
                     // Sort Options
                     Row(
@@ -435,17 +453,20 @@ class _StudentsPageState extends State<StudentsPage> {
                             label: 'Sort By',
                             value: _sortBy,
                             items: [
-                              const DropdownMenuItem<String>(
+                              DropdownMenuItem<String>(
                                 value: 'name',
-                                child: Text('Name'),
+                                child: Text('Name',
+                                    style: TextStyle(fontSize: 13.sp)),
                               ),
-                              const DropdownMenuItem<String>(
+                              DropdownMenuItem<String>(
                                 value: 'grade',
-                                child: Text('Grade'),
+                                child: Text('Grade',
+                                    style: TextStyle(fontSize: 13.sp)),
                               ),
-                              const DropdownMenuItem<String>(
+                              DropdownMenuItem<String>(
                                 value: 'id',
-                                child: Text('Student ID'),
+                                child: Text('Student ID',
+                                    style: TextStyle(fontSize: 13.sp)),
                               ),
                             ],
                             onChanged: (value) {
@@ -457,15 +478,15 @@ class _StudentsPageState extends State<StudentsPage> {
                             },
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 3.w),
 
                         // Sort Direction
                         Expanded(
                           child: Row(
                             children: [
-                              const Text('Order: ',
-                                  style: TextStyle(fontSize: 12)),
-                              const SizedBox(width: 8),
+                              Text('Order: ',
+                                  style: TextStyle(fontSize: 12.sp)),
+                              SizedBox(width: 2.w),
                               Expanded(
                                 child: InkWell(
                                   onTap: () {
@@ -474,26 +495,28 @@ class _StudentsPageState extends State<StudentsPage> {
                                     });
                                   },
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 3.w,
+                                      vertical: 2.w,
                                     ),
                                     decoration: BoxDecoration(
                                       border:
                                           Border.all(color: AppColors.divider),
-                                      borderRadius: BorderRadius.circular(4),
+                                      borderRadius: BorderRadius.circular(1.w),
                                     ),
                                     child: Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceBetween,
                                       children: [
                                         Text(
-                                            _sortAscending ? 'A → Z' : 'Z → A'),
+                                          _sortAscending ? 'A → Z' : 'Z → A',
+                                          style: TextStyle(fontSize: 12.sp),
+                                        ),
                                         Icon(
                                           _sortAscending
                                               ? Icons.arrow_upward
                                               : Icons.arrow_downward,
-                                          size: 16,
+                                          size: 4.w,
                                         ),
                                       ],
                                     ),
@@ -521,7 +544,10 @@ class _StudentsPageState extends State<StudentsPage> {
                 if (state is StudentManagementError) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(state.message),
+                      content: Text(
+                        state.message,
+                        style: TextStyle(fontSize: 14.sp),
+                      ),
                       backgroundColor: AppColors.error,
                     ),
                   );
@@ -547,7 +573,7 @@ class _StudentsPageState extends State<StudentsPage> {
                         // Actual list
                         ListView.builder(
                           controller: _scrollController,
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(4.w),
                           // Add key for better list diffing
                           key: ValueKey<String>(
                               'student_list_${filteredStudents.length}_$_sortBy'),
@@ -587,15 +613,20 @@ class _StudentsPageState extends State<StudentsPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('Failed to load students'),
-                      const SizedBox(height: 16),
+                      Text('Failed to load students',
+                          style: TextStyle(fontSize: 16.sp)),
+                      SizedBox(height: 4.w),
                       ElevatedButton(
                         onPressed: () {
                           context
                               .read<StudentManagementBloc>()
                               .add(LoadAllStudentsEvent());
                         },
-                        child: const Text('Retry'),
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 6.w, vertical: 3.w),
+                        ),
+                        child: Text('Retry', style: TextStyle(fontSize: 14.sp)),
                       ),
                     ],
                   ),
@@ -620,21 +651,21 @@ class _StudentsPageState extends State<StudentsPage> {
           children: [
             Icon(
               Icons.search_off,
-              size: 64,
+              size: 16.w,
               color: AppColors.textLight,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 4.w),
             Text(
               _searchQuery.isNotEmpty
                   ? 'No students found matching "$_searchQuery"'
                   : 'No students match the selected filters',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 16.sp,
                 color: AppColors.textMedium,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 4.w),
             ElevatedButton.icon(
               onPressed: () {
                 setState(() {
@@ -644,8 +675,11 @@ class _StudentsPageState extends State<StudentsPage> {
                   _subjectFilter = null;
                 });
               },
-              icon: const Icon(Icons.clear),
-              label: const Text('Clear Filters'),
+              icon: Icon(Icons.clear, size: 5.w),
+              label: Text('Clear Filters', style: TextStyle(fontSize: 14.sp)),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 3.w),
+              ),
             ),
           ],
         ),
@@ -658,40 +692,40 @@ class _StudentsPageState extends State<StudentsPage> {
           children: [
             Icon(
               Icons.people_outline,
-              size: 80,
+              size: 20.w,
               color: AppColors.textLight,
             ),
-            const SizedBox(height: 24),
-            const Text(
+            SizedBox(height: 6.w),
+            Text(
               'No Students Found',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 3.w),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40),
+              padding: EdgeInsets.symmetric(horizontal: 10.w),
               child: Text(
                 'Students who register for your courses will appear here.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppColors.textMedium,
-                  fontSize: 16,
+                  fontSize: 16.sp,
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 6.w),
             ElevatedButton.icon(
               onPressed: () {
                 context.push('/tutor/classes');
               },
-              icon: const Icon(Icons.add),
-              label: const Text('Add New Student'),
+              icon: Icon(Icons.add, size: 5.w),
+              label: Text('Add New Student', style: TextStyle(fontSize: 14.sp)),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
+                padding: EdgeInsets.symmetric(
+                  horizontal: 6.w,
+                  vertical: 3.w,
                 ),
               ),
             ),
@@ -713,25 +747,29 @@ class _StudentsPageState extends State<StudentsPage> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 12.sp,
             color: AppColors.textMedium,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 1.w),
         Container(
           decoration: BoxDecoration(
             border: Border.all(color: AppColors.divider),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(1.w),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<T>(
               value: value,
               isExpanded: true,
-              icon: const Icon(Icons.arrow_drop_down),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              borderRadius: BorderRadius.circular(4),
+              icon: Icon(Icons.arrow_drop_down, size: 6.w),
+              padding: EdgeInsets.symmetric(horizontal: 3.w),
+              borderRadius: BorderRadius.circular(1.w),
               items: items,
               onChanged: onChanged,
+              style: TextStyle(
+                fontSize: 13.sp,
+                color: AppColors.textDark,
+              ),
             ),
           ),
         ),

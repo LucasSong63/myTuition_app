@@ -17,8 +17,8 @@ import 'package:get_it/get_it.dart';
 import 'package:mytuition/features/courses/presentation/bloc/course_bloc.dart';
 import 'package:mytuition/features/courses/presentation/bloc/subject_cost_bloc.dart';
 import 'package:mytuition/features/courses/presentation/pages/student_course_detail_page.dart';
+import 'package:mytuition/features/courses/presentation/pages/student_courses_page.dart';
 import 'package:mytuition/features/courses/presentation/pages/tutor_course_detail_page.dart';
-import 'package:mytuition/features/courses/presentation/pages/courses_page.dart';
 import 'package:mytuition/features/courses/presentation/pages/subject_cost_configuration_page.dart';
 import 'package:mytuition/features/courses/presentation/pages/tutor_courses_page.dart';
 
@@ -43,6 +43,8 @@ import 'package:mytuition/features/tasks/presentation/bloc/task_bloc.dart';
 import 'package:mytuition/features/attendance/presentation/bloc/attendance_bloc.dart';
 import 'package:mytuition/features/attendance/presentation/pages/manage_attendance_page.dart';
 import 'package:mytuition/features/attendance/presentation/pages/take_attendance_page.dart';
+import 'package:mytuition/features/attendance/presentation/pages/student_attendance_history_page.dart';
+import 'package:mytuition/features/attendance/presentation/bloc/student_attendance_history_bloc.dart';
 import 'package:mytuition/features/ai_chat/presentation/pages/ai_chat_page.dart';
 import 'package:mytuition/features/ai_chat/presentation/bloc/chat_bloc.dart';
 import 'package:mytuition/features/tutor_dashboard/presentation/bloc/dashboard_bloc.dart';
@@ -233,7 +235,7 @@ class AppRouter {
                 name: RouteNames.studentCourses,
                 builder: (context, state) => BlocProvider<CourseBloc>(
                   create: (context) => getIt<CourseBloc>(),
-                  child: const CoursesPage(),
+                  child: const StudentCoursesPage(),
                 ),
                 routes: [
                   GoRoute(
@@ -260,7 +262,7 @@ class AppRouter {
 
                   if (authState is Authenticated) {
                     studentId = authState.user.studentId ??
-                        authState.user.email?.split('@').first ??
+                        authState.user.email.split('@').first ??
                         '';
                   }
 
@@ -346,6 +348,17 @@ class AppRouter {
                     },
                   ),
                 ],
+              ),
+
+              // Student Attendance History route
+              GoRoute(
+                path: 'attendance-history',
+                name: RouteNames.studentAttendanceHistory,
+                builder: (context, state) =>
+                    BlocProvider<StudentAttendanceHistoryBloc>(
+                  create: (context) => getIt<StudentAttendanceHistoryBloc>(),
+                  child: const StudentAttendanceHistoryPage(),
+                ),
               ),
             ],
           ),

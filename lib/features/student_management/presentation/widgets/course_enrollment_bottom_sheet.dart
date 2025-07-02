@@ -5,6 +5,7 @@ import 'package:mytuition/features/student_management/presentation/bloc/student_
 import 'package:mytuition/features/student_management/presentation/bloc/student_management_event.dart';
 import 'package:mytuition/features/student_management/presentation/bloc/student_management_state.dart';
 import 'package:wolt_modal_sheet/wolt_modal_sheet.dart';
+import 'package:sizer/sizer.dart';
 
 class CourseEnrollmentBottomSheet {
   static Future<void> show({
@@ -25,14 +26,15 @@ class CourseEnrollmentBottomSheet {
         backgroundColor: Theme.of(context).colorScheme.background,
         topBarTitle: Text(
           'Enroll $studentName',
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
+            fontSize: 16.sp,
           ),
         ),
         isTopBarLayerAlwaysVisible: true,
         trailingNavBarWidget: IconButton(
-          padding: const EdgeInsets.all(16),
-          icon: const Icon(Icons.close),
+          padding: EdgeInsets.all(4.w),
+          icon: Icon(Icons.close, size: 6.w),
           onPressed: () => Navigator.of(context).pop(),
         ),
         child: LayoutBuilder(
@@ -144,14 +146,14 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
+              content: Text(state.message, style: TextStyle(fontSize: 14.sp)),
               backgroundColor: Colors.red,
             ),
           );
         } else if (state is StudentManagementActionSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
+              content: Text(state.message, style: TextStyle(fontSize: 14.sp)),
               backgroundColor: AppColors.success,
             ),
           );
@@ -159,7 +161,7 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
       },
       builder: (context, state) {
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          padding: EdgeInsets.fromLTRB(4.w, 0, 4.w, 4.w),
           child: SizedBox(
             height: MediaQuery.of(context).size.height * 0.7,
             child: Column(
@@ -168,16 +170,18 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
                 // Search bar
                 TextField(
                   controller: _searchController,
+                  style: TextStyle(fontSize: 14.sp),
                   decoration: InputDecoration(
                     hintText: 'Search courses...',
-                    prefixIcon: const Icon(Icons.search),
+                    hintStyle: TextStyle(fontSize: 14.sp),
+                    prefixIcon: Icon(Icons.search, size: 5.w),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(2.w),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    contentPadding: EdgeInsets.symmetric(vertical: 3.w),
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 4.w),
 
                 // Filter section
                 Row(
@@ -196,7 +200,7 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
                         },
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 3.w),
                     Expanded(
                       child: _buildFilterDropdown(
                         label: 'Subject',
@@ -213,43 +217,43 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 4.w),
 
                 // Course selection text with counter
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Available Courses',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     if (_selectedCourseIds.isNotEmpty)
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 2.w,
+                          vertical: 1.w,
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.primaryBlue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(1.w),
                         ),
                         child: Text(
                           '${_selectedCourseIds.length} selected',
                           style: TextStyle(
                             color: AppColors.primaryBlue,
                             fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            fontSize: 12.sp,
                           ),
                         ),
                       ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 2.w),
                 const Divider(),
-                const SizedBox(height: 8),
+                SizedBox(height: 2.w),
 
                 // Course list with fixed height
                 Expanded(
@@ -271,17 +275,17 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
                                 _enrollSelectedCourses(context);
                               },
                         style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: EdgeInsets.symmetric(vertical: 3.5.w),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(2.w),
                           ),
                           backgroundColor: AppColors.primaryBlue,
                         ),
                         child: isLoading
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
+                            ? SizedBox(
+                                width: 6.w,
+                                height: 6.w,
+                                child: const CircularProgressIndicator(
                                   color: Colors.white,
                                   strokeWidth: 2,
                                 ),
@@ -290,9 +294,9 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
                                 _selectedCourseIds.isEmpty
                                     ? 'Select Courses to Enroll'
                                     : 'Enroll in ${_selectedCourseIds.length} Course${_selectedCourseIds.length > 1 ? 's' : ''}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                                  fontSize: 16.sp,
                                   color: Colors.white,
                                 ),
                               ),
@@ -342,27 +346,27 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
           label,
           style: TextStyle(
             color: AppColors.textMedium,
-            fontSize: 12,
+            fontSize: 12.sp,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 1.w),
         Container(
           decoration: BoxDecoration(
             border: Border.all(color: AppColors.divider),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(2.w),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: value,
               isExpanded: true,
-              icon: const Icon(Icons.keyboard_arrow_down),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              borderRadius: BorderRadius.circular(8),
+              icon: Icon(Icons.keyboard_arrow_down, size: 5.w),
+              padding: EdgeInsets.symmetric(horizontal: 3.w),
+              borderRadius: BorderRadius.circular(2.w),
               items: items.map((String item) {
                 return DropdownMenuItem<String>(
                   value: item,
-                  child: Text(item),
+                  child: Text(item, style: TextStyle(fontSize: 13.sp)),
                 );
               }).toList(),
               onChanged: onChanged,
@@ -376,15 +380,15 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
   Widget _buildCourseList() {
     // Show loading indicator while initially loading
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
+            const CircularProgressIndicator(),
+            SizedBox(height: 4.w),
             Text(
               'Loading available courses...',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: Colors.grey, fontSize: 14.sp),
             ),
           ],
         ),
@@ -421,16 +425,16 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
             children: [
               Icon(
                 Icons.search_off,
-                size: 48,
+                size: 12.w,
                 color: AppColors.textLight,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 4.w),
               Text(
                 _searchQuery.isNotEmpty
                     ? 'No courses found matching "$_searchQuery"'
                     : 'No available courses match the filters',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.textMedium),
+                style: TextStyle(color: AppColors.textMedium, fontSize: 14.sp),
               ),
               if (_searchQuery.isNotEmpty ||
                   _gradeFilter != 'All' ||
@@ -443,7 +447,7 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
                       _subjectFilter = 'All';
                     });
                   },
-                  child: const Text('Clear Filters'),
+                  child: Text('Clear Filters', style: TextStyle(fontSize: 14.sp)),
                 ),
             ],
           ),
@@ -470,18 +474,18 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
         children: [
           Icon(
             Icons.school_outlined,
-            size: 48,
+            size: 12.w,
             color: AppColors.textLight,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 4.w),
           Text(
             'No available courses',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 18.sp,
               color: AppColors.textMedium,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 4.w),
           ElevatedButton(
             onPressed: () {
               setState(() {
@@ -494,7 +498,10 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
                     ),
                   );
             },
-            child: const Text('Reload Courses'),
+            style: ElevatedButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 3.w),
+            ),
+            child: Text('Reload Courses', style: TextStyle(fontSize: 14.sp)),
           ),
         ],
       ),
@@ -524,13 +531,13 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        padding: EdgeInsets.symmetric(vertical: 3.w, horizontal: 2.w),
         color: isSelected ? AppColors.primaryBlueLight.withOpacity(0.1) : null,
         child: Row(
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: 12.w,
+              height: 12.w,
               decoration: BoxDecoration(
                 color: isFull
                     ? AppColors.backgroundDark
@@ -542,23 +549,25 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
                     ? Icon(
                         Icons.check,
                         color: _getSubjectColor(course['subject']),
+                        size: 6.w,
                       )
                     : isFull
                         ? Icon(
                             Icons.block,
                             color: AppColors.textMedium,
+                            size: 6.w,
                           )
                         : Text(
                             course['subject'].toString()[0].toUpperCase(),
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 18.sp,
                               fontWeight: FontWeight.bold,
                               color: _getSubjectColor(course['subject']),
                             ),
                           ),
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 4.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -568,47 +577,47 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
                     style: TextStyle(
                       fontWeight:
                           isSelected ? FontWeight.bold : FontWeight.normal,
-                      fontSize: 16,
+                      fontSize: 16.sp,
                       color: isFull ? AppColors.textMedium : null,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 1.w),
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 1.5.w,
+                          vertical: 0.5.w,
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.backgroundDark.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(1.w),
                         ),
                         child: Text(
                           'Grade ${course['grade']}',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 12.sp,
                             color: AppColors.textMedium,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 2.w),
                       if (course['tutorName'] != null)
                         Text(
                           'Tutor: ${course['tutorName']}',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 12.sp,
                             color: AppColors.textMedium,
                           ),
                         ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 1.w),
                   // Show capacity information
                   Text(
                     'Enrollment: $currentEnrollment/$capacity',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: isFull ? AppColors.error : AppColors.textMedium,
                       fontWeight: isFull ? FontWeight.bold : FontWeight.normal,
                     ),
@@ -617,7 +626,7 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
                     Text(
                       'Class is full',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         color: AppColors.error,
                         fontWeight: FontWeight.bold,
                       ),
@@ -642,11 +651,11 @@ class _CourseEnrollmentContentState extends State<_CourseEnrollmentContent> {
               )
             else
               Padding(
-                padding: const EdgeInsets.all(12.0),
+                padding: EdgeInsets.all(3.w),
                 child: Icon(
                   Icons.do_not_disturb,
                   color: AppColors.textLight,
-                  size: 20,
+                  size: 5.w,
                 ),
               ),
           ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sizer/sizer.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
 import 'package:mytuition/features/courses/domain/entities/course.dart';
 
@@ -29,15 +30,15 @@ class CapacityIndicator extends StatelessWidget {
     if (compact) {
       // Compact version (just a badge)
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 0.5.w),
         decoration: BoxDecoration(
           color: capacityColor.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(2.5.w),
         ),
         child: Text(
           '${course.enrollmentCount}/${course.capacity}',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 12.sp,
             fontWeight: FontWeight.bold,
             color: capacityColor,
           ),
@@ -55,36 +56,36 @@ class CapacityIndicator extends StatelessWidget {
             Text(
               'Enrollment:',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 14.sp,
                 color: AppColors.textMedium,
               ),
             ),
             Text(
               '${course.enrollmentCount}/${course.capacity} students',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 14.sp,
                 fontWeight: FontWeight.bold,
                 color: capacityColor,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 1.w),
         ClipRRect(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(1.w),
           child: LinearProgressIndicator(
             value: enrollmentPercentage / 100,
-            minHeight: 6,
+            minHeight: 1.5.w,
             backgroundColor: AppColors.backgroundDark,
             color: capacityColor,
           ),
         ),
         if (!compact) ...[
-          const SizedBox(height: 2),
+          SizedBox(height: 0.5.w),
           Text(
             _getCapacityStatusText(course),
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 12.sp,
               fontStyle: FontStyle.italic,
               color: capacityColor,
             ),

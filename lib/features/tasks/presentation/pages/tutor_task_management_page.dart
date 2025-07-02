@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'package:sizer/sizer.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
 import 'package:mytuition/core/utils/task_utils.dart';
 import '../../domain/entities/task.dart';
 import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
-import '../widgets/add_task_dialog.dart';
+import '../widgets/task_bottom_sheet.dart';
 
 class TutorTaskManagementPage extends StatefulWidget {
   final String courseId;
@@ -27,6 +29,8 @@ class TutorTaskManagementPage extends StatefulWidget {
 class _TutorTaskManagementPageState extends State<TutorTaskManagementPage> {
   late String courseId;
   late String courseName;
+  String _sortBy = 'date'; // 'date', 'title', 'due'
+  String _filterBy = 'all'; // 'all', 'overdue', 'upcoming'
 
   @override
   void initState() {
@@ -35,7 +39,6 @@ class _TutorTaskManagementPageState extends State<TutorTaskManagementPage> {
     courseName = widget.courseName;
 
     // Use a small delay to ensure the BLoC is properly initialized before loading tasks
-    // This helps with the initial navigation to the page
     Future.microtask(() {
       if (mounted) {
         context.read<TaskBloc>().add(
@@ -45,18 +48,193 @@ class _TutorTaskManagementPageState extends State<TutorTaskManagementPage> {
     });
   }
 
+  List<Task> _sortAndFilterTasks(List<Task> tasks) {
+    // First filter
+    List<Task> filteredTasks = tasks;
+    final now = DateTime.now();
+    
+    switch (_filterBy) {
+      case 'overdue':
+        filteredTasks = tasks.where((task) => 
+          task.dueDate != null && 
+          task.dueDate!.isBefore(now) && 
+          !task.isCompleted
+        ).toList();
+        break;
+      case 'upcoming':
+        filteredTasks = tasks.where((task) => 
+          task.dueDate != null && 
+          task.dueDate!.isAfter(now)
+        ).toList();
+        break;
+    }
+
+    // Then sort
+    switch (_sortBy) {
+      case 'title':
+        filteredTasks.sort((a, b) => a.title.compareTo(b.title));
+        break;
+      case 'due':
+        filteredTasks.sort((a, b) {
+          if (a.dueDate == null && b.dueDate == null) return 0;
+          if (a.dueDate == null) return 1;
+          if (b.dueDate == null) return -1;
+          return a.dueDate!.compareTo(b.dueDate!);
+        });
+        break;
+      default: // 'date' - by creation date
+        filteredTasks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    }
+
+    return filteredTasks;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: Text('$courseName Tasks'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Task Management',
+              style: TextStyle(fontSize: 16.sp),
+            ),
+            Text(
+              courseName,
+              style: TextStyle(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.normal,
+                color: Colors.white.withOpacity(0.8),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          PopupMenuButton<String>(
+            icon: Icon(Icons.sort, size: 6.w),
+            onSelected: (value) {
+              setState(() {
+                if (value.startsWith('sort_')) {
+                  _sortBy = value.substring(5);
+                } else if (value.startsWith('filter_')) {
+                  _filterBy = value.substring(7);
+                }
+              });
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'header_sort',
+                enabled: false,
+                child: Text(
+                  'Sort By',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'sort_date',
+                child: Row(
+                  children: [
+                    Icon(Icons.date_range, size: 5.w),
+                    SizedBox(width: 2.w),
+                    const Text('Creation Date'),
+                    if (_sortBy == 'date') ...[
+                      const Spacer(),
+                      Icon(Icons.check, size: 5.w, color: AppColors.primaryBlue),
+                    ],
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'sort_title',
+                child: Row(
+                  children: [
+                    Icon(Icons.sort_by_alpha, size: 5.w),
+                    SizedBox(width: 2.w),
+                    const Text('Title'),
+                    if (_sortBy == 'title') ...[
+                      const Spacer(),
+                      Icon(Icons.check, size: 5.w, color: AppColors.primaryBlue),
+                    ],
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'sort_due',
+                child: Row(
+                  children: [
+                    Icon(Icons.schedule, size: 5.w),
+                    SizedBox(width: 2.w),
+                    const Text('Due Date'),
+                    if (_sortBy == 'due') ...[
+                      const Spacer(),
+                      Icon(Icons.check, size: 5.w, color: AppColors.primaryBlue),
+                    ],
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'header_filter',
+                enabled: false,
+                child: Text(
+                  'Filter By',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'filter_all',
+                child: Row(
+                  children: [
+                    Icon(Icons.all_inclusive, size: 5.w),
+                    SizedBox(width: 2.w),
+                    const Text('All Tasks'),
+                    if (_filterBy == 'all') ...[
+                      const Spacer(),
+                      Icon(Icons.check, size: 5.w, color: AppColors.primaryBlue),
+                    ],
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'filter_overdue',
+                child: Row(
+                  children: [
+                    Icon(Icons.warning, size: 5.w, color: AppColors.error),
+                    SizedBox(width: 2.w),
+                    const Text('Overdue'),
+                    if (_filterBy == 'overdue') ...[
+                      const Spacer(),
+                      Icon(Icons.check, size: 5.w, color: AppColors.primaryBlue),
+                    ],
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'filter_upcoming',
+                child: Row(
+                  children: [
+                    Icon(Icons.upcoming, size: 5.w, color: AppColors.success),
+                    SizedBox(width: 2.w),
+                    const Text('Upcoming'),
+                    if (_filterBy == 'upcoming') ...[
+                      const Spacer(),
+                      Icon(Icons.check, size: 5.w, color: AppColors.primaryBlue),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: BlocConsumer<TaskBloc, TaskState>(
         listener: (context, state) {
           if (state is TaskActionSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.message),
+                content: Text(state.message, style: TextStyle(fontSize: 14.sp)),
                 backgroundColor: AppColors.success,
               ),
             );
@@ -64,7 +242,7 @@ class _TutorTaskManagementPageState extends State<TutorTaskManagementPage> {
           if (state is TaskError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.message),
+                content: Text(state.message, style: TextStyle(fontSize: 14.sp)),
                 backgroundColor: AppColors.error,
               ),
             );
@@ -80,13 +258,14 @@ class _TutorTaskManagementPageState extends State<TutorTaskManagementPage> {
 
           // Show tasks if loaded successfully
           if (state is TasksLoaded) {
-            final tasks = state.tasks;
+            final tasks = _sortAndFilterTasks(state.tasks);
+            
             return Column(
               children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: _buildAddTaskButton(context),
-                ),
+                // Header section with statistics
+                _buildStatisticsSection(state.tasks),
+                
+                // Task list
                 Expanded(
                   child: tasks.isEmpty
                       ? _buildEmptyState()
@@ -101,26 +280,117 @@ class _TutorTaskManagementPageState extends State<TutorTaskManagementPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('Failed to load tasks. Please try again.'),
-                const SizedBox(height: 16),
+                Icon(
+                  Icons.error_outline,
+                  size: 12.w,
+                  color: AppColors.error,
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  'Failed to load tasks',
+                  style: TextStyle(fontSize: 16.sp),
+                ),
+                SizedBox(height: 1.h),
                 ElevatedButton(
                   onPressed: () {
                     context.read<TaskBloc>().add(
                           LoadTasksByCourseEvent(courseId: courseId),
                         );
                   },
-                  child: const Text('Retry'),
+                  child: Text('Retry', style: TextStyle(fontSize: 14.sp)),
                 ),
               ],
             ),
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddTaskDialog(context),
-        child: const Icon(Icons.add),
-        tooltip: 'Add New Task',
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showTaskBottomSheet(context),
+        icon: Icon(Icons.add, size: 6.w),
+        label: Text('Add Task', style: TextStyle(fontSize: 14.sp)),
+        backgroundColor: AppColors.primaryBlue,
       ),
+    );
+  }
+
+  Widget _buildStatisticsSection(List<Task> allTasks) {
+    final overdueCount = allTasks.where((task) => 
+      TaskUtils.isTaskOverdue(task.dueDate, task.isCompleted)
+    ).length;
+    
+    final upcomingCount = allTasks.where((task) => 
+      task.dueDate != null && 
+      task.dueDate!.isAfter(DateTime.now())
+    ).length;
+
+    return Container(
+      margin: EdgeInsets.all(4.w),
+      padding: EdgeInsets.all(4.w),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primaryBlue.withOpacity(0.8),
+            AppColors.primaryBlueDark,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(4.w),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryBlue.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildStatCard(
+            'Total Tasks',
+            '${allTasks.length}',
+            Icons.assignment,
+            Colors.white,
+          ),
+          _buildStatCard(
+            'Overdue',
+            '$overdueCount',
+            Icons.warning,
+            overdueCount > 0 ? Colors.orange : Colors.white,
+          ),
+          _buildStatCard(
+            'Upcoming',
+            '$upcomingCount',
+            Icons.upcoming,
+            Colors.white,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 6.w),
+        SizedBox(height: 1.h),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18.sp,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12.sp,
+            color: color.withOpacity(0.9),
+          ),
+        ),
+      ],
     );
   }
 
@@ -131,22 +401,41 @@ class _TutorTaskManagementPageState extends State<TutorTaskManagementPage> {
         children: [
           Icon(
             Icons.assignment_outlined,
-            size: 64,
+            size: 16.w,
             color: AppColors.textLight,
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'No tasks available',
-            style: TextStyle(fontSize: 18),
+          SizedBox(height: 2.h),
+          Text(
+            _filterBy == 'all' 
+              ? 'No tasks available'
+              : 'No ${_filterBy} tasks',
+            style: TextStyle(
+              fontSize: 18.sp,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Add tasks for students to see what they need to do',
+          SizedBox(height: 1.h),
+          Text(
+            _filterBy == 'all'
+              ? 'Create your first task for students'
+              : 'Try changing the filter to see more tasks',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppColors.textMedium,
+              fontSize: 14.sp,
             ),
           ),
+          if (_filterBy == 'all') ...[
+            SizedBox(height: 3.h),
+            ElevatedButton.icon(
+              onPressed: () => _showTaskBottomSheet(context),
+              icon: Icon(Icons.add, size: 5.w),
+              label: Text('Create Task', style: TextStyle(fontSize: 14.sp)),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.w),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -154,7 +443,7 @@ class _TutorTaskManagementPageState extends State<TutorTaskManagementPage> {
 
   Widget _buildTaskList(BuildContext context, List<Task> tasks) {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(4.w),
       itemCount: tasks.length,
       itemBuilder: (context, index) {
         final task = tasks[index];
@@ -164,107 +453,224 @@ class _TutorTaskManagementPageState extends State<TutorTaskManagementPage> {
   }
 
   Widget _buildTaskCard(BuildContext context, Task task) {
-    final dueDate = task.dueDate != null
-        ? TaskUtils.shortDateFormat.format(task.dueDate!)
-        : 'No due date';
-
-    // Check if task is overdue using our utility function
-    final bool isOverdue =
-        TaskUtils.isTaskOverdue(task.dueDate, task.isCompleted);
-
+    final bool isOverdue = TaskUtils.isTaskOverdue(task.dueDate, task.isCompleted);
+    final bool hasNoDueDate = task.dueDate == null;
+    
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: 3.w),
+      elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(3.w),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(3.w),
         onTap: () {
-          // Navigate to task details/student progress
           context.push('/tutor/tasks/${task.id}');
         },
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      task.title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(3.w),
+            border: Border(
+              left: BorderSide(
+                color: isOverdue 
+                  ? AppColors.error 
+                  : hasNoDueDate 
+                    ? AppColors.textLight
+                    : AppColors.primaryBlue,
+                width: 1.w,
+              ),
+            ),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(4.w),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title and actions row
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            task.title,
+                            style: TextStyle(
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (task.description.isNotEmpty) ...[
+                            SizedBox(height: 1.h),
+                            Text(
+                              task.description,
+                              style: TextStyle(
+                                color: AppColors.textMedium,
+                                fontSize: 13.sp,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => _confirmDeleteTask(context, task),
-                    color: AppColors.error,
-                    tooltip: 'Delete Task',
-                  ),
-                ],
-              ),
-              if (task.description.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                    // Action buttons
+                    PopupMenuButton<String>(
+                      icon: Icon(Icons.more_vert, size: 5.w),
+                      onSelected: (value) {
+                        switch (value) {
+                          case 'edit':
+                            _showTaskBottomSheet(context, task: task);
+                            break;
+                          case 'delete':
+                            _confirmDeleteTask(context, task);
+                            break;
+                          case 'view_progress':
+                            context.push('/tutor/tasks/${task.id}');
+                            break;
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'view_progress',
+                          child: Row(
+                            children: [
+                              Icon(Icons.people, size: 5.w),
+                              SizedBox(width: 3.w),
+                              Text('View Progress', style: TextStyle(fontSize: 14.sp)),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit, size: 5.w, color: AppColors.primaryBlue),
+                              SizedBox(width: 3.w),
+                              Text('Edit Task', style: TextStyle(fontSize: 14.sp)),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuDivider(),
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete, size: 5.w, color: AppColors.error),
+                              SizedBox(width: 3.w),
+                              Text('Delete', 
+                                style: TextStyle(
+                                  color: AppColors.error,
+                                  fontSize: 14.sp,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                
+                SizedBox(height: 2.h),
+                
+                // Date and status information
+                Row(
+                  children: [
+                    // Due date chip
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
+                      decoration: BoxDecoration(
+                        color: isOverdue
+                          ? AppColors.error.withOpacity(0.1)
+                          : hasNoDueDate
+                            ? AppColors.textLight.withOpacity(0.1)
+                            : AppColors.primaryBlue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(2.w),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isOverdue ? Icons.warning : Icons.calendar_today,
+                            size: 4.w,
+                            color: isOverdue
+                              ? AppColors.error
+                              : hasNoDueDate
+                                ? AppColors.textMedium
+                                : AppColors.primaryBlue,
+                          ),
+                          SizedBox(width: 1.w),
+                          Text(
+                            task.dueDate != null
+                              ? DateFormat('MMM d, yyyy').format(task.dueDate!)
+                              : 'No due date',
+                            style: TextStyle(
+                              color: isOverdue
+                                ? AppColors.error
+                                : hasNoDueDate
+                                  ? AppColors.textMedium
+                                  : AppColors.primaryBlue,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12.sp,
+                            ),
+                          ),
+                          if (isOverdue) ...[
+                            SizedBox(width: 2.w),
+                            Text(
+                              'Overdue',
+                              style: TextStyle(
+                                color: AppColors.error,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11.sp,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    
+                    const Spacer(),
+                    
+                    // View progress button
+                    TextButton.icon(
+                      onPressed: () {
+                        context.push('/tutor/tasks/${task.id}');
+                      },
+                      icon: Icon(Icons.people_outline, size: 4.w),
+                      label: Text('View Progress', style: TextStyle(fontSize: 12.sp)),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.primaryBlue,
+                      ),
+                    ),
+                  ],
+                ),
+                
+                // Created date at bottom
+                SizedBox(height: 1.h),
                 Text(
-                  task.description,
+                  'Created ${DateFormat('MMM d, yyyy').format(task.createdAt)}',
                   style: TextStyle(
-                    color: AppColors.textMedium,
+                    color: AppColors.textLight,
+                    fontSize: 11.sp,
                   ),
                 ),
               ],
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    dueDate,
-                    style: TextStyle(
-                      color: isOverdue ? AppColors.error : AppColors.textMedium,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  TextButton.icon(
-                    icon: const Icon(Icons.people),
-                    label: const Text('View Progress'),
-                    onPressed: () {
-                      context.push('/tutor/tasks/${task.id}');
-                    },
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildAddTaskButton(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: () => _showAddTaskDialog(context),
-      icon: const Icon(Icons.add),
-      label: const Text('Add New Task'),
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      ),
-    );
-  }
-
-  void _showAddTaskDialog(BuildContext context) {
-    showDialog(
+  void _showTaskBottomSheet(BuildContext context, {Task? task}) {
+    TaskBottomSheet.show(
       context: context,
-      builder: (dialogContext) => BlocProvider.value(
-        value: context.read<TaskBloc>(), // Pass the existing TaskBloc
-        child: AddTaskDialog(
-          courseId: courseId,
-          courseName: courseName,
-        ),
-      ),
+      courseId: courseId,
+      courseName: courseName,
+      existingTask: task,
     );
   }
 
@@ -275,14 +681,15 @@ class _TutorTaskManagementPageState extends State<TutorTaskManagementPage> {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Task'),
+        title: Text('Delete Task', style: TextStyle(fontSize: 16.sp)),
         content: Text(
-          'Are you sure you want to delete "${task.title}"? This action cannot be undone and all student progress will be lost.',
+          'Are you sure you want to delete "${task.title}"?\n\nThis action cannot be undone and all student progress will be lost.',
+          style: TextStyle(fontSize: 14.sp),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: TextStyle(fontSize: 14.sp)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -290,9 +697,9 @@ class _TutorTaskManagementPageState extends State<TutorTaskManagementPage> {
 
               // Show loading indicator
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Deleting task...'),
-                  duration: Duration(seconds: 1),
+                SnackBar(
+                  content: Text('Deleting task...', style: TextStyle(fontSize: 14.sp)),
+                  duration: const Duration(seconds: 1),
                 ),
               );
 
@@ -305,7 +712,7 @@ class _TutorTaskManagementPageState extends State<TutorTaskManagementPage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
             ),
-            child: const Text('Delete'),
+            child: Text('Delete', style: TextStyle(fontSize: 14.sp)),
           ),
         ],
       ),
