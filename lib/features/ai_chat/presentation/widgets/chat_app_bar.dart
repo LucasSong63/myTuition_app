@@ -25,7 +25,6 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.only(top: 1.h),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -54,34 +53,34 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           children: [
             // AI Status Indicator
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(1.h),
               decoration: BoxDecoration(
                 color: AppColors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(1.5.h),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Animated Status Dot
                   _buildStatusIndicator(),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 1.w),
                   // AI Icon
                   Container(
-                    padding: const EdgeInsets.all(4),
+                    padding: EdgeInsets.all(0.5.h),
                     decoration: BoxDecoration(
                       color: AppColors.white.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(1.h),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.psychology,
                       color: AppColors.white,
-                      size: 20,
+                      size: 2.5.h,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 1.5.w),
             // Title and Status
             Expanded(
               child: Column(
@@ -89,9 +88,9 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.white,
-                      fontSize: 18,
+                      fontSize: 15.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -99,7 +98,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                     'Online • Ready to help',
                     style: TextStyle(
                       color: AppColors.white.withOpacity(0.8),
-                      fontSize: 12,
+                      fontSize: 15.sp,
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -112,10 +111,10 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           // History Button
           if (studentId != null)
             Container(
-              margin: const EdgeInsets.only(right: 8),
+              margin: EdgeInsets.only(right: 1.w),
               child: Material(
                 color: AppColors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(1.5.h),
                 child: InkWell(
                   onTap: () {
                     Navigator.push(
@@ -128,13 +127,13 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                       ),
                     );
                   },
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(1.5.h),
                   child: Container(
-                    padding: const EdgeInsets.all(8),
-                    child: const Icon(
+                    padding: EdgeInsets.all(1.h),
+                    child: Icon(
                       Icons.history,
                       color: AppColors.white,
-                      size: 22,
+                      size: 2.75.h,
                     ),
                   ),
                 ),
@@ -144,30 +143,30 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           // New Session Button (if provided)
           if (onNewSession != null)
             Container(
-              margin: const EdgeInsets.only(right: 16),
+              margin: EdgeInsets.only(right: 2.w),
               child: Material(
                 color: AppColors.accentOrange.withOpacity(0.9),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(1.5.h),
                 child: InkWell(
                   onTap: onNewSession,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(1.5.h),
                   child: Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        EdgeInsets.symmetric(horizontal: 1.5.w, vertical: 1.h),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.add_comment_outlined,
                           color: AppColors.white,
-                          size: 18,
+                          size: 2.25.h,
                         ),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 0.5.w),
                         Text(
                           'New',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.white,
-                            fontSize: 12,
+                            fontSize: 14.sp,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -188,8 +187,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       duration: const Duration(seconds: 2),
       builder: (context, value, child) {
         return Container(
-          width: 8,
-          height: 8,
+          width: 1.h,
+          height: 1.h,
           decoration: BoxDecoration(
             color: Color.lerp(
               AppColors.success.withOpacity(0.6),
@@ -200,8 +199,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             boxShadow: [
               BoxShadow(
                 color: AppColors.success.withOpacity(0.4),
-                blurRadius: 4,
-                spreadRadius: value * 2,
+                blurRadius: 0.5.h,
+                spreadRadius: value * 0.25.h,
               ),
             ],
           ),
@@ -211,6 +210,5 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => Size.fromHeight(kToolbarHeight +
-      MediaQueryData.fromView(WidgetsBinding.instance.window).padding.top);
+  Size get preferredSize => Size.fromHeight(kToolbarHeight);
 }

@@ -1,5 +1,6 @@
 // features/ai_chat/presentation/widgets/chat_messages_list.dart
 import 'package:flutter/material.dart';
+import 'package:sizer/sizer.dart';
 import '../../domain/entities/chat_message.dart';
 import 'message_bubble.dart';
 import '../../../../config/theme/app_colors.dart';
@@ -26,9 +27,9 @@ class ChatMessagesList extends StatelessWidget {
       ),
       child: ListView.separated(
         controller: scrollController,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.h),
         itemCount: messages.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
+        separatorBuilder: (context, index) => SizedBox(height: 1.5.h),
         itemBuilder: (context, index) {
           final message = messages[index];
           return MessageBubble(message: message);
@@ -42,37 +43,37 @@ class ChatMessagesList extends StatelessWidget {
     final screenHeight = MediaQuery.of(context).size.height;
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final availableHeight =
-        screenHeight - keyboardHeight - 200; // Subtract app bar and input
+        screenHeight - keyboardHeight - 25.h; // Subtract app bar and input
 
     return SingleChildScrollView(
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          minHeight: availableHeight > 400 ? availableHeight : 400,
+          minHeight: availableHeight > 50.h ? availableHeight : 50.h,
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+          padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.5.h),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // AI Avatar
               Container(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.all(3.h),
                 decoration: BoxDecoration(
                   color: AppColors.primaryBlue.withOpacity(0.1),
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: AppColors.primaryBlue.withOpacity(0.2),
-                    width: 2,
+                    width: 0.25.w,
                   ),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.psychology,
-                  size: 48,
+                  size: 6.h,
                   color: AppColors.primaryBlue,
                 ),
               ),
 
-              const SizedBox(height: 24),
+              SizedBox(height: 3.h),
 
               // Greeting
               Text(
@@ -80,28 +81,30 @@ class ChatMessagesList extends StatelessWidget {
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       color: AppColors.textDark,
                       fontWeight: FontWeight.bold,
+                      fontSize: 16.sp,
                     ),
                 textAlign: TextAlign.center,
               ),
 
-              const SizedBox(height: 8),
+              SizedBox(height: 1.h),
 
               Text(
                 'I\'m your AI tutor, ready to help!',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: AppColors.primaryBlue,
+                      fontSize: 12.sp,
                     ),
                 textAlign: TextAlign.center,
               ),
 
-              const SizedBox(height: 24),
+              SizedBox(height: 3.h),
 
               // Capabilities Card
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(2.5.h),
                 decoration: BoxDecoration(
                   color: AppColors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(2.h),
                   border: Border.all(color: AppColors.divider),
                   boxShadow: [
                     BoxShadow(
@@ -119,31 +122,32 @@ class ChatMessagesList extends StatelessWidget {
                         Icon(
                           Icons.lightbulb_outline,
                           color: AppColors.accentOrange,
-                          size: 20,
+                          size: 2.5.h,
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 1.w),
                         Text(
                           'I can help you with:',
                           style:
                               Theme.of(context).textTheme.labelLarge?.copyWith(
                                     fontWeight: FontWeight.w600,
                                     color: AppColors.textDark,
+                                    fontSize: 11.sp,
                                   ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 2.h),
                     ..._buildHelpItems(context),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 24),
+              SizedBox(height: 3.h),
 
               // Call to Action
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    EdgeInsets.symmetric(horizontal: 2.5.w, vertical: 1.5.h),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -151,7 +155,7 @@ class ChatMessagesList extends StatelessWidget {
                       AppColors.primaryBlue.withOpacity(0.1),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(25),
+                  borderRadius: BorderRadius.circular(3.h),
                   border: Border.all(
                     color: AppColors.accentTeal.withOpacity(0.3),
                   ),
@@ -162,14 +166,15 @@ class ChatMessagesList extends StatelessWidget {
                     Icon(
                       Icons.psychology,
                       color: AppColors.accentTeal,
-                      size: 20,
+                      size: 2.5.h,
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 1.w),
                     Text(
                       'Ask me anything! 💡',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppColors.accentTeal,
                             fontWeight: FontWeight.w600,
+                            fontSize: 11.sp,
                           ),
                     ),
                   ],
@@ -177,7 +182,7 @@ class ChatMessagesList extends StatelessWidget {
               ),
 
               // Add some bottom space to prevent overflow
-              SizedBox(height: keyboardHeight > 0 ? 20 : 40),
+              SizedBox(height: keyboardHeight > 0 ? 2.5.h : 5.h),
             ],
           ),
         ),
@@ -196,19 +201,20 @@ class ChatMessagesList extends StatelessWidget {
 
     return items
         .map((item) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: EdgeInsets.only(bottom: 1.h),
               child: Row(
                 children: [
                   Text(
                     item.$1,
-                    style: const TextStyle(fontSize: 16),
+                    style: TextStyle(fontSize: 12.sp),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 1.5.w),
                   Expanded(
                     child: Text(
                       item.$2,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppColors.textMedium,
+                            fontSize: 9.sp,
                           ),
                     ),
                   ),

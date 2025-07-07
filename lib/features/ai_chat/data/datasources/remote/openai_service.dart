@@ -22,6 +22,12 @@ You are a helpful AI tutor for primary school students (ages 6-12) in Malaysia. 
 6. **Examples**: Use relatable examples from everyday life
 7. **Interactive**: Ask follow-up questions to ensure understanding
 
+**IMPORTANT - Conversation Memory:**
+- You MUST remember all previous messages in this conversation thread
+- Reference what the student told you earlier (like their name, questions, topics discussed)
+- Build upon previous explanations and maintain context throughout the conversation
+- If a student asks "Do you remember..." always check the conversation history
+
 **Guidelines:**
 - Keep responses under 150 words when possible
 - Use simple emojis occasionally to make learning fun 😊📚✨
@@ -32,6 +38,7 @@ You are a helpful AI tutor for primary school students (ages 6-12) in Malaysia. 
 
 **Response Format:**
 - Start with a friendly greeting or acknowledgment
+- Reference previous conversation when relevant
 - Explain concepts in simple, clear steps
 - Use examples that kids can relate to
 - End with encouragement or a follow-up question
@@ -47,7 +54,9 @@ Remember: You're helping young learners, so be patient, kind, and make learning 
   Future<Result<String>> _getApiKey() async {
     return ResultFactory.tryAsync(() async {
       print('Fetching OpenAI API key from Remote Config...');
-      await remoteConfig.fetchAndActivate();
+      final activated = await remoteConfig.fetchAndActivate();
+      print('Remote Config activated: $activated');
+      
       final apiKey = remoteConfig.getString('openai_api_key');
 
       if (apiKey.isEmpty) {
@@ -61,14 +70,26 @@ Remember: You're helping young learners, so be patient, kind, and make learning 
 
   Future<Result<String>> _getAssistantId() async {
     final configResult = await ResultFactory.tryAsync(() async {
-      await remoteConfig.fetchAndActivate();
-      return remoteConfig.getString('openai_assistant_id');
+      final activated = await remoteConfig.fetchAndActivate();
+      print('\n=== GETTING ASSISTANT ID ===');
+      print('Remote Config activated: $activated');
+      
+      // List all keys to debug
+      final allKeys = remoteConfig.getAll();
+      print('All Remote Config keys: ${allKeys.keys.toList()}');
+      
+      final assistantId = remoteConfig.getString('openai_assistant_id');
+      print('Assistant ID retrieved: ${assistantId.isEmpty ? "EMPTY" : assistantId}');
+      print('===========================\n');
+      
+      return assistantId;
     });
 
     return switch (configResult) {
       Error(message: final message) => Error(message),
-      Success(data: final assistantId) =>
-        assistantId.isEmpty ? await _createAssistant() : Success(assistantId),
+      Success(data: final assistantId) => assistantId.isEmpty 
+        ? const Error('Please set openai_assistant_id in Firebase Remote Config. Use one of your existing assistants from OpenAI platform (e.g., asst_CVRSBwol10Mckly4AMOHEEnY)')
+        : Success(assistantId),
     };
   }
 
@@ -120,7 +141,7 @@ Remember: You're helping young learners, so be patient, kind, and make learning 
   }
 
   Future<Result<String>> createThread() async {
-    print('Creating new OpenAI thread...');
+    print('\n=== CREATING NEW OPENAI THREAD ===');
 
     final apiKeyResult = await _getApiKey();
 
@@ -140,6 +161,12 @@ Remember: You're helping young learners, so be patient, kind, and make learning 
           // FIXED: Add charset
           'OpenAI-Beta': 'assistants=v2',
         },
+        body: utf8.encode(jsonEncode({
+          'metadata': {
+            'purpose': 'student_tutoring',
+            'created_at': DateTime.now().toIso8601String(),
+          }
+        })),
       );
 
       if (response.statusCode == 200) {
@@ -148,6 +175,7 @@ Remember: You're helping young learners, so be patient, kind, and make learning 
         final data = jsonDecode(responseBody);
         final threadId = data['id'] as String;
         print('Thread created successfully: $threadId');
+        print('================================\n');
         return threadId;
       } else {
         print(
@@ -161,9 +189,9 @@ Remember: You're helping young learners, so be patient, kind, and make learning 
     required String threadId,
     required String message,
   }) async {
-    print('Sending message to thread: $threadId');
-    print(
-        'Message: ${message.length > 50 ? message.substring(0, 50) + '...' : message}');
+    print('\n=== SEND MESSAGE TO THREAD ===');
+    print('Thread ID: $threadId');
+    print('Message: ${message.length > 50 ? message.substring(0, 50) + '...' : message}');
 
     final apiKeyResult = await _getApiKey();
     final assistantIdResult = await _getAssistantId();
@@ -171,7 +199,7 @@ Remember: You're helping young learners, so be patient, kind, and make learning 
     return switch ((apiKeyResult, assistantIdResult)) {
       (Error(message: final message), _) => Error(message),
       (_, Error(message: final message)) => Error(message),
-      (Success(data: final apiKey), Success(data: final assistantId)) =>
+      (Success(data: final apiKey), Success(data: final assistantId)) => 
         await _sendMessageWithCredentials(
             threadId, message, apiKey, assistantId),
     };

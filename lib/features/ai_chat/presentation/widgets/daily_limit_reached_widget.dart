@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sizer/sizer.dart';
 import '../../domain/entities/ai_usage.dart';
 import '../../../../config/theme/app_colors.dart';
 
@@ -15,11 +16,11 @@ class DailyLimitReachedWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
+      margin: EdgeInsets.all(2.h),
+      padding: EdgeInsets.all(2.5.h),
       decoration: BoxDecoration(
         color: AppColors.errorLight,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(2.h),
         border: Border.all(color: AppColors.error.withOpacity(0.3)),
       ),
       child: Column(
@@ -27,18 +28,18 @@ class DailyLimitReachedWidget extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(1.5.h),
                 decoration: BoxDecoration(
                   color: AppColors.error.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.hourglass_empty,
                   color: AppColors.error,
-                  size: 24,
+                  size: 3.h,
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 2.w),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -48,13 +49,15 @@ class DailyLimitReachedWidget extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             color: AppColors.error,
                             fontWeight: FontWeight.bold,
+                            fontSize: 12.sp,
                           ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 0.5.h),
                     Text(
                       'You\'ve used all ${usage.dailyLimit} questions for today. Great job learning!',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppColors.textMedium,
+                            fontSize: 9.sp,
                           ),
                     ),
                   ],
@@ -62,41 +65,47 @@ class DailyLimitReachedWidget extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 2.h),
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(1.5.h),
             decoration: BoxDecoration(
               color: AppColors.white,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(1.h),
             ),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.refresh,
                   color: AppColors.primaryBlue,
-                  size: 20,
+                  size: 2.5.h,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 1.w),
                 Expanded(
                   child: Text(
                     'Your questions reset at midnight. Come back tomorrow for more learning!',
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontSize: 9.sp,
+                        ),
                   ),
                 ),
               ],
             ),
           ),
           if (onStartNewSession != null) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 1.5.h),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: onStartNewSession,
                 icon: const Icon(Icons.add_comment),
-                label: const Text('Start Fresh Conversation'),
+                label: Text(
+                  'Start Fresh Conversation',
+                  style: TextStyle(fontSize: 10.sp),
+                ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.primaryBlue,
                   side: const BorderSide(color: AppColors.primaryBlue),
+                  padding: EdgeInsets.symmetric(vertical: 1.5.h),
                 ),
               ),
             ),

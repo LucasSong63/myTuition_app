@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sizer/sizer.dart';
 import '../../../../config/theme/app_colors.dart';
 
 class ChatInputField extends StatefulWidget {
@@ -52,7 +53,7 @@ class _ChatInputFieldState extends State<ChatInputField> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(2.h),
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border(
@@ -67,7 +68,7 @@ class _ChatInputFieldState extends State<ChatInputField> {
               child: Container(
                 decoration: BoxDecoration(
                   color: AppColors.backgroundLight,
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(3.h),
                   border: Border.all(color: AppColors.divider),
                 ),
                 child: TextField(
@@ -82,11 +83,11 @@ class _ChatInputFieldState extends State<ChatInputField> {
                         : 'Daily limit reached',
                     hintStyle: TextStyle(
                       color: AppColors.textLight,
-                      fontSize: 16,
+                      fontSize: 15.sp,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 2.5.w,
+                      vertical: 1.5.h,
                     ),
                     border: InputBorder.none,
                     suffixIcon: _hasText ? _buildClearButton() : null,
@@ -95,7 +96,7 @@ class _ChatInputFieldState extends State<ChatInputField> {
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 1.w),
             _buildSendButton(),
           ],
         ),
@@ -111,10 +112,10 @@ class _ChatInputFieldState extends State<ChatInputField> {
           _hasText = false;
         });
       },
-      icon: const Icon(
+      icon: Icon(
         Icons.clear,
         color: AppColors.textLight,
-        size: 20,
+        size: 2.5.h,
       ),
     );
   }
@@ -126,20 +127,20 @@ class _ChatInputFieldState extends State<ChatInputField> {
       duration: const Duration(milliseconds: 200),
       child: Material(
         color: canSend ? AppColors.primaryBlue : AppColors.backgroundDark,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(3.h),
         child: InkWell(
           onTap: canSend ? _onSendPressed : null,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(3.h),
           child: Container(
-            width: 48,
-            height: 48,
+            width: 6.h,
+            height: 6.h,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(3.h),
             ),
             child: widget.isLoading
-                ? const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: CircularProgressIndicator(
+                ? Padding(
+                    padding: EdgeInsets.all(1.5.h),
+                    child: const CircularProgressIndicator(
                       strokeWidth: 2,
                       valueColor:
                           AlwaysStoppedAnimation<Color>(AppColors.white),
@@ -148,7 +149,7 @@ class _ChatInputFieldState extends State<ChatInputField> {
                 : Icon(
                     Icons.send,
                     color: canSend ? AppColors.white : AppColors.textLight,
-                    size: 20,
+                    size: 2.5.h,
                   ),
           ),
         ),

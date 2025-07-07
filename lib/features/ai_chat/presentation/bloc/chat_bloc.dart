@@ -1,6 +1,7 @@
 // features/ai_chat/presentation/bloc/chat_bloc.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mytuition/core/result/result.dart';
+import '../../domain/entities/chat_session.dart';
 import '../../domain/usecases/send_message_usecase.dart';
 import '../../domain/usecases/get_or_create_active_session_usecase.dart';
 import '../../domain/usecases/get_session_messages_usecase.dart';
@@ -105,9 +106,15 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
     final currentState = state as ChatLoaded;
 
-    print('Sending message: ${event.message}');
+    print('\n=== SEND MESSAGE DEBUG ===');
+    print('Message: ${event.message}');
+    print('Session ID: ${currentState.session.id}');
+    print(
+        'Session Thread ID: ${currentState.session.openaiThreadId ?? "NO THREAD ID"}');
+    print('Session is active: ${currentState.session.isActive}');
     print(
         'Current usage: ${currentState.aiUsage.dailyCount}/${currentState.aiUsage.dailyLimit}');
+    print('=======================\n');
 
     // Check daily limit before sending
     if (currentState.aiUsage.hasReachedDailyLimit) {
@@ -208,8 +215,26 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
             print(
                 'Updated usage: ${updatedUsage.dailyCount}/${updatedUsage.dailyLimit}');
 
+            // If this was the first message (no thread ID), reload the session to get the thread ID
+            ChatSession sessionToUse = currentState.session;
+            if (currentState.session.openaiThreadId == null ||
+                currentState.session.openaiThreadId!.isEmpty) {
+              print(
+                  'First message sent, reloading session to get thread ID...');
+              // Re-fetch the session to get the updated thread ID
+              final reloadedSessionResult =
+                  await getOrCreateActiveSessionUseCase(
+                      currentState.session.studentId);
+              if (reloadedSessionResult
+                  case Success(data: final reloadedSession)) {
+                print(
+                    'Session reloaded with thread ID: ${reloadedSession.openaiThreadId}');
+                sessionToUse = reloadedSession;
+              }
+            }
+
             emit(ChatLoaded(
-              session: currentState.session,
+              session: sessionToUse,
               messages: finalMessages,
               aiUsage: updatedUsage,
               isSendingMessage: false,

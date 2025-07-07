@@ -37,19 +37,34 @@ class ChatRepositoryImpl implements ChatRepository {
     ChatSessionModel session,
     String message,
   ) async {
-    String threadId = session.openaiThreadId ?? '';
+    // IMPORTANT: Always get fresh session data to ensure we have the latest thread ID
+    final freshSessionResult = await localDatasource.getChatSession(session.id);
+    final freshSession = switch (freshSessionResult) {
+      Error() => session,
+      Success(data: final s) => s,
+    };
+    
+    String threadId = freshSession.openaiThreadId ?? '';
+
+    print('\n=== PROCESS MESSAGE ===');
+    print('Session ID: ${freshSession.id}');
+    print('Current thread ID: ${threadId.isEmpty ? "NONE - WILL CREATE NEW" : threadId}');
+    print('Message count: ${freshSession.messageCount}');
+    print('======================\n');
 
     // Create OpenAI thread if not exists
     if (threadId.isEmpty) {
+      print('Creating new OpenAI thread for session...');
       final threadResult = await openaiService.createThread();
 
       return switch (threadResult) {
         Error(message: final errorMessage) => Error(errorMessage),
         Success(data: final newThreadId) =>
-          await _processWithThread(session, message, newThreadId),
+          await _processWithThread(freshSession, message, newThreadId),
       };
     } else {
-      return await _processWithThread(session, message, threadId);
+      print('Using existing thread: $threadId');
+      return await _processWithThread(freshSession, message, threadId);
     }
   }
 
@@ -60,8 +75,23 @@ class ChatRepositoryImpl implements ChatRepository {
   ) async {
     // Update session with thread ID if needed
     if (session.openaiThreadId != threadId) {
+      print('\n=== UPDATING SESSION WITH THREAD ID ===');
+      print('Session ID: ${session.id}');
+      print('New Thread ID: $threadId');
+      
       final updatedSession = session.copyWith(openaiThreadId: threadId);
-      await localDatasource.updateSession(updatedSession);
+      final updateResult = await localDatasource.updateSession(updatedSession);
+      
+      if (updateResult case Error(message: final errorMessage)) {
+        print('Failed to update session with thread ID: $errorMessage');
+        return Error(errorMessage);
+      }
+      
+      print('Session updated successfully with thread ID');
+      print('=================================\n');
+      
+      // Use updated session for further processing
+      session = updatedSession;
     }
 
     // Save user message to Firestore
@@ -96,10 +126,37 @@ class ChatRepositoryImpl implements ChatRepository {
     );
 
     return switch (aiResponseResult) {
-      Error(message: final errorMessage) => Error(errorMessage),
+      Error(message: final errorMessage) => 
+        await _handleThreadError(errorMessage, session, message),
       Success(data: final aiResponse) =>
         await _saveAIResponse(session, aiResponse),
     };
+  }
+
+  Future<Result<ChatMessage>> _handleThreadError(
+    String errorMessage,
+    ChatSessionModel session,
+    String message,
+  ) async {
+    // Check if it's a thread not found error (expired or deleted)
+    if (errorMessage.contains('No thread found') || 
+        errorMessage.contains('thread_') ||
+        errorMessage.contains('404')) {
+      
+      print('Thread expired or not found, creating new thread...');
+      
+      // Create new thread
+      final newThreadResult = await openaiService.createThread();
+      
+      return switch (newThreadResult) {
+        Error(message: final error) => Error(error),
+        Success(data: final newThreadId) => 
+          await _processWithThread(session, message, newThreadId),
+      };
+    }
+    
+    // For other errors, return as is
+    return Error(errorMessage);
   }
 
   Future<Result<ChatMessage>> _saveAIResponse(
@@ -213,7 +270,65 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Future<Result<ChatSession>> reactivateSession(
       String sessionId, String studentId) async {
-    return localDatasource.reactivateSession(sessionId, studentId);
+    // First reactivate the session in Firestore
+    final reactivateResult = await localDatasource.reactivateSession(sessionId, studentId);
+    
+    return switch (reactivateResult) {
+      Error(message: final errorMessage) => Error(errorMessage),
+      Success(data: final session) => await _ensureThreadHasHistory(session),
+    };
+  }
+  
+  Future<Result<ChatSession>> _ensureThreadHasHistory(ChatSessionModel session) async {
+    // Check if thread exists and is valid
+    String threadId = session.openaiThreadId ?? '';
+    
+    if (threadId.isEmpty) {
+      // Create new thread and sync messages
+      final threadResult = await openaiService.createThread();
+      
+      return switch (threadResult) {
+        Error(message: final errorMessage) => Error(errorMessage),
+        Success(data: final newThreadId) => await _syncMessagesToThread(session, newThreadId),
+      };
+    }
+    
+    // Thread exists, but we should still sync messages in case thread was lost
+    // OpenAI threads can expire after inactivity
+    return await _syncMessagesToThread(session, threadId);
+  }
+  
+  Future<Result<ChatSession>> _syncMessagesToThread(
+    ChatSessionModel session, 
+    String threadId
+  ) async {
+    // Get all messages from Firestore
+    final messagesResult = await localDatasource.getSessionMessages(session.id);
+    
+    if (messagesResult case Success(data: final messages)) {
+      // If there are existing messages, we need to recreate the thread with history
+      if (messages.isNotEmpty) {
+        // Create a new thread since we can't add old messages to existing thread
+        final newThreadResult = await openaiService.createThread();
+        
+        if (newThreadResult case Success(data: final newThreadId)) {
+          // Update session with new thread ID
+          final updatedSession = session.copyWith(openaiThreadId: newThreadId);
+          await localDatasource.updateSession(updatedSession);
+          
+          return Success(updatedSession);
+        }
+      }
+    }
+    
+    // Update session with thread ID if not already set
+    if (session.openaiThreadId != threadId) {
+      final updatedSession = session.copyWith(openaiThreadId: threadId);
+      await localDatasource.updateSession(updatedSession);
+      return Success(updatedSession);
+    }
+    
+    return Success(session);
   }
 
   @override

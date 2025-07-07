@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
+import 'package:sizer/sizer.dart';
 import '../../../../config/theme/app_colors.dart';
 import '../../domain/entities/chat_session.dart';
 import '../bloc/chat_history_bloc.dart';
@@ -84,70 +85,85 @@ class _ChatHistoryPageState extends State<ChatHistoryPage> {
   void _showSessionActions(ChatSession session) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(2.5.h)),
       ),
       builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(2.5.h),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40,
-              height: 4,
+              width: 10.w,
+              height: 0.5.h,
               decoration: BoxDecoration(
                 color: AppColors.divider,
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(0.25.h),
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 2.5.h),
             Text(
               'Chat Session Actions',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
+                    fontSize: 15.sp,
                   ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 2.5.h),
             ListTile(
               leading: Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(1.h),
                 decoration: BoxDecoration(
                   color: AppColors.primaryBlue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(1.h),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.play_arrow,
                   color: AppColors.primaryBlue,
+                  size: 2.5.h,
                 ),
               ),
-              title: const Text('Resume Chat'),
-              subtitle: const Text('Continue this conversation'),
+              title: Text(
+                'Resume Chat',
+                style: TextStyle(fontSize: 14.sp),
+              ),
+              subtitle: Text(
+                'Continue this conversation',
+                style: TextStyle(fontSize: 14.sp),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _resumeSession(session);
               },
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 1.h),
             ListTile(
               leading: Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(1.h),
                 decoration: BoxDecoration(
                   color: AppColors.error.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(1.h),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.delete_outline,
                   color: AppColors.error,
+                  size: 2.5.h,
                 ),
               ),
-              title: const Text('Delete Session'),
-              subtitle: const Text('Permanently remove this chat'),
+              title: Text(
+                'Delete Session',
+                style: TextStyle(fontSize: 14.sp),
+              ),
+              subtitle: Text(
+                'Permanently remove this chat',
+                style: TextStyle(fontSize: 14.sp),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _deleteSession(session);
               },
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 2.5.h),
           ],
         ),
       ),
@@ -231,15 +247,18 @@ class _ChatHistoryPageState extends State<ChatHistoryPage> {
   }
 
   Widget _buildLoadingState() {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(color: AppColors.primaryBlue),
-          SizedBox(height: 16),
+          const CircularProgressIndicator(color: AppColors.primaryBlue),
+          SizedBox(height: 2.h),
           Text(
             'Loading chat history...',
-            style: TextStyle(color: AppColors.textMedium),
+            style: TextStyle(
+              color: AppColors.textMedium,
+              fontSize: 11.sp,
+            ),
           ),
         ],
       ),
@@ -249,39 +268,41 @@ class _ChatHistoryPageState extends State<ChatHistoryPage> {
   Widget _buildErrorState(String message) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(4.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(2.h),
               decoration: BoxDecoration(
                 color: AppColors.error.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.error_outline,
-                size: 48,
+                size: 6.h,
                 color: AppColors.error,
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 3.h),
             Text(
               'Failed to Load History',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     color: AppColors.textDark,
                     fontWeight: FontWeight.bold,
+                    fontSize: 18.sp,
                   ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 1.5.h),
             Text(
               message,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppColors.textMedium,
+                    fontSize: 11.sp,
                   ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 3.h),
             ElevatedButton.icon(
               onPressed: () {
                 context.read<ChatHistoryBloc>().add(
@@ -290,6 +311,9 @@ class _ChatHistoryPageState extends State<ChatHistoryPage> {
               },
               icon: const Icon(Icons.refresh),
               label: const Text('Try Again'),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.5.h),
+              ),
             ),
           ],
         ),
@@ -309,9 +333,9 @@ class _ChatHistoryPageState extends State<ChatHistoryPage> {
             );
       },
       child: ListView.separated(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(2.h),
         itemCount: state.archivedSessions.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
+        separatorBuilder: (context, index) => SizedBox(height: 1.5.h),
         itemBuilder: (context, index) {
           final session = state.archivedSessions[index];
           return _buildSessionCard(session);
@@ -323,43 +347,48 @@ class _ChatHistoryPageState extends State<ChatHistoryPage> {
   Widget _buildEmptyState() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(4.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(3.h),
               decoration: BoxDecoration(
                 color: AppColors.primaryBlue.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.history,
-                size: 48,
+                size: 6.h,
                 color: AppColors.primaryBlue,
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 3.h),
             Text(
               'No Chat History Yet',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     color: AppColors.textDark,
                     fontWeight: FontWeight.bold,
+                    fontSize: 18.sp,
                   ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 1.5.h),
             Text(
               'Your previous conversations will appear here when you start new chat sessions.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppColors.textMedium,
+                    fontSize: 11.sp,
                   ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 3.h),
             ElevatedButton.icon(
               onPressed: () => Navigator.pop(context),
               icon: const Icon(Icons.chat),
               label: const Text('Start Chatting'),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.5.h),
+              ),
             ),
           ],
         ),
@@ -368,34 +397,39 @@ class _ChatHistoryPageState extends State<ChatHistoryPage> {
   }
 
   Widget _buildSessionCard(ChatSession session) {
+    // Check if session might be expired (older than 60 days)
+    final daysSinceActive =
+        DateTime.now().difference(session.lastActive).inDays;
+    final mightBeExpired = daysSinceActive > 60;
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(1.5.h),
       ),
       child: InkWell(
         onTap: () => _showSessionActions(session),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(1.5.h),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(2.h),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: EdgeInsets.all(1.h),
                     decoration: BoxDecoration(
                       color: AppColors.primaryBlue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(1.h),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.chat_bubble_outline,
                       color: AppColors.primaryBlue,
-                      size: 20,
+                      size: 2.5.h,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 1.5.w),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -405,6 +439,7 @@ class _ChatHistoryPageState extends State<ChatHistoryPage> {
                           style:
                               Theme.of(context).textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.w600,
+                                    fontSize: 15.sp,
                                   ),
                         ),
                         Text(
@@ -412,59 +447,98 @@ class _ChatHistoryPageState extends State<ChatHistoryPage> {
                           style:
                               Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: AppColors.textMedium,
+                                    fontSize: 14.sp,
                                   ),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(
+                  Icon(
                     Icons.more_vert,
                     color: AppColors.textLight,
-                    size: 20,
+                    size: 2.5.h,
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Row(
+              SizedBox(height: 1.5.h),
+              Wrap(
+                spacing: 1.w,
+                runSpacing: 0.5.h,
                 children: [
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        EdgeInsets.symmetric(horizontal: 1.w, vertical: 0.5.h),
                     decoration: BoxDecoration(
                       color: AppColors.backgroundDark,
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(0.75.h),
                     ),
                     child: Text(
                       '${session.messageCount} messages',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                             color: AppColors.textMedium,
+                            fontSize: 13.sp,
                           ),
                     ),
                   ),
-                  const SizedBox(width: 8),
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        EdgeInsets.symmetric(horizontal: 1.w, vertical: 0.5.h),
                     decoration: BoxDecoration(
                       color: AppColors.accentTeal.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(0.75.h),
                     ),
                     child: Text(
                       'Archived',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                             color: AppColors.accentTeal,
                             fontWeight: FontWeight.w500,
+                            fontSize: 14.sp,
                           ),
                     ),
                   ),
+                  if (mightBeExpired) ...[
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 1.w, vertical: 0.5.h),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(0.75.h),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 1.5.h,
+                            color: AppColors.warning,
+                          ),
+                          SizedBox(width: 0.5.w),
+                          Text(
+                            'May be expired',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: AppColors.warning,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 8.sp,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 1.h),
               Text(
-                'Tap to resume or manage this conversation',
+                mightBeExpired
+                    ? 'Old session - might need new chat if expired'
+                    : 'Tap to resume or manage this conversation',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: AppColors.textLight,
                       fontStyle: FontStyle.italic,
+                      fontSize: 15.sp,
                     ),
               ),
             ],

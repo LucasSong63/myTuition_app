@@ -53,6 +53,8 @@ class ChatSessionModel extends ChatSession {
       'lastActive': Timestamp.fromDate(lastActive),
       'messageCount': messageCount,
       'isActive': isActive,
+      // Note: OpenAI threads expire after 60 days of inactivity
+      // The app will automatically create a new thread if the old one expires
     };
   }
 

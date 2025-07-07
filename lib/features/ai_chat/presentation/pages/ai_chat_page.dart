@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
+import 'package:sizer/sizer.dart';
 import '../bloc/chat_bloc.dart';
 import '../bloc/chat_event.dart';
 import '../bloc/chat_state.dart';
@@ -89,7 +90,7 @@ class _AIChatPageState extends State<AIChatPage> {
             Text('StudentId: "${widget.studentId}"'),
             Text('Is Empty: ${widget.studentId.isEmpty}'),
             Text('Length: ${widget.studentId.length}'),
-            const SizedBox(height: 10),
+            SizedBox(height: 1.h),
             const Text('Current BLoC State:'),
             BlocBuilder<ChatBloc, ChatState>(
               builder: (context, state) {
@@ -164,48 +165,50 @@ class _AIChatPageState extends State<AIChatPage> {
         Expanded(
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.all(32),
+              padding: EdgeInsets.all(4.w),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(2.h),
                     decoration: BoxDecoration(
                       color: AppColors.warning.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.warning_outlined,
-                      size: 48,
+                      size: 6.h,
                       color: AppColors.warning,
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 3.h),
                   Text(
                     'Student ID Missing',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           color: AppColors.textDark,
                           fontWeight: FontWeight.bold,
+                          fontSize: 18.sp,
                         ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 1.5.h),
                   Text(
                     'Unable to load chat. Student ID is missing from authentication.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppColors.textMedium,
+                          fontSize: 11.sp,
                         ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: 4.h),
                   ElevatedButton.icon(
                     onPressed: _showDebugInfo,
                     icon: const Icon(Icons.info_outline),
                     label: const Text('Debug Info'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.warning,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 12),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 3.w, vertical: 1.5.h),
                     ),
                   ),
                 ],
@@ -231,19 +234,21 @@ class _AIChatPageState extends State<AIChatPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const CircularProgressIndicator(color: AppColors.primaryBlue),
-                const SizedBox(height: 16),
+                SizedBox(height: 2.h),
                 Text(
                   'Setting up your AI tutor...',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: AppColors.textMedium,
+                        fontSize: 12.sp,
                       ),
                 ),
                 if (widget.studentId.isNotEmpty) ...[
-                  const SizedBox(height: 8),
+                  SizedBox(height: 1.h),
                   Text(
                     'Student: ${widget.studentId}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.textLight,
+                          fontSize: 9.sp,
                         ),
                   ),
                 ],
@@ -266,50 +271,55 @@ class _AIChatPageState extends State<AIChatPage> {
         Expanded(
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.all(32),
+              padding: EdgeInsets.all(4.w),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(2.h),
                     decoration: BoxDecoration(
                       color: AppColors.error.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.error_outline,
-                      size: 48,
+                      size: 6.h,
                       color: AppColors.error,
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 3.h),
                   Text(
                     'Oops! Something went wrong',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           color: AppColors.textDark,
                           fontWeight: FontWeight.bold,
+                          fontSize: 18.sp,
                         ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 1.5.h),
                   Text(
                     message,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppColors.textMedium,
+                          fontSize: 11.sp,
                         ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 2.h),
                   Text(
                     'Student ID: ${widget.studentId}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.textLight,
+                          fontSize: 9.sp,
                         ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 32),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  SizedBox(height: 4.h),
+                  Wrap(
+                    spacing: 2.w,
+                    runSpacing: 1.h,
+                    alignment: WrapAlignment.center,
                     children: [
                       ElevatedButton.icon(
                         onPressed: () {
@@ -322,15 +332,18 @@ class _AIChatPageState extends State<AIChatPage> {
                         icon: const Icon(Icons.refresh),
                         label: const Text('Try Again'),
                         style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 24, vertical: 12),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 3.w, vertical: 1.5.h),
                         ),
                       ),
-                      const SizedBox(width: 16),
                       OutlinedButton.icon(
                         onPressed: _showDebugInfo,
                         icon: const Icon(Icons.bug_report),
                         label: const Text('Debug'),
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 3.w, vertical: 1.5.h),
+                        ),
                       ),
                     ],
                   ),

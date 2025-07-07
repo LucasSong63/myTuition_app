@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:sizer/sizer.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../../../config/theme/app_colors.dart';
 
@@ -17,18 +18,18 @@ class MessageBubble extends StatelessWidget {
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.8,
+          maxWidth: 80.w, // Responsive max width
         ),
         margin: EdgeInsets.only(
-          left: isUser ? 48 : 0,
-          right: isUser ? 0 : 48,
+          left: isUser ? 12.w : 0, // Responsive margins
+          right: isUser ? 0 : 12.w,
         ),
         child: Column(
           crossAxisAlignment:
               isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
             _buildMessageBubble(context, isUser, isLoading),
-            const SizedBox(height: 4),
+            SizedBox(height: 0.5.h),
             _buildTimestamp(context, isUser),
           ],
         ),
@@ -41,14 +42,14 @@ class MessageBubble extends StatelessWidget {
     return GestureDetector(
       onLongPress: () => _showCopyOption(context),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.5.h),
         decoration: BoxDecoration(
           color: isUser ? AppColors.primaryBlue : AppColors.white,
           borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(20),
-            topRight: const Radius.circular(20),
-            bottomLeft: Radius.circular(isUser ? 20 : 4),
-            bottomRight: Radius.circular(isUser ? 4 : 20),
+            topLeft: Radius.circular(2.5.h),
+            topRight: Radius.circular(2.5.h),
+            bottomLeft: Radius.circular(isUser ? 2.5.h : 0.5.h),
+            bottomRight: Radius.circular(isUser ? 0.5.h : 2.5.h),
           ),
           border: isUser ? null : Border.all(color: AppColors.divider),
           boxShadow: [
@@ -65,7 +66,7 @@ class MessageBubble extends StatelessWidget {
           children: [
             if (!isUser) ...[
               _buildAvatarIcon(),
-              const SizedBox(width: 8),
+              SizedBox(width: 1.w),
             ],
             Flexible(
               child: Column(
@@ -77,9 +78,10 @@ class MessageBubble extends StatelessWidget {
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                             color: AppColors.primaryBlue,
                             fontWeight: FontWeight.w600,
+                            fontSize: 14.sp,
                           ),
                     ),
-                  if (!isUser && !isLoading) const SizedBox(height: 4),
+                  if (!isUser && !isLoading) SizedBox(height: 0.5.h),
                   isLoading
                       ? _buildLoadingIndicator()
                       : _buildMessageText(context, isUser),
@@ -94,15 +96,15 @@ class MessageBubble extends StatelessWidget {
 
   Widget _buildAvatarIcon() {
     return Container(
-      width: 24,
-      height: 24,
+      width: 3.h,
+      height: 3.h,
       decoration: BoxDecoration(
         color: AppColors.primaryBlue.withOpacity(0.1),
         shape: BoxShape.circle,
       ),
-      child: const Icon(
+      child: Icon(
         Icons.psychology,
-        size: 14,
+        size: 1.75.h,
         color: AppColors.primaryBlue,
       ),
     );
@@ -113,8 +115,8 @@ class MessageBubble extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          width: 16,
-          height: 16,
+          width: 2.h,
+          height: 2.h,
           child: CircularProgressIndicator(
             strokeWidth: 2,
             valueColor: AlwaysStoppedAnimation<Color>(
@@ -122,12 +124,12 @@ class MessageBubble extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: 1.w),
         Text(
           'Thinking...',
           style: TextStyle(
             color: AppColors.textMedium,
-            fontSize: 14,
+            fontSize: 10.sp,
             fontStyle: FontStyle.italic,
           ),
         ),
@@ -141,6 +143,7 @@ class MessageBubble extends StatelessWidget {
       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
         color: isUser ? AppColors.white : AppColors.textDark,
         height: 1.4,
+        fontSize: 15.sp,
         // FIXED: Add emoji font fallback for better compatibility
         fontFamilyFallback: const [
           'Apple Color Emoji', // iOS
@@ -160,7 +163,7 @@ class MessageBubble extends StatelessWidget {
       timeString,
       style: Theme.of(context).textTheme.labelSmall?.copyWith(
             color: AppColors.textLight,
-            fontSize: 10,
+            fontSize: 8.sp,
           ),
     );
   }
@@ -191,23 +194,27 @@ class MessageBubble extends StatelessWidget {
 
     showModalBottomSheet(
       context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(2.h)),
+      ),
       builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(2.h),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40,
-              height: 4,
+              width: 10.w,
+              height: 0.5.h,
               decoration: BoxDecoration(
                 color: AppColors.divider,
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(0.25.h),
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 2.5.h),
             ListTile(
-              leading: const Icon(Icons.copy, color: AppColors.primaryBlue),
-              title: const Text('Copy message'),
+              leading:
+                  Icon(Icons.copy, color: AppColors.primaryBlue, size: 3.h),
+              title: Text('Copy message', style: TextStyle(fontSize: 12.sp)),
               onTap: () {
                 Clipboard.setData(ClipboardData(text: message.content));
                 Navigator.pop(context);

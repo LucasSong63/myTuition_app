@@ -204,7 +204,8 @@ class ChatLocalDatasource {
   // Delete a session permanently
   Future<Result<void>> deleteSession(String sessionId) async {
     return ResultFactory.tryAsync(() async {
-      print('Deleting session: $sessionId');
+      print('\n=== DELETING SESSION ===');
+      print('Session ID: $sessionId');
 
       final batch = firestore.batch();
 
@@ -215,6 +216,7 @@ class ChatLocalDatasource {
           .collection('messages')
           .get();
 
+      print('Deleting ${messagesQuery.docs.length} messages...');
       for (final messageDoc in messagesQuery.docs) {
         batch.delete(messageDoc.reference);
       }
@@ -224,6 +226,7 @@ class ChatLocalDatasource {
 
       await batch.commit();
       print('Session deleted successfully');
+      print('========================\n');
     });
   }
 
