@@ -490,6 +490,8 @@ Future<void> initDependencies() async {
     ),
   );
 
+  //subjec
+
 // Simplified NotificationService
   getIt.registerLazySingleton<NotificationService>(
     () => NotificationService(
@@ -732,7 +734,8 @@ Future<void> initFirebaseRemoteConfig() async {
 
   await remoteConfig.setDefaults({
     'openai_api_key': '',
-    'openai_assistant_id': 'asst_CVRSBwoL10MCk1y4AMOHEEnY', // Set your default assistant ID
+    'openai_assistant_id': 'asst_CVRSBwoL10MCk1y4AMOHEEnY',
+    // Set your default assistant ID
     'daily_question_limit': 20,
   });
 
@@ -746,9 +749,11 @@ Future<void> initFirebaseRemoteConfig() async {
     final apiKey = remoteConfig.getString('openai_api_key');
     final assistantId = remoteConfig.getString('openai_assistant_id');
     final dailyLimit = remoteConfig.getInt('daily_question_limit');
-    
-    print('API Key found: ${apiKey.isNotEmpty ? "YES (${apiKey.length} chars)" : "NO"}');
-    print('Assistant ID: ${assistantId.isNotEmpty ? assistantId : "EMPTY - USING DEFAULT"}');
+
+    print(
+        'API Key found: ${apiKey.isNotEmpty ? "YES (${apiKey.length} chars)" : "NO"}');
+    print(
+        'Assistant ID: ${assistantId.isNotEmpty ? assistantId : "EMPTY - USING DEFAULT"}');
     print('Daily limit: $dailyLimit');
     print('==============================\n');
   } catch (e) {

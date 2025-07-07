@@ -13,6 +13,7 @@ class SubjectCostRepositoryImpl implements SubjectCostRepository {
     final querySnapshot = await _firestore
         .collection('subject_costs')
         .orderBy('subjectName')
+        .orderBy('grade')
         .get();
 
     return querySnapshot.docs
@@ -38,14 +39,16 @@ class SubjectCostRepositoryImpl implements SubjectCostRepository {
   @override
   Future<void> addSubjectCost({
     required String subjectName,
+    required int grade,
     required double cost,
   }) async {
     final now = DateTime.now();
-    final subjectId = subjectName.toLowerCase().replaceAll(' ', '_');
+    final subjectId = '${subjectName.toLowerCase().replaceAll(' ', '_')}_grade_$grade';
 
     await _firestore.collection('subject_costs').add({
       'subjectId': subjectId,
       'subjectName': subjectName,
+      'grade': grade,
       'cost': cost,
       'lastUpdated': Timestamp.fromDate(now),
     });
@@ -54,11 +57,13 @@ class SubjectCostRepositoryImpl implements SubjectCostRepository {
   @override
   Future<void> updateSubjectCost({
     required String subjectCostId,
+    required int grade,
     required double newCost,
   }) async {
     final now = DateTime.now();
 
     await _firestore.collection('subject_costs').doc(subjectCostId).update({
+      'grade': grade,
       'cost': newCost,
       'lastUpdated': Timestamp.fromDate(now),
     });

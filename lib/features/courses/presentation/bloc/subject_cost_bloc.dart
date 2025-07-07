@@ -15,7 +15,6 @@ class SubjectCostBloc extends Bloc<SubjectCostEvent, SubjectCostState> {
       : _subjectCostRepository = subjectCostRepository,
         super(SubjectCostInitial()) {
     on<LoadAllSubjectCostsEvent>(_onLoadAllSubjectCosts);
-    on<AddSubjectCostEvent>(_onAddSubjectCost);
     on<UpdateSubjectCostEvent>(_onUpdateSubjectCost);
     on<DeleteSubjectCostEvent>(_onDeleteSubjectCost);
   }
@@ -31,32 +30,13 @@ class SubjectCostBloc extends Bloc<SubjectCostEvent, SubjectCostState> {
     }
   }
 
-  Future<void> _onAddSubjectCost(
-      AddSubjectCostEvent event, Emitter<SubjectCostState> emit) async {
-    emit(SubjectCostLoading());
-    try {
-      await _subjectCostRepository.addSubjectCost(
-        subjectName: event.subjectName,
-        cost: event.cost,
-      );
-
-      emit(SubjectCostActionSuccess(
-        message: 'Subject cost added successfully',
-      ));
-
-      // Reload subject costs
-      add(LoadAllSubjectCostsEvent());
-    } catch (e) {
-      emit(SubjectCostError(message: 'Failed to add subject cost: $e'));
-    }
-  }
-
   Future<void> _onUpdateSubjectCost(
       UpdateSubjectCostEvent event, Emitter<SubjectCostState> emit) async {
     emit(SubjectCostLoading());
     try {
       await _subjectCostRepository.updateSubjectCost(
         subjectCostId: event.subjectCostId,
+        grade: event.grade,
         newCost: event.newCost,
       );
 

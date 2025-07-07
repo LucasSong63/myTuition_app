@@ -7,7 +7,7 @@ import '../bloc/subject_cost_bloc.dart';
 import '../../domain/entities/subject_cost.dart';
 
 class SubjectCostConfigurationPage extends StatefulWidget {
-  const SubjectCostConfigurationPage({Key? key}) : super(key: key);
+  const SubjectCostConfigurationPage({super.key});
 
   @override
   State<SubjectCostConfigurationPage> createState() =>
@@ -58,7 +58,7 @@ class _SubjectCostConfigurationPageState
             final subjectCosts = state.subjectCosts;
 
             if (subjectCosts.isEmpty) {
-              return Center(
+              return const Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -67,27 +67,20 @@ class _SubjectCostConfigurationPageState
                       size: 64,
                       color: AppColors.textLight,
                     ),
-                    const SizedBox(height: 16),
-                    const Text(
+                    SizedBox(height: 16),
+                    Text(
                       'No subject costs configured',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(
                       'Set up tuition fees for each subject',
                       style: TextStyle(
                         color: AppColors.textMedium,
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        _showAddSubjectCostDialog(context);
-                      },
-                      child: const Text('Add Subject Cost'),
                     ),
                   ],
                 ),
@@ -129,12 +122,6 @@ class _SubjectCostConfigurationPageState
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showAddSubjectCostDialog(context);
-        },
-        child: const Icon(Icons.add),
-      ),
     );
   }
 
@@ -161,11 +148,37 @@ class _SubjectCostConfigurationPageState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    cost.subjectName,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                  Row(
+                    children: [
+                      Text(
+                        cost.subjectName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBlue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.primaryBlue.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Text(
+                      'Grade ${cost.grade}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.primaryBlue,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -196,149 +209,77 @@ class _SubjectCostConfigurationPageState
     );
   }
 
-  void _showAddSubjectCostDialog(BuildContext context) {
-    final subjectController = TextEditingController();
-    final costController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Subject Cost'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: subjectController,
-              decoration: const InputDecoration(
-                labelText: 'Subject Name',
-                hintText: 'e.g., Mathematics',
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: costController,
-              decoration: const InputDecoration(
-                labelText: 'Cost (RM)',
-                hintText: 'e.g., 100.00',
-              ),
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final subject = subjectController.text.trim();
-              final costText = costController.text.trim();
-
-              if (subject.isEmpty || costText.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please fill in all fields'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                return;
-              }
-
-              final cost = double.tryParse(costText);
-              if (cost == null || cost <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please enter a valid cost'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                return;
-              }
-
-              Navigator.pop(context);
-
-              context.read<SubjectCostBloc>().add(
-                    AddSubjectCostEvent(
-                      subjectName: subject,
-                      cost: cost,
-                    ),
-                  );
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showEditSubjectCostDialog(BuildContext context, SubjectCost cost) {
     final costController = TextEditingController(text: cost.cost.toString());
+    int selectedGrade = cost.grade;
+
+    // Capture the parent context that has access to the provider
+    final parentContext = context;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Edit ${cost.subjectName} Cost'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: costController,
-              decoration: const InputDecoration(
-                labelText: 'Cost (RM)',
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text('Edit ${cost.subjectName} Cost'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: costController,
+                decoration: const InputDecoration(
+                  labelText: 'Cost (RM)',
+                ),
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                ],
               ),
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final costText = costController.text.trim();
+
+                if (costText.isEmpty) {
+                  ScaffoldMessenger.of(parentContext).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a cost'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                final newCost = double.tryParse(costText);
+                if (newCost == null || newCost <= 0) {
+                  ScaffoldMessenger.of(parentContext).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a valid cost'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.pop(context);
+                // Use parentContext here instead of context
+                parentContext.read<SubjectCostBloc>().add(
+                      UpdateSubjectCostEvent(
+                        subjectCostId: cost.id,
+                        grade: selectedGrade,
+                        newCost: newCost,
+                      ),
+                    );
+              },
+              child: const Text('Update'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final costText = costController.text.trim();
-
-              if (costText.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please enter a cost'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                return;
-              }
-
-              final newCost = double.tryParse(costText);
-              if (newCost == null || newCost <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please enter a valid cost'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                return;
-              }
-
-              Navigator.pop(context);
-
-              context.read<SubjectCostBloc>().add(
-                    UpdateSubjectCostEvent(
-                      subjectCostId: cost.id,
-                      newCost: newCost,
-                    ),
-                  );
-            },
-            child: const Text('Update'),
-          ),
-        ],
       ),
     );
   }

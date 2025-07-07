@@ -12,28 +12,32 @@ class LoadAllSubjectCostsEvent extends SubjectCostEvent {}
 
 class AddSubjectCostEvent extends SubjectCostEvent {
   final String subjectName;
+  final int grade;
   final double cost;
 
   const AddSubjectCostEvent({
     required this.subjectName,
+    required this.grade,
     required this.cost,
   });
 
   @override
-  List<Object> get props => [subjectName, cost];
+  List<Object> get props => [subjectName, grade, cost];
 }
 
 class UpdateSubjectCostEvent extends SubjectCostEvent {
   final String subjectCostId;
+  final int grade;
   final double newCost;
 
   const UpdateSubjectCostEvent({
     required this.subjectCostId,
+    required this.grade,
     required this.newCost,
   });
 
   @override
-  List<Object> get props => [subjectCostId, newCost];
+  List<Object> get props => [subjectCostId, grade, newCost];
 }
 
 class DeleteSubjectCostEvent extends SubjectCostEvent {

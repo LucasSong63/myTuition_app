@@ -11,12 +11,14 @@ abstract class SubjectCostRepository {
   /// Add a new subject cost
   Future<void> addSubjectCost({
     required String subjectName,
+    required int grade,
     required double cost,
   });
 
   /// Update an existing subject cost
   Future<void> updateSubjectCost({
     required String subjectCostId,
+    required int grade,
     required double newCost,
   });
 
