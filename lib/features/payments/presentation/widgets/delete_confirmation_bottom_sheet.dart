@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
+import 'package:sizer/sizer.dart';
 import 'package:wolt_modal_sheet/wolt_modal_sheet.dart';
 
 class DeleteConfirmationBottomSheet {
@@ -19,14 +20,15 @@ class DeleteConfirmationBottomSheet {
         backgroundColor: Theme.of(context).colorScheme.background,
         topBarTitle: Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
+            fontSize: 16.sp,
           ),
         ),
         isTopBarLayerAlwaysVisible: true,
         trailingNavBarWidget: IconButton(
-          padding: const EdgeInsets.all(16),
-          icon: const Icon(Icons.close),
+          padding: EdgeInsets.all(4.w),
+          icon: Icon(Icons.close, size: 6.w),
           onPressed: () => Navigator.of(context).pop(),
         ),
         child: LayoutBuilder(
@@ -37,7 +39,7 @@ class DeleteConfirmationBottomSheet {
                   maxWidth: 600, // Limit width on larger screens
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: EdgeInsets.all(4.w),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -45,36 +47,42 @@ class DeleteConfirmationBottomSheet {
                       Icon(
                         Icons.warning_amber_rounded,
                         color: AppColors.error,
-                        size: 48,
+                        size: 12.w,
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 4.w),
                       Text(
                         message,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: 14.sp,
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 32),
+                      SizedBox(height: 8.w),
                       Row(
                         children: [
                           Expanded(
                             child: OutlinedButton(
                               onPressed: () => Navigator.of(context).pop(),
                               style: OutlinedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
-                                side: BorderSide(color: AppColors.primaryBlue),
+                                padding: EdgeInsets.symmetric(vertical: 3.5.w),
+                                side: BorderSide(
+                                  color: AppColors.primaryBlue,
+                                  width: 0.3.w,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(2.w),
+                                ),
                               ),
-                              child: const Text(
+                              child: Text(
                                 'Cancel',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
+                                  fontSize: 14.sp,
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          SizedBox(width: 4.w),
                           Expanded(
                             child: ElevatedButton(
                               onPressed: () {
@@ -82,14 +90,17 @@ class DeleteConfirmationBottomSheet {
                                 Navigator.of(context).pop();
                               },
                               style: ElevatedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
+                                padding: EdgeInsets.symmetric(vertical: 3.5.w),
                                 backgroundColor: AppColors.error,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(2.w),
+                                ),
                               ),
-                              child: const Text(
+                              child: Text(
                                 'Delete',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
+                                  fontSize: 14.sp,
                                   color: Colors.white,
                                 ),
                               ),

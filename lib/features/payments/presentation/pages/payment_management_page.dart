@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:sizer/sizer.dart';
 import 'package:mytuition/config/router/route_names.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
 import 'package:mytuition/features/payments/presentation/pages/payment_history_page.dart';
@@ -29,9 +30,6 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
   // Track selected payments for bulk actions
   final Set<String> _selectedPaymentIds = {};
   bool _selectMode = false;
-
-  // Action panel visibility state
-  bool _isActionPanelVisible = false;
 
   @override
   void initState() {
@@ -125,16 +123,19 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Payment Management'),
+        title: Text(
+          'Payment Management',
+          style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+        ),
         actions: [
           // Toggle selection mode
           IconButton(
-            icon: Icon(_selectMode ? Icons.cancel : Icons.checklist),
+            icon: Icon(_selectMode ? Icons.cancel : Icons.checklist, size: 6.w),
             onPressed: _toggleSelectMode,
           ),
           // More options dropdown
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
+            icon: Icon(Icons.more_vert, size: 6.w),
             onSelected: (value) {
               switch (value) {
                 case 'payment_history':
@@ -158,63 +159,63 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
               }
             },
             itemBuilder: (context) => [
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'payment_history',
                 child: Row(
                   children: [
-                    Icon(Icons.history, color: AppColors.primaryBlue),
-                    SizedBox(width: 12),
-                    Text('View Payment History'),
+                    Icon(Icons.history, color: AppColors.primaryBlue, size: 5.w),
+                    SizedBox(width: 3.w),
+                    Text('View Payment History', style: TextStyle(fontSize: 14.sp)),
                   ],
                 ),
               ),
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'generate_monthly',
                 child: Row(
                   children: [
-                    Icon(Icons.article, color: AppColors.primaryBlue),
-                    SizedBox(width: 12),
-                    Text('Generate Monthly Payments'),
+                    Icon(Icons.article, color: AppColors.primaryBlue, size: 5.w),
+                    SizedBox(width: 3.w),
+                    Text('Generate Monthly Payments', style: TextStyle(fontSize: 14.sp)),
                   ],
                 ),
               ),
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'generate_missing',
                 child: Row(
                   children: [
-                    Icon(Icons.person_add, color: AppColors.accentTeal),
-                    SizedBox(width: 12),
-                    Text('Generate Missing Payments'),
+                    Icon(Icons.person_add, color: AppColors.accentTeal, size: 5.w),
+                    SizedBox(width: 3.w),
+                    Text('Generate Missing Payments', style: TextStyle(fontSize: 14.sp)),
                   ],
                 ),
               ),
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'send_reminders',
                 child: Row(
                   children: [
-                    Icon(Icons.notifications, color: AppColors.warning),
-                    SizedBox(width: 12),
-                    Text('Send Payment Reminders'),
+                    Icon(Icons.notifications, color: AppColors.warning, size: 5.w),
+                    SizedBox(width: 3.w),
+                    Text('Send Payment Reminders', style: TextStyle(fontSize: 14.sp)),
                   ],
                 ),
               ),
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'payment_info',
                 child: Row(
                   children: [
-                    Icon(Icons.account_balance, color: AppColors.accentTeal),
-                    SizedBox(width: 12),
-                    Text('Payment Information'),
+                    Icon(Icons.account_balance, color: AppColors.accentTeal, size: 5.w),
+                    SizedBox(width: 3.w),
+                    Text('Payment Information', style: TextStyle(fontSize: 14.sp)),
                   ],
                 ),
               ),
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'refresh',
                 child: Row(
                   children: [
-                    Icon(Icons.refresh, color: AppColors.primaryBlue),
-                    SizedBox(width: 12),
-                    Text('Refresh'),
+                    Icon(Icons.refresh, color: AppColors.primaryBlue, size: 5.w),
+                    SizedBox(width: 3.w),
+                    Text('Refresh', style: TextStyle(fontSize: 14.sp)),
                   ],
                 ),
               ),
@@ -256,7 +257,7 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
       children: [
         // Month and Year selectors in a row
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
           decoration: BoxDecoration(
             color: Colors.white,
             boxShadow: [
@@ -273,25 +274,25 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
               Expanded(
                 flex: 3,
                 child: Container(
-                  height: 48,
+                  height: 11.h > 50.0 ? 50.0 : 11.h,
                   decoration: BoxDecoration(
                     border: Border.all(color: AppColors.backgroundDark),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(2.w),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.symmetric(horizontal: 4.w),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<int>(
                       value: _selectedMonth,
                       isExpanded: true,
-                      icon: const Icon(Icons.keyboard_arrow_down),
+                      icon: Icon(Icons.keyboard_arrow_down, size: 5.w),
                       items: List.generate(12, (index) {
                         final month = index + 1;
                         return DropdownMenuItem<int>(
                           value: month,
                           child: Text(
                             _getMonthName(month),
-                            style: const TextStyle(
-                              fontSize: 14,
+                            style: TextStyle(
+                              fontSize: 14.sp,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -315,31 +316,31 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 2.w),
 
               // Year dropdown
               Expanded(
                 flex: 2,
                 child: Container(
-                  height: 48,
+                  height: 11.h > 50.0 ? 50.0 : 11.h,
                   decoration: BoxDecoration(
                     border: Border.all(color: AppColors.backgroundDark),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(2.w),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 3.w),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<int>(
                       value: _selectedYear,
                       isExpanded: true,
-                      icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+                      icon: Icon(Icons.keyboard_arrow_down, size: 5.w),
                       items: List.generate(5, (index) {
                         final year = DateTime.now().year - 2 + index;
                         return DropdownMenuItem<int>(
                           value: year,
                           child: Text(
                             year.toString(),
-                            style: const TextStyle(
-                              fontSize: 14,
+                            style: TextStyle(
+                              fontSize: 14.sp,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -369,27 +370,29 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
 
         // Search field (below month/year selectors with reduced height)
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
           color: Colors.white,
           child: SizedBox(
-            height: 40, // Reduced height from 48 to 40
+            height: 10.h > 48.0 ? 48.0 : 10.h,
             child: TextField(
               controller: _searchController,
+              style: TextStyle(fontSize: 14.sp),
               decoration: InputDecoration(
                 hintText: 'Search...',
-                prefixIcon: const Icon(Icons.search, size: 20),
+                hintStyle: TextStyle(fontSize: 14.sp),
+                prefixIcon: Icon(Icons.search, size: 5.w),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear, size: 20),
+                        icon: Icon(Icons.clear, size: 5.w),
                         onPressed: () {
                           _searchController.clear();
                         },
                       )
                     : null,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(2.w),
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                contentPadding: EdgeInsets.symmetric(vertical: 2.h),
                 filled: true,
                 fillColor: Colors.white,
               ),
@@ -415,8 +418,8 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
               payments.where((p) => p.status == 'partial').length;
 
           return Container(
-            height: 50, // Reduced height to prevent overflow
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            height: 11.h,
+            padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
             child: Row(
               children: [
                 _buildStatusCard(
@@ -430,7 +433,7 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
             ),
           );
         }
-        return const SizedBox(height: 50); // Reduced height
+        return SizedBox(height: 11.h);
       },
     );
   }
@@ -444,42 +447,43 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
       child: GestureDetector(
         onTap: () => _applyStatusFilter(statusFilter),
         child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
+          margin: EdgeInsets.symmetric(horizontal: 1.w),
           decoration: BoxDecoration(
             color: color.withOpacity(isSelected ? 0.2 : 0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(2.w),
             border: isSelected
-                ? Border.all(color: color, width: 1.5)
+                ? Border.all(color: color, width: 0.4.w)
                 : Border.all(color: Colors.transparent),
           ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      count.toString(),
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: color,
-                      ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 1.h, horizontal: 2.w),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    count.toString(),
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                      color: color,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: color,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+                SizedBox(height: 0.5.h),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -495,8 +499,7 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
             : <Payment>[];
 
         return Container(
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
           child: Row(
             children: [
               Checkbox(
@@ -505,11 +508,13 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
                 onChanged: (_) => _selectAll(filteredPayments),
                 visualDensity: VisualDensity.compact,
               ),
-              Text(
-                'Select All (${_selectedPaymentIds.length}/${filteredPayments.length})',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  'Select All (${_selectedPaymentIds.length}/${filteredPayments.length})',
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -522,8 +527,7 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
   // Action buttons for selected items
   Widget _buildSelectionActionButtons() {
     return Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
       child: Row(
         children: [
           Expanded(
@@ -531,32 +535,35 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.warning,
                 foregroundColor: Colors.white,
-                padding: EdgeInsets.zero,
-                minimumSize: const Size(0, 36),
+                padding: EdgeInsets.symmetric(vertical: 2.h),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(2.w),
                 ),
               ),
-              icon: const Icon(Icons.notifications_outlined, size: 16),
-              label:
-                  const Text('Send Reminder', style: TextStyle(fontSize: 12)),
+              icon: Icon(Icons.notifications_outlined, size: 4.w),
+              label: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text('Send Reminder', style: TextStyle(fontSize: 12.sp)),
+              ),
               onPressed: () => _showSendRemindersDialog(context),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 2.w),
           Expanded(
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.success,
                 foregroundColor: Colors.white,
-                padding: EdgeInsets.zero,
-                minimumSize: const Size(0, 36),
+                padding: EdgeInsets.symmetric(vertical: 2.h),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(2.w),
                 ),
               ),
-              icon: const Icon(Icons.check_circle_outline, size: 16),
-              label: const Text('Mark Paid', style: TextStyle(fontSize: 12)),
+              icon: Icon(Icons.check_circle_outline, size: 4.w),
+              label: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text('Mark Paid', style: TextStyle(fontSize: 12.sp)),
+              ),
               onPressed: () => _showBulkMarkAsPaidDialog(context),
             ),
           ),
@@ -574,7 +581,7 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
         if (state is PaymentError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
+              content: Text(state.message, style: TextStyle(fontSize: 14.sp)),
               backgroundColor: Colors.red,
             ),
           );
@@ -583,7 +590,7 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
         if (state is PaymentOperationSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
+              content: Text(state.message, style: TextStyle(fontSize: 14.sp)),
               backgroundColor: AppColors.success,
             ),
           );
@@ -627,12 +634,10 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
             },
             child: ListView.builder(
               padding: EdgeInsets.only(
-                left: 12,
-                right: 12,
-                top: 4,
-                bottom: _isActionPanelVisible
-                    ? 180
-                    : 80, // Adjust bottom padding for action panel
+                left: 3.w,
+                right: 3.w,
+                top: 1.h,
+                bottom: 10.h,
               ),
               itemCount: filteredPayments.length,
               itemBuilder: (context, index) {
@@ -649,12 +654,12 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
             children: [
               Icon(
                 Icons.error_outline,
-                size: 48,
+                size: 12.w,
                 color: AppColors.textLight,
               ),
-              const SizedBox(height: 16),
-              const Text('Failed to load payment data'),
-              const SizedBox(height: 12),
+              SizedBox(height: 4.h),
+              Text('Failed to load payment data', style: TextStyle(fontSize: 14.sp)),
+              SizedBox(height: 3.h),
               ElevatedButton(
                 onPressed: () {
                   context.read<PaymentBloc>().add(
@@ -664,7 +669,7 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
                         ),
                       );
                 },
-                child: const Text('Retry'),
+                child: Text('Retry', style: TextStyle(fontSize: 14.sp)),
               ),
             ],
           ),
@@ -690,28 +695,28 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
     }
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 2.h),
       elevation: isSelected ? 3 : 1,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(2.w),
         side: isSelected
-            ? BorderSide(color: AppColors.primaryBlue, width: 1.5)
+            ? BorderSide(color: AppColors.primaryBlue, width: 0.4.w)
             : BorderSide.none,
       ),
       color: isSelected ? AppColors.primaryBlueLight.withOpacity(0.1) : null,
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(2.w),
         onTap: _selectMode
             ? () => _togglePaymentSelection(payment.id)
             : () => _navigateToPaymentDetails(context, payment),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 2.5.h),
           child: Row(
             children: [
               // Checkbox if in select mode
               if (_selectMode)
                 Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
+                  padding: EdgeInsets.only(right: 2.w),
                   child: Checkbox(
                     value: isSelected,
                     onChanged: (_) => _togglePaymentSelection(payment.id),
@@ -726,9 +731,9 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
                   children: [
                     Text(
                       payment.studentName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 14.sp,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -742,7 +747,7 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
                             'ID: ${payment.studentId}',
                             style: TextStyle(
                               color: AppColors.textMedium,
-                              fontSize: 12,
+                              fontSize: 12.sp,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -753,7 +758,7 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
                       Text(
                         '• ${DateFormat('dd/MM/yy').format(payment.paidDate!)}',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 11.sp,
                           color: AppColors.success,
                         ),
                       ),
@@ -769,19 +774,19 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
                     'RM ${payment.amount.toStringAsFixed(2)}',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: 14.sp,
                       color: isPaid ? AppColors.success : AppColors.textDark,
                     ),
                   ),
                   Container(
-                    margin: const EdgeInsets.only(top: 4),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
+                    margin: EdgeInsets.only(top: 1.h),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 2.w,
+                      vertical: 0.5.h,
                     ),
                     decoration: BoxDecoration(
                       color: statusColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(1.5.w),
                     ),
                     child: Text(
                       isPaid
@@ -792,7 +797,7 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
                       style: TextStyle(
                         color: statusColor,
                         fontWeight: FontWeight.w500,
-                        fontSize: 10,
+                        fontSize: 10.sp,
                       ),
                     ),
                   ),
@@ -807,36 +812,39 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
 
   Widget _buildEmptyState() {
     return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: 4.w),
       children: [
-        SizedBox(height: MediaQuery.of(context).size.height / 15),
+        SizedBox(height: 10.h),
         Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
+              Icon(
                 Icons.payment_outlined,
-                size: 48,
+                size: 12.w,
                 color: AppColors.textLight,
               ),
-              const SizedBox(height: 16),
-              const Text(
+              SizedBox(height: 4.h),
+              Text(
                 'No payments found for this month',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 2.h),
               Text(
                 'Generate monthly payments to create payment records',
                 style: TextStyle(
                   color: AppColors.textMedium,
-                  fontSize: 14,
+                  fontSize: 14.sp,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 4.h),
               ElevatedButton(
                 onPressed: () => _showGeneratePaymentsDialog(context),
-                child: const Text('Generate Monthly Payments'),
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
+                ),
+                child: Text('Generate Monthly Payments', style: TextStyle(fontSize: 14.sp)),
               ),
             ],
           ),
@@ -855,19 +863,19 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
               children: [
                 Icon(
                   Icons.search_off,
-                  size: 48,
+                  size: 12.w,
                   color: AppColors.textLight,
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 3.h),
                 Text(
                   'No payments match your filters',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textDark,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 2.h),
                 TextButton.icon(
                   onPressed: () {
                     setState(() {
@@ -875,8 +883,8 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
                       _statusFilter = 'All';
                     });
                   },
-                  icon: const Icon(Icons.filter_alt_off, size: 16),
-                  label: const Text('Clear Filters'),
+                  icon: Icon(Icons.filter_alt_off, size: 4.w),
+                  label: Text('Clear Filters', style: TextStyle(fontSize: 14.sp)),
                 ),
               ],
             ),
@@ -956,22 +964,25 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Mark Payments as Paid'),
+        title: Text('Mark Payments as Paid', style: TextStyle(fontSize: 16.sp)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Mark ${_selectedPaymentIds.length} selected payments as paid?',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 4.h),
             TextField(
               controller: remarksController,
-              decoration: const InputDecoration(
+              style: TextStyle(fontSize: 14.sp),
+              decoration: InputDecoration(
                 labelText: 'Remarks (Optional)',
+                labelStyle: TextStyle(fontSize: 14.sp),
                 hintText: 'Add any notes about these payments',
-                border: OutlineInputBorder(),
+                hintStyle: TextStyle(fontSize: 12.sp),
+                border: const OutlineInputBorder(),
               ),
               maxLines: 3,
             ),
@@ -980,7 +991,7 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: TextStyle(fontSize: 14.sp)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1003,7 +1014,7 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.success,
             ),
-            child: const Text('Mark as Paid'),
+            child: Text('Mark as Paid', style: TextStyle(fontSize: 14.sp)),
           ),
         ],
       ),
@@ -1048,22 +1059,25 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Send Reminders to All Unpaid'),
+        title: Text('Send Reminders to All Unpaid', style: TextStyle(fontSize: 16.sp)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Send reminders to all students with unpaid tuition?',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 4.h),
             TextField(
               controller: messageController,
-              decoration: const InputDecoration(
+              style: TextStyle(fontSize: 14.sp),
+              decoration: InputDecoration(
                 labelText: 'Message',
+                labelStyle: TextStyle(fontSize: 14.sp),
                 hintText: 'Enter reminder message',
-                border: OutlineInputBorder(),
+                hintStyle: TextStyle(fontSize: 12.sp),
+                border: const OutlineInputBorder(),
               ),
               maxLines: 3,
             ),
@@ -1072,7 +1086,7 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: TextStyle(fontSize: 14.sp)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1090,7 +1104,7 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.warning,
             ),
-            child: const Text('Send to All Unpaid'),
+            child: Text('Send to All Unpaid', style: TextStyle(fontSize: 14.sp)),
           ),
         ],
       ),
@@ -1105,42 +1119,43 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Generate Monthly Payments'),
+        title: Text('Generate Monthly Payments', style: TextStyle(fontSize: 16.sp)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'This will:',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp),
             ),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 2.h),
+            Text(
               '• Calculate tuition for each student based on enrolled subjects',
-              style: TextStyle(fontSize: 13),
+              style: TextStyle(fontSize: 13.sp),
             ),
-            const Text(
+            Text(
               '• Create payment records for students without existing records',
-              style: TextStyle(fontSize: 13),
+              style: TextStyle(fontSize: 13.sp),
             ),
-            const Text(
+            Text(
               '• Skip students who already have payment records for this month',
-              style: TextStyle(fontSize: 13),
+              style: TextStyle(fontSize: 13.sp),
             ),
-            const Text(
+            Text(
               '• Skip students not enrolled in any classes',
-              style: TextStyle(fontSize: 13),
+              style: TextStyle(fontSize: 13.sp),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 4.h),
             Text(
               'Generate payment records for ${_getMonthName(_selectedMonth)} $_selectedYear?',
+              style: TextStyle(fontSize: 14.sp),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: TextStyle(fontSize: 14.sp)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1153,7 +1168,7 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
                 ),
               );
             },
-            child: const Text('Generate'),
+            child: Text('Generate', style: TextStyle(fontSize: 14.sp)),
           ),
         ],
       ),
@@ -1168,42 +1183,43 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Generate Missing Payments'),
+        title: Text('Generate Missing Payments', style: TextStyle(fontSize: 16.sp)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'This will:',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp),
             ),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 2.h),
+            Text(
               '• Find students enrolled in classes but without payment records',
-              style: TextStyle(fontSize: 13),
+              style: TextStyle(fontSize: 13.sp),
             ),
-            const Text(
+            Text(
               '• Calculate tuition for each student based on enrolled subjects',
-              style: TextStyle(fontSize: 13),
+              style: TextStyle(fontSize: 13.sp),
             ),
-            const Text(
+            Text(
               '• Create payment records only for eligible students',
-              style: TextStyle(fontSize: 13),
+              style: TextStyle(fontSize: 13.sp),
             ),
-            const Text(
+            Text(
               '• Skip students already having payment records for this month',
-              style: TextStyle(fontSize: 13),
+              style: TextStyle(fontSize: 13.sp),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 4.h),
             Text(
               'Generate missing payment records for ${_getMonthName(_selectedMonth)} $_selectedYear?',
+              style: TextStyle(fontSize: 14.sp),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: TextStyle(fontSize: 14.sp)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1216,7 +1232,7 @@ class _PaymentManagementPageState extends State<PaymentManagementPage> {
                 ),
               );
             },
-            child: const Text('Generate'),
+            child: Text('Generate', style: TextStyle(fontSize: 14.sp)),
           ),
         ],
       ),

@@ -666,7 +666,7 @@ class _StudentPaymentInfoCardState extends State<StudentPaymentInfoCard> {
             Text(
               label,
               style: TextStyle(
-                fontSize: 12.sp,
+                fontSize: 14.sp,
                 fontWeight: FontWeight.w500,
                 color: AppColors.textMedium,
               ),
@@ -679,7 +679,7 @@ class _StudentPaymentInfoCardState extends State<StudentPaymentInfoCard> {
           child: SelectableText(
             value,
             style: TextStyle(
-              fontSize: 13.sp,
+              fontSize: 14.sp,
               fontWeight: FontWeight.w600,
               color: AppColors.textDark,
             ),

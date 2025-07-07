@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:sizer/sizer.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
 import 'package:mytuition/features/payments/domain/entities/payment_info.dart';
 import 'package:mytuition/features/payments/presentation/bloc/payment_info_bloc.dart';
@@ -23,14 +24,15 @@ class EWalletBottomSheet {
         backgroundColor: Theme.of(context).colorScheme.background,
         topBarTitle: Text(
           wallet == null ? 'Add E-Wallet' : 'Edit E-Wallet',
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
+            fontSize: 16.sp,
           ),
         ),
         isTopBarLayerAlwaysVisible: true,
         trailingNavBarWidget: IconButton(
-          padding: const EdgeInsets.all(16),
-          icon: const Icon(Icons.close),
+          padding: EdgeInsets.all(4.w),
+          icon: Icon(Icons.close, size: 6.w),
           onPressed: () => Navigator.of(context).pop(),
         ),
         child: LayoutBuilder(
@@ -126,7 +128,7 @@ class _EWalletFormState extends State<_EWalletForm> {
         }
       },
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(4.w),
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
@@ -161,10 +163,19 @@ class _EWalletFormState extends State<_EWalletForm> {
                       controller: controller,
                       focusNode: focusNode,
                       onChanged: (value) => _typeController.text = value,
-                      decoration: const InputDecoration(
+                      style: TextStyle(fontSize: 14.sp),
+                      decoration: InputDecoration(
                         labelText: 'E-Wallet Service',
+                        labelStyle: TextStyle(fontSize: 14.sp),
                         hintText: 'e.g., Touch \'n Go eWallet, Boost',
-                        border: OutlineInputBorder(),
+                        hintStyle: TextStyle(fontSize: 13.sp),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(2.w),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 4.w,
+                          vertical: 3.5.w,
+                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -175,15 +186,24 @@ class _EWalletFormState extends State<_EWalletForm> {
                     );
                   },
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 4.w),
 
                 // E-wallet number/ID field
                 TextFormField(
                   controller: _numberController,
-                  decoration: const InputDecoration(
+                  style: TextStyle(fontSize: 14.sp),
+                  decoration: InputDecoration(
                     labelText: 'Phone Number/ID',
+                    labelStyle: TextStyle(fontSize: 14.sp),
                     hintText: 'Enter the phone number or ID linked to e-wallet',
-                    border: OutlineInputBorder(),
+                    hintStyle: TextStyle(fontSize: 13.sp),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(2.w),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 4.w,
+                      vertical: 3.5.w,
+                    ),
                   ),
                   keyboardType: TextInputType.phone,
                   inputFormatters: [
@@ -196,15 +216,24 @@ class _EWalletFormState extends State<_EWalletForm> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 4.w),
 
                 // Account holder name field
                 TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(
+                  style: TextStyle(fontSize: 14.sp),
+                  decoration: InputDecoration(
                     labelText: 'Account Name',
+                    labelStyle: TextStyle(fontSize: 14.sp),
                     hintText: 'Enter the account holder name',
-                    border: OutlineInputBorder(),
+                    hintStyle: TextStyle(fontSize: 13.sp),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(2.w),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 4.w,
+                      vertical: 3.5.w,
+                    ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -213,16 +242,16 @@ class _EWalletFormState extends State<_EWalletForm> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 4.w),
 
                 // Is active switch
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Active',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                       ),
                     ),
                     Switch(
@@ -236,7 +265,7 @@ class _EWalletFormState extends State<_EWalletForm> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 6.w),
 
                 // Save button
                 BlocBuilder<PaymentInfoBloc, PaymentInfoState>(
@@ -246,14 +275,17 @@ class _EWalletFormState extends State<_EWalletForm> {
                     return ElevatedButton(
                       onPressed: isLoading ? null : _saveWallet,
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: EdgeInsets.symmetric(vertical: 3.5.w),
                         backgroundColor: AppColors.primaryBlue,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(2.w),
+                        ),
                       ),
                       child: isLoading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
+                          ? SizedBox(
+                              width: 6.w,
+                              height: 6.w,
+                              child: const CircularProgressIndicator(
                                 color: Colors.white,
                                 strokeWidth: 2,
                               ),
@@ -262,9 +294,9 @@ class _EWalletFormState extends State<_EWalletForm> {
                               widget.wallet == null
                                   ? 'Add E-Wallet'
                                   : 'Save Changes',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                                fontSize: 16.sp,
                                 color: Colors.white,
                               ),
                             ),

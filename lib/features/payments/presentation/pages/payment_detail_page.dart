@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:sizer/sizer.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
 import '../bloc/payment_bloc.dart';
 import '../../domain/entities/payment.dart';
@@ -105,14 +106,17 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Payment Details'),
+        title: Text(
+          'Payment Details',
+          style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+        ),
       ),
       body: BlocConsumer<PaymentBloc, PaymentState>(
         listener: (context, state) {
           if (state is PaymentError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.message),
+                content: Text(state.message, style: TextStyle(fontSize: 14.sp)),
                 backgroundColor: AppColors.error,
               ),
             );
@@ -121,7 +125,7 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
           if (state is PaymentRecorded) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.message),
+                content: Text(state.message, style: TextStyle(fontSize: 14.sp)),
                 backgroundColor: AppColors.success,
               ),
             );
@@ -131,40 +135,57 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
         },
         builder: (context, state) {
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(4.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Student information card
                 _buildStudentInfoCard(),
 
-                const SizedBox(height: 24),
+                SizedBox(height: 4.h),
 
                 // Payment form
                 if (widget.payment.status != 'paid') _buildPaymentForm(context),
 
                 if (widget.payment.status == 'paid') _buildPaidStatusCard(),
 
-                const SizedBox(height: 24),
+                SizedBox(height: 4.h),
 
                 // Payment history section
-                const Text(
+                Text(
                   'Payment History',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 3.h),
 
                 // Payment history list
                 if (state is PaymentLoading && !(state is PaymentHistoryLoaded))
-                  const Center(child: CircularProgressIndicator())
+                  Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.h),
+                      child: CircularProgressIndicator(
+                        color: AppColors.primaryBlue,
+                      ),
+                    ),
+                  )
                 else if (state is PaymentHistoryLoaded)
                   _buildPaymentHistoryList(state.history)
                 else
-                  const Center(
-                    child: Text('No payment history available'),
+                  Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.h),
+                      child: Text(
+                        'No payment history available',
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          color: AppColors.textMedium,
+                        ),
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -181,10 +202,10 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(3.w),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(4.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -197,26 +218,37 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
                     children: [
                       Text(
                         widget.payment.studentName,
-                        style: const TextStyle(
-                          fontSize: 20,
+                        style: TextStyle(
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
+                          color: AppColors.textDark,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'ID: ${widget.payment.studentId}',
-                        style: TextStyle(
-                          color: AppColors.textMedium,
-                          fontSize: 16,
-                        ),
+                      SizedBox(height: 1.h),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.badge_outlined,
+                            size: 4.w,
+                            color: AppColors.textMedium,
+                          ),
+                          SizedBox(width: 1.5.w),
+                          Text(
+                            'ID: ${widget.payment.studentId}',
+                            style: TextStyle(
+                              color: AppColors.textMedium,
+                              fontSize: 14.sp,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 3.w,
+                    vertical: 1.5.h,
                   ),
                   decoration: BoxDecoration(
                     color: isPaid
@@ -224,7 +256,7 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
                         : isPartial
                             ? AppColors.warningLight
                             : AppColors.errorLight,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(5.w),
                   ),
                   child: Text(
                     isPaid
@@ -234,6 +266,7 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
                             : 'Unpaid',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
+                      fontSize: 14.sp,
                       color: isPaid
                           ? AppColors.success
                           : isPartial
@@ -245,9 +278,9 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
               ],
             ),
 
-            const SizedBox(height: 16),
+            SizedBox(height: 3.h),
             const Divider(),
-            const SizedBox(height: 16),
+            SizedBox(height: 3.h),
 
             // Payment details
             _buildInfoRow('Month', _getMonthName(widget.payment.month)),
@@ -272,21 +305,29 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
 
   Widget _buildInfoRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+      padding: EdgeInsets.only(bottom: 2.h),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 100,
+            width: 25.w,
             child: Text(
               '$label:',
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
+                fontSize: 14.sp,
+                color: AppColors.textDark,
               ),
             ),
           ),
           Expanded(
-            child: Text(value),
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: AppColors.textMedium,
+              ),
+            ),
           ),
         ],
       ),
@@ -297,34 +338,36 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
     return Card(
       color: AppColors.successLight,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(3.w),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(4.w),
         child: Row(
           children: [
             Icon(
               Icons.check_circle,
               color: AppColors.success,
-              size: 24,
+              size: 6.w,
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 4.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Payment Completed',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                      fontSize: 16.sp,
+                      color: AppColors.textDark,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 1.h),
                   Text(
                     'Payment was recorded on ${widget.payment.paidDate != null ? DateFormat('dd MMM yyyy').format(widget.payment.paidDate!) : 'N/A'}',
                     style: TextStyle(
                       color: AppColors.textMedium,
+                      fontSize: 13.sp,
                     ),
                   ),
                 ],
@@ -339,60 +382,79 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
   Widget _buildPaymentForm(BuildContext context) {
     return Card(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(3.w),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(4.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Record Payment',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 18.sp,
                 fontWeight: FontWeight.bold,
+                color: AppColors.textDark,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 3.h),
 
             // Amount paid field
             TextField(
               controller: _amountController,
-              decoration: const InputDecoration(
+              style: TextStyle(fontSize: 14.sp),
+              decoration: InputDecoration(
                 labelText: 'Amount Paid (RM)',
+                labelStyle: TextStyle(fontSize: 14.sp),
                 hintText: 'Enter payment amount',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.payments_outlined),
+                hintStyle: TextStyle(fontSize: 13.sp),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(2.w),
+                ),
+                prefixIcon: Icon(Icons.payments_outlined, size: 5.w),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 4.w,
+                  vertical: 3.5.h,
+                ),
               ),
               keyboardType: TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 3.h),
 
             // Discount field
             TextField(
               controller: _discountController,
-              decoration: const InputDecoration(
+              style: TextStyle(fontSize: 14.sp),
+              decoration: InputDecoration(
                 labelText: 'Discount (RM)',
+                labelStyle: TextStyle(fontSize: 14.sp),
                 hintText: 'Enter discount amount (if any)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.discount_outlined),
+                hintStyle: TextStyle(fontSize: 13.sp),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(2.w),
+                ),
+                prefixIcon: Icon(Icons.discount_outlined, size: 5.w),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 4.w,
+                  vertical: 3.5.h,
+                ),
               ),
               keyboardType: TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 3.h),
 
             // Payment summary
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(3.w),
               decoration: BoxDecoration(
                 color: AppColors.backgroundLight,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(2.w),
                 border: Border.all(color: AppColors.backgroundDark),
               ),
               child: Column(
@@ -405,29 +467,32 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
                   _buildSummaryRow('Current Outstanding',
                       widget.payment.getOutstandingAmount(),
                       color: AppColors.warning),
-                  const Divider(height: 16),
+                  Divider(height: 3.h),
                   _buildSummaryRow('This Payment', _amountPaid),
                   _buildSummaryRow('This Discount', _discount),
-                  const Divider(height: 16),
+                  Divider(height: 3.h),
                   _buildSummaryRow('New Outstanding', _outstandingAmount,
                       highlight: true,
                       color: _outstandingAmount > 0
                           ? AppColors.error
                           : AppColors.success),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 2.h),
                   Row(
                     children: [
                       Text(
                         'New Status: ',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14.sp,
+                        ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 2.w, vertical: 0.5.h),
                         decoration: BoxDecoration(
                           color:
                               _getStatusColor(_paymentStatus).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(1.5.w),
                         ),
                         child: Text(
                           _paymentStatus.substring(0, 1).toUpperCase() +
@@ -435,6 +500,7 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
                           style: TextStyle(
                             color: _getStatusColor(_paymentStatus),
                             fontWeight: FontWeight.bold,
+                            fontSize: 13.sp,
                           ),
                         ),
                       ),
@@ -443,19 +509,28 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 3.h),
 
             // Remarks field
             TextField(
               controller: _remarksController,
-              decoration: const InputDecoration(
+              style: TextStyle(fontSize: 14.sp),
+              decoration: InputDecoration(
                 labelText: 'Remarks',
+                labelStyle: TextStyle(fontSize: 14.sp),
                 hintText: 'Add any notes about this payment',
-                border: OutlineInputBorder(),
+                hintStyle: TextStyle(fontSize: 13.sp),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(2.w),
+                ),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 4.w,
+                  vertical: 3.5.h,
+                ),
               ),
               maxLines: 3,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 4.h),
 
             // Submit button
             SizedBox(
@@ -476,22 +551,25 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
                     onPressed: isLoading ? null : () => _recordPayment(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: buttonColor,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: EdgeInsets.symmetric(vertical: 3.5.h),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(2.w),
+                      ),
                     ),
                     child: isLoading
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
+                        ? SizedBox(
+                            width: 6.w,
+                            height: 6.w,
+                            child: const CircularProgressIndicator(
                               color: Colors.white,
                               strokeWidth: 2,
                             ),
                           )
                         : Text(
                             buttonText,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              fontSize: 16.sp,
                             ),
                           ),
                   );
@@ -507,7 +585,7 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
   Widget _buildSummaryRow(String label, double amount,
       {bool highlight = false, Color? color}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4.0),
+      padding: EdgeInsets.only(bottom: 1.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -515,15 +593,16 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
             label,
             style: TextStyle(
               fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
-              fontSize: highlight ? 16 : 14,
+              fontSize: highlight ? 15.sp : 13.sp,
+              color: AppColors.textDark,
             ),
           ),
           Text(
             'RM ${amount.toStringAsFixed(2)}',
             style: TextStyle(
               fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
-              fontSize: highlight ? 16 : 14,
-              color: color,
+              fontSize: highlight ? 15.sp : 13.sp,
+              color: color ?? AppColors.textDark,
             ),
           ),
         ],
@@ -539,13 +618,16 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
           children: [
             Icon(
               Icons.history,
-              size: 48,
+              size: 12.w,
               color: AppColors.textLight,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 3.h),
             Text(
               'No payment history found',
-              style: TextStyle(color: AppColors.textMedium),
+              style: TextStyle(
+                color: AppColors.textMedium,
+                fontSize: 14.sp,
+              ),
             ),
           ],
         ),
@@ -559,44 +641,54 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
       itemBuilder: (context, index) {
         final item = history[index];
         return Card(
-          margin: const EdgeInsets.only(bottom: 8),
+          margin: EdgeInsets.only(bottom: 2.h),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(2.w),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: EdgeInsets.all(3.w),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.monetization_on,
-                  color: AppColors.primaryBlue,
+                Container(
+                  padding: EdgeInsets.all(2.w),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryBlue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(2.w),
+                  ),
+                  child: Icon(
+                    Icons.monetization_on,
+                    color: AppColors.primaryBlue,
+                    size: 5.w,
+                  ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 3.w),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'RM ${item.amount.toStringAsFixed(2)} received',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
+                          fontSize: 14.sp,
+                          color: AppColors.textDark,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 1.h),
                       Text(
                         'Status changed from ${item.previousStatus} to ${item.newStatus}',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13.sp,
                           color: AppColors.textMedium,
                         ),
                       ),
                       if (item.remarks != null && item.remarks!.isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                        SizedBox(height: 1.h),
                         Text(
                           'Note: ${item.remarks}',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 13.sp,
                             color: AppColors.textMedium,
                             fontStyle: FontStyle.italic,
                           ),
@@ -606,9 +698,9 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
                   ),
                 ),
                 Text(
-                  DateFormat('dd MMM yyyy').format(item.date),
+                  DateFormat('dd MMM').format(item.date),
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11.sp,
                     color: AppColors.textMedium,
                   ),
                 ),
@@ -625,8 +717,11 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
     final amountText = _amountController.text.trim();
     if (amountText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid amount'),
+        SnackBar(
+          content: Text(
+            'Please enter a valid amount',
+            style: TextStyle(fontSize: 14.sp),
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -636,8 +731,11 @@ class _PaymentDetailPageState extends State<PaymentDetailPage> {
     final amountPaid = double.tryParse(amountText);
     if (amountPaid == null || amountPaid <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid amount greater than zero'),
+        SnackBar(
+          content: Text(
+            'Please enter a valid amount greater than zero',
+            style: TextStyle(fontSize: 14.sp),
+          ),
           backgroundColor: Colors.red,
         ),
       );

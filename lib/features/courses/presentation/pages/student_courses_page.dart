@@ -19,21 +19,21 @@ class StudentCoursesPage extends StatefulWidget {
   State<StudentCoursesPage> createState() => _StudentCoursesPageState();
 }
 
-class _StudentCoursesPageState extends State<StudentCoursesPage> 
+class _StudentCoursesPageState extends State<StudentCoursesPage>
     with TickerProviderStateMixin {
   String _studentId = '';
   bool _isLoadingSchedules = false;
   List<Schedule> _allSchedules = [];
   List<Course> _courses = [];
   TabController? _tabController;
-  
+
   // Group schedules by day
   Map<String, List<Schedule>> _schedulesByDay = {};
-  
+
   // Sort order for days of the week
   final List<String> _dayOrder = [
     'Monday',
-    'Tuesday', 
+    'Tuesday',
     'Wednesday',
     'Thursday',
     'Friday',
@@ -51,7 +51,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
   void initState() {
     super.initState();
     _getStudentId();
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInitialData();
     });
@@ -90,8 +90,8 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
   void _loadCourses() {
     debugPrint('📚 Loading courses for student: $_studentId');
     context.read<CourseBloc>().add(
-      LoadEnrolledCoursesEvent(studentId: _studentId),
-    );
+          LoadEnrolledCoursesEvent(studentId: _studentId),
+        );
   }
 
   void _loadSchedules() {
@@ -101,27 +101,27 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
     });
 
     context.read<CourseBloc>().add(
-      LoadUpcomingSchedulesEvent(studentId: _studentId),
-    );
+          LoadUpcomingSchedulesEvent(studentId: _studentId),
+        );
   }
 
   void _processSchedules(List<Schedule> schedules) {
     debugPrint('⚙️ Processing ${schedules.length} schedules');
-    
+
     Map<String, List<Schedule>> grouped = {};
-    
+
     // Initialize empty lists for each day
     for (var day in _dayOrder) {
       grouped[day] = [];
     }
-    
+
     // Filter out expired replacement schedules and group by day
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    
+
     for (var schedule in schedules) {
       // Skip expired replacement schedules
-      if (schedule.type == ScheduleType.replacement && 
+      if (schedule.type == ScheduleType.replacement &&
           schedule.specificDate != null) {
         final scheduleDate = DateTime(
           schedule.specificDate!.year,
@@ -129,16 +129,17 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
           schedule.specificDate!.day,
         );
         if (scheduleDate.isBefore(today)) {
-          debugPrint('⏭️ Skipping expired replacement schedule: ${schedule.id}');
+          debugPrint(
+              '⏭️ Skipping expired replacement schedule: ${schedule.id}');
           continue;
         }
       }
-      
+
       if (grouped.containsKey(schedule.day)) {
         grouped[schedule.day]!.add(schedule);
       }
     }
-    
+
     // Sort schedules by start time within each day
     for (var day in grouped.keys) {
       grouped[day]!.sort((a, b) {
@@ -147,7 +148,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
         return aMinutes.compareTo(bMinutes);
       });
     }
-    
+
     setState(() {
       _schedulesByDay = grouped;
       _allSchedules = schedules.where((s) {
@@ -162,17 +163,16 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
         return true;
       }).toList();
       _isLoadingSchedules = false;
-      
+
       // Initialize tab controller with days that have schedules
-      final daysWithSchedules = _dayOrder
-          .where((day) => grouped[day]!.isNotEmpty)
-          .toList();
-      
+      final daysWithSchedules =
+          _dayOrder.where((day) => grouped[day]!.isNotEmpty).toList();
+
       if (daysWithSchedules.isNotEmpty) {
         // Find today's index or default to 0
         int initialIndex = daysWithSchedules.indexOf(_todayDayName);
         if (initialIndex == -1) initialIndex = 0;
-        
+
         _tabController?.dispose();
         _tabController = TabController(
           length: daysWithSchedules.length,
@@ -181,8 +181,9 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
         );
       }
     });
-    
-    debugPrint('✅ Schedules processed - Active days: ${grouped.entries.where((e) => e.value.isNotEmpty).length}');
+
+    debugPrint(
+        '✅ Schedules processed - Active days: ${grouped.entries.where((e) => e.value.isNotEmpty).length}');
   }
 
   @override
@@ -266,14 +267,15 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                       setState(() {
                         _courses = state.courses;
                       });
-                      debugPrint('📚 Courses loaded and saved: ${_courses.length}');
+                      debugPrint(
+                          '📚 Courses loaded and saved: ${_courses.length}');
                     } else if (state is SchedulesLoaded) {
                       _processSchedules(state.schedules);
                     } else if (state is CourseError) {
                       setState(() {
                         _isLoadingSchedules = false;
                       });
-                      
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Error: ${state.message}'),
@@ -290,22 +292,22 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                   if (_courses.isEmpty && state is CourseLoading) {
                     return _buildLoadingState();
                   }
-                  
+
                   // If we have courses, show the content
                   if (_courses.isNotEmpty) {
                     return _buildCoursesContent(_courses);
                   }
-                  
+
                   // Empty state
                   if (state is CoursesLoaded && state.courses.isEmpty) {
                     return _buildEmptyState();
                   }
-                  
+
                   // Error state
                   if (state is CourseError && _courses.isEmpty) {
                     return _buildErrorState(state.message);
                   }
-                  
+
                   // Default loading state
                   return _buildLoadingState();
                 },
@@ -425,12 +427,12 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
         SliverToBoxAdapter(
           child: _buildWeeklyScheduleSection(),
         ),
-        
+
         // Quick Stats
         SliverToBoxAdapter(
           child: _buildQuickStats(courses),
         ),
-        
+
         // Enrolled Courses Header
         SliverToBoxAdapter(
           child: Padding(
@@ -469,7 +471,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
             ),
           ),
         ),
-        
+
         // Course Cards
         SliverPadding(
           padding: EdgeInsets.symmetric(horizontal: 2.w),
@@ -480,7 +482,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
             ),
           ),
         ),
-        
+
         // Bottom padding
         SliverToBoxAdapter(
           child: SizedBox(height: 3.h),
@@ -510,11 +512,11 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
         ),
       );
     }
-    
+
     final daysWithSchedules = _dayOrder
         .where((day) => _schedulesByDay[day]?.isNotEmpty ?? false)
         .toList();
-    
+
     return Container(
       margin: EdgeInsets.all(2.w),
       decoration: BoxDecoration(
@@ -568,7 +570,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                       '${_allSchedules.length} classes',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 11.sp,
+                        fontSize: 13.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -576,7 +578,6 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
               ],
             ),
           ),
-          
           if (daysWithSchedules.isEmpty)
             Padding(
               padding: EdgeInsets.all(4.w),
@@ -626,7 +627,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                       tabs: daysWithSchedules.map((day) {
                         final isToday = day == _todayDayName;
                         final count = _schedulesByDay[day]?.length ?? 0;
-                        
+
                         return Tab(
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -644,8 +645,8 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                               Text(
                                 day.substring(0, 3).toUpperCase(),
                                 style: TextStyle(
-                                  fontWeight: isToday 
-                                      ? FontWeight.bold 
+                                  fontWeight: isToday
+                                      ? FontWeight.bold
                                       : FontWeight.w500,
                                   fontSize: 13.sp,
                                 ),
@@ -679,7 +680,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                       }).toList(),
                     ),
                   ),
-                
+
                 // Schedule content
                 if (_tabController != null)
                   SizedBox(
@@ -707,7 +708,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
       itemBuilder: (context, index) {
         final schedule = schedules[index];
         final isReplacement = schedule.type == ScheduleType.replacement;
-        
+
         return Container(
           margin: EdgeInsets.only(bottom: 1.5.h),
           decoration: BoxDecoration(
@@ -750,20 +751,20 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                             _formatTime(schedule.startTime),
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 13.sp,
+                              fontSize: 14.sp,
                             ),
                           ),
                           Text(
                             _formatTime(schedule.endTime),
                             style: TextStyle(
-                              fontSize: 12.sp,
+                              fontSize: 13.sp,
                               color: AppColors.textMedium,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    
+
                     // Divider
                     Container(
                       width: 1,
@@ -771,7 +772,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                       margin: EdgeInsets.symmetric(horizontal: 1.5.w),
                       color: AppColors.divider,
                     ),
-                    
+
                     // Course info
                     Expanded(
                       child: Column(
@@ -833,7 +834,8 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                               ),
                             ],
                           ),
-                          if (isReplacement && schedule.specificDate != null) ...[
+                          if (isReplacement &&
+                              schedule.specificDate != null) ...[
                             SizedBox(height: 0.3.h),
                             Row(
                               children: [
@@ -858,7 +860,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                         ],
                       ),
                     ),
-                    
+
                     Icon(
                       Icons.chevron_right,
                       color: isReplacement
@@ -879,7 +881,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
   Widget _buildQuickStats(List<Course> courses) {
     final totalClasses = _allSchedules.length;
     final subjects = courses.map((c) => c.subject).toSet().length;
-    
+
     return Container(
       height: 12.h,
       margin: EdgeInsets.symmetric(horizontal: 2.w),
@@ -934,7 +936,6 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
           ),
         ],
       ),
-      padding: EdgeInsets.all(2.w),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -951,7 +952,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
           Text(
             label,
             style: TextStyle(
-              fontSize: 11.sp,
+              fontSize: 13.sp,
               color: AppColors.textMedium,
             ),
             overflow: TextOverflow.ellipsis,
@@ -962,10 +963,9 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
   }
 
   Widget _buildEnhancedCourseCard(Course course) {
-    final activeSchedules = course.schedules
-        .where((s) => s.isActive && !s.isExpired)
-        .toList();
-    
+    final activeSchedules =
+        course.schedules.where((s) => s.isActive && !s.isExpired).toList();
+
     return Container(
       margin: EdgeInsets.only(bottom: 2.h),
       decoration: BoxDecoration(
@@ -1041,7 +1041,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                                 child: Text(
                                   'Grade ${course.grade}',
                                   style: TextStyle(
-                                    fontSize: 11.sp,
+                                    fontSize: 13.sp,
                                     fontWeight: FontWeight.w600,
                                     color: AppColors.primaryBlue,
                                   ),
@@ -1058,7 +1058,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                                 child: Text(
                                   course.tutorName,
                                   style: TextStyle(
-                                    fontSize: 11.sp,
+                                    fontSize: 13.sp,
                                     color: AppColors.textMedium,
                                   ),
                                   overflow: TextOverflow.ellipsis,
@@ -1076,7 +1076,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                     ),
                   ],
                 ),
-                
+
                 // Schedules
                 if (activeSchedules.isNotEmpty) ...[
                   SizedBox(height: 2.h),
@@ -1108,8 +1108,8 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                           ],
                         ),
                         SizedBox(height: 1.h),
-                        ...activeSchedules.take(3).map((schedule) {
-                          final isReplacement = 
+                        ...activeSchedules.map((schedule) {
+                          final isReplacement =
                               schedule.type == ScheduleType.replacement;
                           return Padding(
                             padding: EdgeInsets.only(bottom: 0.7.h),
@@ -1131,7 +1131,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                                         ? 'Replacement: ${DateFormat('d MMM').format(schedule.specificDate!)}'
                                         : '${schedule.day} • ${_formatTime(schedule.startTime)} - ${_formatTime(schedule.endTime)}',
                                     style: TextStyle(
-                                      fontSize: 11.sp,
+                                      fontSize: 13.sp,
                                       color: isReplacement
                                           ? AppColors.accentOrange
                                           : AppColors.textDark,
@@ -1150,11 +1150,12 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                                     ),
                                     SizedBox(width: 0.5.w),
                                     ConstrainedBox(
-                                      constraints: BoxConstraints(maxWidth: 18.w),
+                                      constraints:
+                                          BoxConstraints(maxWidth: 18.w),
                                       child: Text(
                                         schedule.location,
                                         style: TextStyle(
-                                          fontSize: 10.sp,
+                                          fontSize: 13.sp,
                                           color: AppColors.textLight,
                                         ),
                                         overflow: TextOverflow.ellipsis,
@@ -1165,16 +1166,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                               ],
                             ),
                           );
-                        }).toList(),
-                        if (activeSchedules.length > 3)
-                          Text(
-                            '+${activeSchedules.length - 3} more',
-                            style: TextStyle(
-                              fontSize: 10.sp,
-                              color: AppColors.primaryBlue,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                        }),
                       ],
                     ),
                   ),

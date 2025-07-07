@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:sizer/sizer.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
 import 'package:mytuition/features/payments/domain/entities/payment_info.dart';
 import 'package:mytuition/features/payments/presentation/bloc/payment_info_bloc.dart';
@@ -22,14 +23,15 @@ class OtherMethodBottomSheet {
         backgroundColor: Theme.of(context).colorScheme.background,
         topBarTitle: Text(
           method == null ? 'Add Payment Method' : 'Edit Payment Method',
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
+            fontSize: 16.sp,
           ),
         ),
         isTopBarLayerAlwaysVisible: true,
         trailingNavBarWidget: IconButton(
-          padding: const EdgeInsets.all(16),
-          icon: const Icon(Icons.close),
+          padding: EdgeInsets.all(4.w),
+          icon: Icon(Icons.close, size: 6.w),
           onPressed: () => Navigator.of(context).pop(),
         ),
         child: LayoutBuilder(
@@ -110,7 +112,7 @@ class _OtherMethodFormState extends State<_OtherMethodForm> {
         }
       },
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(4.w),
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
@@ -121,10 +123,19 @@ class _OtherMethodFormState extends State<_OtherMethodForm> {
                 // Method name field
                 TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(
+                  style: TextStyle(fontSize: 14.sp),
+                  decoration: InputDecoration(
                     labelText: 'Payment Method Name',
+                    labelStyle: TextStyle(fontSize: 14.sp),
                     hintText: 'e.g., Cash, Money Order, PayPal',
-                    border: OutlineInputBorder(),
+                    hintStyle: TextStyle(fontSize: 13.sp),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(2.w),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 4.w,
+                      vertical: 3.5.w,
+                    ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -133,15 +144,24 @@ class _OtherMethodFormState extends State<_OtherMethodForm> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 4.w),
 
                 // Details field
                 TextFormField(
                   controller: _detailsController,
-                  decoration: const InputDecoration(
+                  style: TextStyle(fontSize: 14.sp),
+                  decoration: InputDecoration(
                     labelText: 'Details',
+                    labelStyle: TextStyle(fontSize: 14.sp),
                     hintText: 'Enter payment method details and instructions',
-                    border: OutlineInputBorder(),
+                    hintStyle: TextStyle(fontSize: 13.sp),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(2.w),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 4.w,
+                      vertical: 3.5.w,
+                    ),
                   ),
                   maxLines: 4,
                   validator: (value) {
@@ -151,16 +171,16 @@ class _OtherMethodFormState extends State<_OtherMethodForm> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 4.w),
 
                 // Is active switch
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Active',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                       ),
                     ),
                     Switch(
@@ -174,7 +194,7 @@ class _OtherMethodFormState extends State<_OtherMethodForm> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 6.w),
 
                 // Save button
                 BlocBuilder<PaymentInfoBloc, PaymentInfoState>(
@@ -184,14 +204,17 @@ class _OtherMethodFormState extends State<_OtherMethodForm> {
                     return ElevatedButton(
                       onPressed: isLoading ? null : _saveMethod,
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: EdgeInsets.symmetric(vertical: 3.5.w),
                         backgroundColor: AppColors.primaryBlue,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(2.w),
+                        ),
                       ),
                       child: isLoading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
+                          ? SizedBox(
+                              width: 6.w,
+                              height: 6.w,
+                              child: const CircularProgressIndicator(
                                 color: Colors.white,
                                 strokeWidth: 2,
                               ),
@@ -200,9 +223,9 @@ class _OtherMethodFormState extends State<_OtherMethodForm> {
                               widget.method == null
                                   ? 'Add Method'
                                   : 'Save Changes',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                                fontSize: 16.sp,
                                 color: Colors.white,
                               ),
                             ),
