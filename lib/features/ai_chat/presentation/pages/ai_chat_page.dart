@@ -239,7 +239,7 @@ class _AIChatPageState extends State<AIChatPage> {
                   'Setting up your AI tutor...',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: AppColors.textMedium,
-                        fontSize: 12.sp,
+                        fontSize: 16.sp,
                       ),
                 ),
                 if (widget.studentId.isNotEmpty) ...[
@@ -248,7 +248,7 @@ class _AIChatPageState extends State<AIChatPage> {
                     'Student: ${widget.studentId}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.textLight,
-                          fontSize: 9.sp,
+                          fontSize: 14.sp,
                         ),
                   ),
                 ],

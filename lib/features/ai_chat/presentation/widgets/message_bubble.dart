@@ -129,7 +129,7 @@ class MessageBubble extends StatelessWidget {
           'Thinking...',
           style: TextStyle(
             color: AppColors.textMedium,
-            fontSize: 10.sp,
+            fontSize: 13.sp,
             fontStyle: FontStyle.italic,
           ),
         ),

@@ -484,7 +484,7 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
             Text(
               label,
               style: TextStyle(
-                fontSize: 10.sp,
+                fontSize: 14.sp,
                 color: color,
                 fontWeight: FontWeight.w600,
               ),
@@ -786,7 +786,7 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
                   Text(
                     'You have outstanding tuition fees. Please contact your tutor for payment details.',
                     style: TextStyle(
-                      fontSize: 12.sp,
+                      fontSize: 13.sp,
                       color: AppColors.textMedium,
                     ),
                   ),
@@ -932,7 +932,7 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
                 child: Text(
                   task.title,
                   style: TextStyle(
-                    fontSize: 15.sp,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textDark,
                   ),
@@ -949,7 +949,7 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
                 child: Text(
                   task.dueDateText,
                   style: TextStyle(
-                    fontSize: 10.sp,
+                    fontSize: 12.sp,
                     color: task.isOverdue
                         ? AppColors.error
                         : AppColors.primaryBlue,
@@ -963,7 +963,7 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
           Text(
             task.courseName,
             style: TextStyle(
-              fontSize: 12.sp,
+              fontSize: 13.sp,
               color: AppColors.textMedium,
             ),
           ),
@@ -972,7 +972,7 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
             Text(
               task.description,
               style: TextStyle(
-                fontSize: 11.sp,
+                fontSize: 13.sp,
                 color: AppColors.textMedium,
               ),
               maxLines: 2,

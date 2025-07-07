@@ -20,6 +20,12 @@ import 'package:mytuition/features/tasks/presentation/bloc/task_state.dart';
 import 'package:mytuition/features/attendance/presentation/bloc/attendance_bloc.dart';
 import 'package:mytuition/features/attendance/presentation/bloc/attendance_event.dart';
 import 'package:mytuition/features/attendance/presentation/bloc/attendance_state.dart';
+import 'package:mytuition/features/tasks/domain/entities/student_task.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:go_router/go_router.dart';
+import 'package:mytuition/config/router/route_names.dart';
+import 'package:mytuition/features/attendance/data/models/attendance_model.dart';
+import 'package:mytuition/features/attendance/domain/entities/attendance.dart';
 
 class StudentCourseDetailPage extends StatefulWidget {
   final String courseId;
@@ -42,6 +48,10 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
   bool _showTitle = false;
   String? _currentStudentId;
 
+  // Store student task data for performance calculation
+  Map<String, StudentTask> _studentTaskMap = {};
+  List<StudentTask> _studentTasks = [];
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +67,8 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
     final authState = context.read<AuthBloc>().state;
     if (authState is Authenticated) {
       _currentStudentId = authState.user.studentId;
+      // Load student-specific task data
+      _loadStudentTaskData();
     }
   }
 
@@ -65,6 +77,40 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
     _tabController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  // Load student-specific task data from Firestore
+  Future<void> _loadStudentTaskData() async {
+    if (_currentStudentId == null) return;
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('student_tasks')
+          .where('studentId', isEqualTo: _currentStudentId)
+          .get();
+
+      setState(() {
+        _studentTaskMap = {};
+        _studentTasks = [];
+        for (var doc in snapshot.docs) {
+          final data = doc.data();
+          final studentTask = StudentTask(
+            id: doc.id,
+            taskId: data['taskId'] ?? '',
+            studentId: data['studentId'] ?? '',
+            remarks: data['remarks'] ?? '',
+            isCompleted: data['isCompleted'] ?? false,
+            completedAt: data['completedAt'] != null
+                ? (data['completedAt'] as Timestamp).toDate()
+                : null,
+          );
+          _studentTasks.add(studentTask);
+          _studentTaskMap[studentTask.taskId] = studentTask;
+        }
+      });
+    } catch (e) {
+      print('Error loading student task data: $e');
+    }
   }
 
   @override
@@ -393,11 +439,13 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
                       .toList();
                   totalTasks = courseTasks.length;
 
-                  // TODO: Implement proper student-specific task completion tracking
-                  // Should check student_tasks collection with document pattern: {taskId}-{studentId}
-                  // For now, using the task's isCompleted field as fallback
-                  completedTasks =
-                      courseTasks.where((task) => task.isCompleted).length;
+                  // Check student-specific completion status
+                  for (final task in courseTasks) {
+                    final studentTask = _studentTaskMap[task.id];
+                    if (studentTask?.isCompleted ?? false) {
+                      completedTasks++;
+                    }
+                  }
                 }
 
                 final progressPercentage = totalTasks > 0
@@ -430,8 +478,10 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
                       .toList();
 
                   final totalClasses = studentAttendanceRecords.length;
+
                   final presentClasses = studentAttendanceRecords
-                      .where((record) => record.status == 'present')
+                      .where(
+                          (record) => record.status == AttendanceStatus.present)
                       .length;
 
                   attendanceRate = totalClasses > 0
@@ -461,13 +511,14 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
                       .where((task) => task.courseId == widget.courseId)
                       .toList();
 
-                  // TODO: Check student_tasks collection for completion status per student
-                  // For now, using task's isCompleted field as fallback
+                  // Check student-specific completion status for overdue calculation
                   for (final task in courseTasks) {
-                    if (task.dueDate != null &&
-                        task.dueDate!.isBefore(now) &&
-                        !task.isCompleted) {
-                      overdueTasks++;
+                    if (task.dueDate != null && task.dueDate!.isBefore(now)) {
+                      final studentTask = _studentTaskMap[task.id];
+                      final isCompleted = studentTask?.isCompleted ?? false;
+                      if (!isCompleted) {
+                        overdueTasks++;
+                      }
                     }
                   }
                 }
@@ -531,6 +582,8 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
           _buildUpcomingEventsCard(),
           SizedBox(height: 3.h),
           _buildPerformanceOverviewCard(),
+          SizedBox(height: 3.h),
+          _buildAttendanceHistoryCard(),
         ],
       ),
     );
@@ -625,54 +678,172 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
   }
 
   Widget _buildUpcomingEventsCard() {
-    return BlocBuilder<TaskBloc, TaskState>(
-      builder: (context, taskState) {
-        return Card(
-          elevation: 2,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: EdgeInsets.all(4.w),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    return BlocBuilder<CourseBloc, CourseState>(
+      builder: (context, courseState) {
+        return BlocBuilder<TaskBloc, TaskState>(
+          builder: (context, taskState) {
+            final List<Widget> eventItems = [];
+
+            // Add upcoming schedules
+            if (courseState is CourseDetailsLoaded) {
+              final course = courseState.course;
+              final now = DateTime.now();
+              final today = DateTime(now.year, now.month, now.day);
+
+              // Get next class info
+              for (final schedule in course.schedules) {
+                if (schedule.isActive) {
+                  if (schedule.isReplacement && schedule.specificDate != null) {
+                    final scheduleDate = DateTime(
+                      schedule.specificDate!.year,
+                      schedule.specificDate!.month,
+                      schedule.specificDate!.day,
+                    );
+                    if (scheduleDate.isAfter(today) ||
+                        scheduleDate.isAtSameMomentAs(today)) {
+                      String dateStr;
+                      if (scheduleDate.isAtSameMomentAs(today)) {
+                        dateStr =
+                            'Today ${CourseDetailUtils.formatTime(schedule.startTime)}';
+                      } else if (scheduleDate.difference(today).inDays == 1) {
+                        dateStr =
+                            'Tomorrow ${CourseDetailUtils.formatTime(schedule.startTime)}';
+                      } else {
+                        dateStr = DateFormat('MMM d').format(scheduleDate) +
+                            ' ${CourseDetailUtils.formatTime(schedule.startTime)}';
+                      }
+                      eventItems.add(_buildEventItem(
+                        'Makeup Class',
+                        dateStr,
+                        Icons.event_repeat,
+                        AppColors.accentOrange,
+                      ));
+                    }
+                  } else if (schedule.isRegular) {
+                    // Find next regular class
+                    const dayNames = [
+                      'Monday',
+                      'Tuesday',
+                      'Wednesday',
+                      'Thursday',
+                      'Friday',
+                      'Saturday',
+                      'Sunday'
+                    ];
+                    final currentDayIndex = now.weekday - 1;
+
+                    for (int i = 0; i < 7; i++) {
+                      final checkDay = (currentDayIndex + i) % 7;
+                      final dayName = dayNames[checkDay];
+
+                      if (schedule.day == dayName) {
+                        String dateStr;
+                        if (i == 0 &&
+                            TimeOfDay.fromDateTime(now).hour <
+                                schedule.startTime.hour) {
+                          dateStr =
+                              'Today ${CourseDetailUtils.formatTime(schedule.startTime)}';
+                        } else if (i == 1 ||
+                            (i == 0 &&
+                                TimeOfDay.fromDateTime(now).hour >=
+                                    schedule.startTime.hour)) {
+                          dateStr =
+                              'Tomorrow ${CourseDetailUtils.formatTime(schedule.startTime)}';
+                        } else {
+                          dateStr =
+                              '$dayName ${CourseDetailUtils.formatTime(schedule.startTime)}';
+                        }
+
+                        if (eventItems.isEmpty) {
+                          // Only add if no replacement class found
+                          eventItems.add(_buildEventItem(
+                            'Next Class',
+                            dateStr,
+                            Icons.school,
+                            AppColors.primaryBlue,
+                          ));
+                        }
+                        break;
+                      }
+                    }
+                    if (eventItems.isNotEmpty)
+                      break; // Stop after finding next class
+                  }
+                }
+              }
+            }
+
+            // Add upcoming tasks
+            if (taskState is TasksLoaded && _currentStudentId != null) {
+              final upcomingTasks = taskState.tasks.where((task) {
+                if (task.courseId != widget.courseId || task.dueDate == null) {
+                  return false;
+                }
+                // Check student-specific completion status
+                final studentTask = _studentTaskMap[task.id];
+                final isCompleted = studentTask?.isCompleted ?? false;
+                return !isCompleted && task.dueDate!.isAfter(DateTime.now());
+              }).toList()
+                ..sort((a, b) => a.dueDate!.compareTo(b.dueDate!));
+
+              for (int i = 0;
+                  i < upcomingTasks.length && eventItems.length < 3;
+                  i++) {
+                final task = upcomingTasks[i];
+                eventItems.add(_buildEventItem(
+                  task.title,
+                  DateFormat('MMM d, yyyy').format(task.dueDate!),
+                  Icons.assignment,
+                  AppColors.warning,
+                ));
+              }
+            }
+
+            return Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: EdgeInsets.all(4.w),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.event_note,
-                        color: AppColors.primaryBlue, size: 6.w),
-                    SizedBox(width: 2.w),
-                    Text(
-                      'Upcoming Events',
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Icon(Icons.event_note,
+                            color: AppColors.primaryBlue, size: 6.w),
+                        SizedBox(width: 2.w),
+                        Text(
+                          'Upcoming Events',
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
+                    SizedBox(height: 2.h),
+                    if (eventItems.isEmpty)
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 2.h),
+                        child: Center(
+                          child: Text(
+                            'No upcoming events',
+                            style: TextStyle(
+                              color: AppColors.textMedium,
+                              fontSize: 12.sp,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      ...eventItems,
                   ],
                 ),
-                SizedBox(height: 2.h),
-                if (taskState is TasksLoaded && _currentStudentId != null) ...[
-                  // TODO: Filter by student-specific completion status from student_tasks collection
-                  ...taskState.tasks
-                      .where((task) =>
-                          task.courseId == widget.courseId &&
-                          !task.isCompleted &&
-                          task.dueDate != null &&
-                          task.dueDate!.isAfter(DateTime.now()))
-                      .take(3)
-                      .map((task) => _buildEventItem(
-                          task.title,
-                          DateFormat('MMM d, yyyy').format(task.dueDate!),
-                          Icons.assignment,
-                          AppColors.warning))
-                      .toList(),
-                ] else ...[
-                  _buildEventItem(
-                      'Next Class', 'Loading...', Icons.school, Colors.blue),
-                ],
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -700,14 +871,14 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
                 Text(
                   title,
                   style: TextStyle(
-                    fontSize: 12.sp,
+                    fontSize: 14.sp,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
                   date,
                   style: TextStyle(
-                    fontSize: 11.sp,
+                    fontSize: 14.sp,
                     color: AppColors.textMedium,
                   ),
                 ),
@@ -735,7 +906,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
                 Text(
                   'My Performance',
                   style: TextStyle(
-                    fontSize: 14.sp,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -744,39 +915,6 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
             SizedBox(height: 2.h),
             Row(
               children: [
-                Expanded(
-                  child: BlocBuilder<AttendanceBloc, AttendanceState>(
-                    builder: (context, attendanceState) {
-                      double attendanceRate = 0.0;
-
-                      if (attendanceState is StudentAttendanceLoaded &&
-                          _currentStudentId != null) {
-                        // Filter attendance records for this specific student and course
-                        final studentAttendanceRecords = attendanceState
-                            .attendanceRecords
-                            .where((record) =>
-                                record.studentId == _currentStudentId &&
-                                record.courseId == widget.courseId)
-                            .toList();
-
-                        final totalClasses = studentAttendanceRecords.length;
-                        final presentClasses = studentAttendanceRecords
-                            .where((record) => record.status == 'present')
-                            .length;
-
-                        attendanceRate = totalClasses > 0
-                            ? (presentClasses / totalClasses)
-                            : 0.0;
-                      }
-
-                      return _buildPerformanceItem(
-                          'Attendance Rate',
-                          '${(attendanceRate * 100).round()}%',
-                          attendanceRate,
-                          AppColors.success);
-                    },
-                  ),
-                ),
                 SizedBox(width: 4.w),
                 Expanded(
                   child: BlocBuilder<TaskBloc, TaskState>(
@@ -792,12 +930,13 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
                             .toList();
                         totalTasks = courseTasks.length;
 
-                        // TODO: Implement proper student-specific task completion tracking
-                        // Should check student_tasks collection with document pattern: {taskId}-{studentId}
-                        // For now, using the task's isCompleted field as fallback
-                        completedTasks = courseTasks
-                            .where((task) => task.isCompleted)
-                            .length;
+                        // Check student-specific completion status
+                        for (final task in courseTasks) {
+                          final studentTask = _studentTaskMap[task.id];
+                          if (studentTask?.isCompleted ?? false) {
+                            completedTasks++;
+                          }
+                        }
                       }
 
                       final completionRate =
@@ -827,7 +966,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
         Text(
           label,
           style: TextStyle(
-            fontSize: 11.sp,
+            fontSize: 14.sp,
             color: AppColors.textMedium,
           ),
         ),
@@ -1155,6 +1294,240 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
     }
 
     return 'TBD';
+  }
+
+  Widget _buildAttendanceHistoryCard() {
+    return BlocBuilder<AttendanceBloc, AttendanceState>(
+      builder: (context, state) {
+        return Card(
+          elevation: 2,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: EdgeInsets.all(4.w),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.history_edu,
+                        color: AppColors.primaryBlue, size: 6.w),
+                    SizedBox(width: 2.w),
+                    Text(
+                      'Attendance History',
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 2.h),
+                if (state is StudentAttendanceLoaded &&
+                    _currentStudentId != null) ...[
+                  // Filter attendance records for this specific student and course
+                  Builder(
+                    builder: (context) {
+                      final studentAttendanceRecords = state.attendanceRecords
+                          .where((record) =>
+                              record.studentId == _currentStudentId &&
+                              record.courseId == widget.courseId)
+                          .toList()
+                        ..sort((a, b) => b.date
+                            .compareTo(a.date)); // Sort by date (newest first)
+
+                      if (studentAttendanceRecords.isEmpty) {
+                        return Padding(
+                          padding: EdgeInsets.symmetric(vertical: 3.h),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Icon(Icons.event_busy,
+                                    size: 8.w, color: AppColors.textMedium),
+                                SizedBox(height: 1.h),
+                                Text(
+                                  'No attendance records yet',
+                                  style: TextStyle(
+                                    color: AppColors.textMedium,
+                                    fontSize: 12.sp,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
+                      // Show latest 5 attendance records
+                      final recordsToShow =
+                          studentAttendanceRecords.take(5).toList();
+
+                      return Column(
+                        children: [
+                          ...recordsToShow
+                              .map((record) => _buildAttendanceItem(record)),
+                          if (studentAttendanceRecords.length > 5) ...[
+                            SizedBox(height: 2.h),
+                            TextButton(
+                              onPressed: () {
+                                // Navigate to full attendance history page
+                                context.pushNamed(
+                                  RouteNames.studentAttendanceHistory,
+                                );
+                              },
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'View All (${studentAttendanceRecords.length} records)',
+                                    style: TextStyle(fontSize: 12.sp),
+                                  ),
+                                  SizedBox(width: 1.w),
+                                  Icon(Icons.arrow_forward, size: 4.w),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      );
+                    },
+                  ),
+                ] else if (state is AttendanceLoading) ...[
+                  Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 3.h),
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                ] else ...[
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 3.h),
+                    child: Center(
+                      child: Text(
+                        'Unable to load attendance history',
+                        style: TextStyle(
+                          color: AppColors.textMedium,
+                          fontSize: 12.sp,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAttendanceItem(Attendance record) {
+    // Determine the status color and icon
+    Color statusColor;
+    IconData statusIcon;
+    String statusText;
+
+    switch (record.status) {
+      case AttendanceStatus.present:
+        statusColor = AppColors.success;
+        statusIcon = Icons.check_circle;
+        statusText = 'Present';
+        break;
+      case AttendanceStatus.absent:
+        statusColor = AppColors.error;
+        statusIcon = Icons.cancel;
+        statusText = 'Absent';
+        break;
+      case AttendanceStatus.late:
+        statusColor = AppColors.warning;
+        statusIcon = Icons.access_time_filled;
+        statusText = 'Late';
+        break;
+      case AttendanceStatus.excused:
+        statusColor = AppColors.accentTeal;
+        statusIcon = Icons.info;
+        statusText = 'Excused';
+        break;
+    }
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 2.h),
+      padding: EdgeInsets.all(3.w),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundLight,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(2.w),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              statusIcon,
+              color: statusColor,
+              size: 5.w,
+            ),
+          ),
+          SizedBox(width: 3.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  DateFormat('EEEE, MMM d, yyyy').format(record.date),
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (record is AttendanceModel &&
+                    record.scheduleMetadata != null) ...[
+                  Text(
+                    '${record.scheduleTimeDisplay} • ${record.scheduleLocation ?? 'Location'}',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      color: AppColors.textMedium,
+                    ),
+                  ),
+                ],
+                if (record.remarks != null && record.remarks!.isNotEmpty) ...[
+                  SizedBox(height: 0.5.h),
+                  Text(
+                    record.remarks!,
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      color: AppColors.textMedium,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.h),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: statusColor.withOpacity(0.3)),
+            ),
+            child: Text(
+              statusText,
+              style: TextStyle(
+                color: statusColor,
+                fontSize: 11.sp,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

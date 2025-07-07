@@ -119,7 +119,17 @@ class TaskRepositoryImpl implements TaskRepository {
   @override
   Future<void> updateTask(Task task) async {
     try {
-      final taskModel = task as TaskModel;
+      final taskModel = task is TaskModel
+          ? task
+          : TaskModel(
+              id: task.id,
+              courseId: task.courseId,
+              title: task.title,
+              description: task.description,
+              createdAt: task.createdAt,
+              dueDate: task.dueDate,
+              isCompleted: task.isCompleted,
+            );
       await _firestore
           .collection('tasks')
           .doc(task.id)

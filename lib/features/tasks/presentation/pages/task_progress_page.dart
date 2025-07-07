@@ -23,24 +23,24 @@ class TaskProgressPage extends StatefulWidget {
   State<TaskProgressPage> createState() => _TaskProgressPageState();
 }
 
-class _TaskProgressPageState extends State<TaskProgressPage> 
+class _TaskProgressPageState extends State<TaskProgressPage>
     with SingleTickerProviderStateMixin {
   Task? _task;
   List<StudentTask> _studentTasks = [];
-  
+
   // Student names map
   final Map<String, String> _studentNames = {};
   bool _isLoading = true;
   bool _isReloading = false;
-  
+
   // Bulk selection
   bool _isSelectionMode = false;
   final Set<String> _selectedStudentIds = {};
-  
+
   // Animation controller for selection mode
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
-  
+
   // Filter and sort
   String _filterBy = 'all'; // 'all', 'completed', 'pending'
   String _sortBy = 'name'; // 'name', 'status'
@@ -48,17 +48,17 @@ class _TaskProgressPageState extends State<TaskProgressPage>
   @override
   void initState() {
     super.initState();
-    
+
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    
+
     _fadeAnimation = CurvedAnimation(
       parent: _animationController,
       curve: Curves.easeInOut,
     );
-    
+
     _loadTaskData();
   }
 
@@ -116,8 +116,8 @@ class _TaskProgressPageState extends State<TaskProgressPage>
         if (!_isReloading) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error loading task details: $e', 
-                style: TextStyle(fontSize: 14.sp)),
+              content: Text('Error loading task details: $e',
+                  style: TextStyle(fontSize: 14.sp)),
               backgroundColor: AppColors.error,
             ),
           );
@@ -250,7 +250,7 @@ class _TaskProgressPageState extends State<TaskProgressPage>
   List<StudentTask> _sortAndFilterTasks(List<StudentTask> tasks) {
     // First filter
     List<StudentTask> filteredTasks = tasks;
-    
+
     switch (_filterBy) {
       case 'completed':
         filteredTasks = tasks.where((task) => task.isCompleted).toList();
@@ -321,8 +321,8 @@ class _TaskProgressPageState extends State<TaskProgressPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Mark ${_selectedStudentIds.length} Tasks Complete?', 
-          style: TextStyle(fontSize: 16.sp)),
+        title: Text('Mark ${_selectedStudentIds.length} Tasks Complete?',
+            style: TextStyle(fontSize: 16.sp)),
         content: Text(
           'This will mark the selected students\' tasks as completed.',
           style: TextStyle(fontSize: 14.sp),
@@ -351,7 +351,7 @@ class _TaskProgressPageState extends State<TaskProgressPage>
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Mark ${_selectedStudentIds.length} Tasks Incomplete?',
-          style: TextStyle(fontSize: 16.sp)),
+            style: TextStyle(fontSize: 16.sp)),
         content: Text(
           'This will mark the selected students\' tasks as incomplete.',
           style: TextStyle(fontSize: 14.sp),
@@ -559,7 +559,8 @@ class _TaskProgressPageState extends State<TaskProgressPage>
             if (!_isReloading) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(state.message, style: TextStyle(fontSize: 14.sp)),
+                  content:
+                      Text(state.message, style: TextStyle(fontSize: 14.sp)),
                   backgroundColor: AppColors.error,
                 ),
               );
@@ -613,21 +614,21 @@ class _TaskProgressPageState extends State<TaskProgressPage>
 
   Widget _buildContent() {
     final filteredTasks = _sortAndFilterTasks(_studentTasks);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Task details card
         _buildTaskDetailsCard(),
-        
+
         // Progress summary
         _buildProgressSummary(),
 
         // Students list
         Expanded(
-          child: filteredTasks.isEmpty 
-            ? _buildEmptyState() 
-            : _buildStudentList(filteredTasks),
+          child: filteredTasks.isEmpty
+              ? _buildEmptyState()
+              : _buildStudentList(filteredTasks),
         ),
       ],
     );
@@ -635,7 +636,7 @@ class _TaskProgressPageState extends State<TaskProgressPage>
 
   Widget _buildTaskDetailsCard() {
     final isOverdue = TaskUtils.isTaskOverdue(_task!.dueDate, false);
-    
+
     return Container(
       margin: EdgeInsets.all(4.w),
       padding: EdgeInsets.all(4.w),
@@ -699,7 +700,8 @@ class _TaskProgressPageState extends State<TaskProgressPage>
               if (isOverdue) ...[
                 SizedBox(width: 3.w),
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 0.5.h),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 2.w, vertical: 0.5.h),
                   decoration: BoxDecoration(
                     color: Colors.orange,
                     borderRadius: BorderRadius.circular(2.w),
@@ -722,7 +724,8 @@ class _TaskProgressPageState extends State<TaskProgressPage>
   }
 
   Widget _buildProgressSummary() {
-    final completedCount = _studentTasks.where((task) => task.isCompleted).length;
+    final completedCount =
+        _studentTasks.where((task) => task.isCompleted).length;
     final totalCount = _studentTasks.length;
     final percentage = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
@@ -769,11 +772,11 @@ class _TaskProgressPageState extends State<TaskProgressPage>
               value: percentage / 100,
               minHeight: 2.h,
               backgroundColor: AppColors.backgroundDark,
-              color: percentage == 100 
-                ? AppColors.success 
-                : percentage >= 70 
-                  ? AppColors.primaryBlue
-                  : AppColors.warning,
+              color: percentage == 100
+                  ? AppColors.success
+                  : percentage >= 70
+                      ? AppColors.primaryBlue
+                      : AppColors.warning,
             ),
           ),
           SizedBox(height: 1.h),
@@ -803,15 +806,15 @@ class _TaskProgressPageState extends State<TaskProgressPage>
           SizedBox(height: 2.h),
           Text(
             _filterBy == 'all'
-              ? 'No student progress available'
-              : 'No ${_filterBy} tasks',
+                ? 'No student progress available'
+                : 'No ${_filterBy} tasks',
             style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 1.h),
           Text(
             _filterBy == 'all'
-              ? 'Students need to be enrolled in this course'
-              : 'Try changing the filter to see more tasks',
+                ? 'Students need to be enrolled in this course'
+                : 'Try changing the filter to see more tasks',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppColors.textMedium,
@@ -838,7 +841,7 @@ class _TaskProgressPageState extends State<TaskProgressPage>
     // Get student name from our map, or use student ID if name not found
     final studentName = _studentNames[studentTask.studentId] ??
         'Student ${studentTask.studentId}';
-    
+
     final isSelected = _selectedStudentIds.contains(studentTask.studentId);
 
     return Card(
@@ -846,21 +849,21 @@ class _TaskProgressPageState extends State<TaskProgressPage>
       elevation: isSelected ? 4 : 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(3.w),
-        side: isSelected 
-          ? BorderSide(color: AppColors.primaryBlue, width: 2)
-          : BorderSide.none,
+        side: isSelected
+            ? BorderSide(color: AppColors.primaryBlue, width: 2)
+            : BorderSide.none,
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(3.w),
         onTap: _isSelectionMode
-          ? () => _toggleStudentSelection(studentTask.studentId)
-          : null,
+            ? () => _toggleStudentSelection(studentTask.studentId)
+            : null,
         onLongPress: !_isSelectionMode
-          ? () {
-              _toggleSelectionMode();
-              _toggleStudentSelection(studentTask.studentId);
-            }
-          : null,
+            ? () {
+                _toggleSelectionMode();
+                _toggleStudentSelection(studentTask.studentId);
+              }
+            : null,
         child: Padding(
           padding: EdgeInsets.all(4.w),
           child: Column(
@@ -872,7 +875,8 @@ class _TaskProgressPageState extends State<TaskProgressPage>
                   if (_isSelectionMode) ...[
                     Checkbox(
                       value: isSelected,
-                      onChanged: (_) => _toggleStudentSelection(studentTask.studentId),
+                      onChanged: (_) =>
+                          _toggleStudentSelection(studentTask.studentId),
                       activeColor: AppColors.primaryBlue,
                     ),
                     SizedBox(width: 2.w),
@@ -892,7 +896,7 @@ class _TaskProgressPageState extends State<TaskProgressPage>
                         Text(
                           studentTask.studentId,
                           style: TextStyle(
-                            fontSize: 11.sp,
+                            fontSize: 14.sp,
                             color: AppColors.textMedium,
                           ),
                         ),
@@ -929,7 +933,9 @@ class _TaskProgressPageState extends State<TaskProgressPage>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      studentTask.isCompleted ? Icons.check_circle : Icons.pending,
+                      studentTask.isCompleted
+                          ? Icons.check_circle
+                          : Icons.pending,
                       color: studentTask.isCompleted
                           ? AppColors.success
                           : AppColors.warning,
@@ -982,7 +988,7 @@ class _TaskProgressPageState extends State<TaskProgressPage>
                           'Tutor Remarks',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 13.sp,
+                            fontSize: 14.sp,
                           ),
                         ),
                         if (!_isSelectionMode)
@@ -1004,13 +1010,13 @@ class _TaskProgressPageState extends State<TaskProgressPage>
                           ? 'No remarks yet. Tap edit to add feedback.'
                           : studentTask.remarks,
                       style: TextStyle(
-                        color: studentTask.remarks.isEmpty 
-                          ? AppColors.textLight 
-                          : AppColors.textDark,
-                        fontStyle: studentTask.remarks.isEmpty 
-                          ? FontStyle.italic 
-                          : null,
-                        fontSize: 12.sp,
+                        color: studentTask.remarks.isEmpty
+                            ? AppColors.textLight
+                            : AppColors.textDark,
+                        fontStyle: studentTask.remarks.isEmpty
+                            ? FontStyle.italic
+                            : null,
+                        fontSize: 14.sp,
                       ),
                     ),
                   ],
@@ -1048,7 +1054,8 @@ class _TaskProgressPageState extends State<TaskProgressPage>
             ),
             const Spacer(),
             OutlinedButton.icon(
-              onPressed: _selectedStudentIds.isEmpty ? null : _bulkMarkIncomplete,
+              onPressed:
+                  _selectedStudentIds.isEmpty ? null : _bulkMarkIncomplete,
               icon: Icon(Icons.unpublished, size: 4.w),
               label: Text('Mark Incomplete', style: TextStyle(fontSize: 12.sp)),
               style: OutlinedButton.styleFrom(
@@ -1073,7 +1080,8 @@ class _TaskProgressPageState extends State<TaskProgressPage>
 
   void _showRemarksDialog(StudentTask studentTask) {
     final remarksController = TextEditingController(text: studentTask.remarks);
-    final studentName = _studentNames[studentTask.studentId] ?? studentTask.studentId;
+    final studentName =
+        _studentNames[studentTask.studentId] ?? studentTask.studentId;
 
     showDialog(
       context: context,

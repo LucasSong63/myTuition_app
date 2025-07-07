@@ -10,6 +10,8 @@ import 'package:mytuition/features/tasks/domain/entities/task.dart';
 import 'package:mytuition/features/tasks/presentation/bloc/task_bloc.dart';
 import 'package:mytuition/features/tasks/presentation/bloc/task_event.dart';
 import 'package:mytuition/features/tasks/presentation/bloc/task_state.dart';
+import 'package:mytuition/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:mytuition/features/auth/presentation/bloc/auth_state.dart';
 
 class CourseTasksSection extends StatelessWidget {
   final String courseId;
@@ -167,7 +169,7 @@ class CourseTasksSection extends StatelessWidget {
                   ],
                 ),
                 SizedBox(height: 2.h),
-                
+
                 // Tasks list or empty state
                 if (tasks.isEmpty)
                   _buildEmptyState()
@@ -215,9 +217,9 @@ class CourseTasksSection extends StatelessWidget {
               ),
               SizedBox(height: 1.h),
               Text(
-                isTutor 
-                  ? 'Create tasks to help students practice'
-                  : 'Your tutor will assign tasks soon',
+                isTutor
+                    ? 'Create tasks to help students practice'
+                    : 'Your tutor will assign tasks soon',
                 style: TextStyle(
                   fontSize: 12.sp,
                   color: AppColors.textMedium,
@@ -294,35 +296,74 @@ class CourseTasksSection extends StatelessWidget {
   }
 
   Widget _buildTaskItem(BuildContext context, Task task) {
+    // For students, get their specific completion status
+    bool isTaskCompleted = task.isCompleted;
+    String? studentId;
+
+    if (!isTutor) {
+      final authState = context.read<AuthBloc>().state;
+      if (authState is Authenticated) {
+        studentId = authState.user.studentId;
+      }
+    }
+
     final isOverdue = task.dueDate != null &&
         task.dueDate!.isBefore(DateTime.now()) &&
-        !task.isCompleted;
-    
-    final daysLeft = task.dueDate != null 
-      ? task.dueDate!.difference(DateTime.now()).inDays 
-      : null;
+        !isTaskCompleted;
 
-    // Determine status color and icon
+    final daysLeft = task.dueDate != null
+        ? task.dueDate!.difference(DateTime.now()).inDays
+        : null;
+
+    // Determine status color and icon based on role
     Color statusColor;
     IconData statusIcon;
     String statusText = '';
-    
-    if (task.isCompleted) {
-      statusColor = AppColors.success;
-      statusIcon = Icons.check_circle;
-      statusText = 'Completed';
-    } else if (isOverdue) {
-      statusColor = AppColors.error;
-      statusIcon = Icons.error;
-      statusText = 'Overdue';
-    } else if (daysLeft != null && daysLeft <= 2) {
-      statusColor = AppColors.warning;
-      statusIcon = Icons.warning;
-      statusText = daysLeft == 0 ? 'Due Today' : '$daysLeft ${daysLeft == 1 ? 'day' : 'days'} left';
+
+    if (isTutor) {
+      // For tutor: show general task status
+      if (task.isCompleted) {
+        statusColor = AppColors.success;
+        statusIcon = Icons.check_circle;
+        statusText = 'Completed by some students';
+      } else if (isOverdue) {
+        statusColor = AppColors.error;
+        statusIcon = Icons.error;
+        statusText = 'Overdue';
+      } else if (daysLeft != null && daysLeft <= 2) {
+        statusColor = AppColors.warning;
+        statusIcon = Icons.warning;
+        statusText = daysLeft == 0
+            ? 'Due Today'
+            : '$daysLeft ${daysLeft == 1 ? 'day' : 'days'} left';
+      } else {
+        statusColor = AppColors.primaryBlue;
+        statusIcon = Icons.circle_outlined;
+        statusText = daysLeft != null ? '$daysLeft days left' : 'No due date';
+      }
     } else {
-      statusColor = AppColors.primaryBlue;
-      statusIcon = Icons.circle_outlined;
-      statusText = daysLeft != null ? '$daysLeft days left' : 'No due date';
+      // For student: show their personal completion status
+      // Note: This is using the general completion status for now
+      // In a real implementation, you'd check the student_tasks collection
+      if (isTaskCompleted) {
+        statusColor = AppColors.success;
+        statusIcon = Icons.check_circle;
+        statusText = 'Completed';
+      } else if (isOverdue) {
+        statusColor = AppColors.error;
+        statusIcon = Icons.error;
+        statusText = 'Overdue';
+      } else if (daysLeft != null && daysLeft <= 2) {
+        statusColor = AppColors.warning;
+        statusIcon = Icons.warning;
+        statusText = daysLeft == 0
+            ? 'Due Today'
+            : '$daysLeft ${daysLeft == 1 ? 'day' : 'days'} left';
+      } else {
+        statusColor = AppColors.primaryBlue;
+        statusIcon = Icons.circle_outlined;
+        statusText = daysLeft != null ? '$daysLeft days left' : 'No due date';
+      }
     }
 
     return Card(
@@ -358,7 +399,7 @@ class CourseTasksSection extends StatelessWidget {
                 ),
               ),
               SizedBox(width: 3.w),
-              
+
               // Task details
               Expanded(
                 child: Column(
@@ -367,12 +408,12 @@ class CourseTasksSection extends StatelessWidget {
                     Text(
                       task.title,
                       style: TextStyle(
-                        fontSize: 14.sp,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textDark,
-                        decoration: task.isCompleted 
-                          ? TextDecoration.lineThrough 
-                          : null,
+                        decoration: isTaskCompleted && !isTutor
+                            ? TextDecoration.lineThrough
+                            : null,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -391,13 +432,14 @@ class CourseTasksSection extends StatelessWidget {
                               ? DateFormat('dd MMM yyyy').format(task.dueDate!)
                               : 'No due date',
                           style: TextStyle(
-                            fontSize: 11.sp,
+                            fontSize: 14.sp,
                             color: AppColors.textMedium,
                           ),
                         ),
                         if (statusText.isNotEmpty) ...[
                           SizedBox(width: 2.w),
-                          Text('•', style: TextStyle(color: AppColors.textMedium)),
+                          Text('•',
+                              style: TextStyle(color: AppColors.textMedium)),
                           SizedBox(width: 2.w),
                           Container(
                             padding: EdgeInsets.symmetric(
@@ -411,7 +453,7 @@ class CourseTasksSection extends StatelessWidget {
                             child: Text(
                               statusText,
                               style: TextStyle(
-                                fontSize: 10.sp,
+                                fontSize: 12.sp,
                                 color: statusColor,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -425,17 +467,41 @@ class CourseTasksSection extends StatelessWidget {
                       Text(
                         task.description,
                         style: TextStyle(
-                          fontSize: 11.sp,
+                          fontSize: 14.sp,
                           color: AppColors.textMedium,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
+                    // For tutor, show completion stats
+                    if (isTutor && studentId == null) ...[
+                      SizedBox(height: 0.5.h),
+                      FutureBuilder<Map<String, int>>(
+                        future: _getTaskCompletionStats(context, task.id),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData) {
+                            final stats = snapshot.data!;
+                            final completed = stats['completed'] ?? 0;
+                            final total = stats['total'] ?? 0;
+
+                            return Text(
+                              'Completion: $completed/$total students',
+                              style: TextStyle(
+                                fontSize: 10.sp,
+                                color: AppColors.textMedium,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            );
+                          }
+                          return SizedBox.shrink();
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ),
-              
+
               // Arrow icon
               Icon(
                 Icons.arrow_forward_ios,
@@ -447,5 +513,17 @@ class CourseTasksSection extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // Helper method to get task completion statistics for tutors
+  Future<Map<String, int>> _getTaskCompletionStats(
+      BuildContext context, String taskId) async {
+    // In a real implementation, this would query the student_tasks collection
+    // to get actual completion stats
+    // For now, returning mock data
+    return {
+      'completed': 0,
+      'total': 0,
+    };
   }
 }

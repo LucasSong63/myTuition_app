@@ -920,11 +920,6 @@ class _TutorCoursesPageState extends State<TutorCoursesPage> {
                     onTap: () => _navigateToTasks(context, course),
                   ),
                   _buildQuickActionButton(
-                    icon: Icons.person_add,
-                    label: 'Enrollment',
-                    onTap: () => _navigateToEnrollment(context, course),
-                  ),
-                  _buildQuickActionButton(
                     icon: Icons.more_horiz,
                     label: 'More',
                     onTap: () => _showMoreOptions(context, course),

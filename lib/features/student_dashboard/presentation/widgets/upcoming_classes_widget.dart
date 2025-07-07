@@ -232,7 +232,7 @@ class UpcomingClassesWidget extends StatelessWidget {
                 child: Text(
                   class_.displayTitle,
                   style: TextStyle(
-                    fontSize: 15.sp,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textDark,
                   ),
@@ -284,7 +284,7 @@ class UpcomingClassesWidget extends StatelessWidget {
                 child: Text(
                   class_.location,
                   style: TextStyle(
-                    fontSize: 12.sp,
+                    fontSize: 13.sp,
                     color: AppColors.textMedium,
                   ),
                   overflow: TextOverflow.ellipsis,

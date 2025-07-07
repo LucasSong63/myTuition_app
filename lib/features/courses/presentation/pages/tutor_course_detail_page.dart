@@ -1146,7 +1146,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(5.w)),
       ),
-      builder: (context) => Container(
+      builder: (innerContext) => Container(
         padding: EdgeInsets.all(4.w),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1164,7 +1164,7 @@ class _TutorCourseDetailPageState extends State<TutorCourseDetailPage>
               subtitle: Text('Weekly recurring class',
                   style: TextStyle(fontSize: 12.sp)),
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(innerContext);
                 _showAddScheduleDialog(context, course.id);
               },
             ),

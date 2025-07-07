@@ -92,7 +92,7 @@ class ChatMessagesList extends StatelessWidget {
                 'I\'m your AI tutor, ready to help!',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: AppColors.primaryBlue,
-                      fontSize: 12.sp,
+                      fontSize: 14.sp,
                     ),
                 textAlign: TextAlign.center,
               ),
@@ -131,7 +131,7 @@ class ChatMessagesList extends StatelessWidget {
                               Theme.of(context).textTheme.labelLarge?.copyWith(
                                     fontWeight: FontWeight.w600,
                                     color: AppColors.textDark,
-                                    fontSize: 11.sp,
+                                    fontSize: 14.sp,
                                   ),
                         ),
                       ],
@@ -174,7 +174,7 @@ class ChatMessagesList extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppColors.accentTeal,
                             fontWeight: FontWeight.w600,
-                            fontSize: 11.sp,
+                            fontSize: 14.sp,
                           ),
                     ),
                   ],
@@ -206,7 +206,7 @@ class ChatMessagesList extends StatelessWidget {
                 children: [
                   Text(
                     item.$1,
-                    style: TextStyle(fontSize: 12.sp),
+                    style: TextStyle(fontSize: 13.sp),
                   ),
                   SizedBox(width: 1.5.w),
                   Expanded(
@@ -214,7 +214,7 @@ class ChatMessagesList extends StatelessWidget {
                       item.$2,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppColors.textMedium,
-                            fontSize: 9.sp,
+                            fontSize: 14.sp,
                           ),
                     ),
                   ),

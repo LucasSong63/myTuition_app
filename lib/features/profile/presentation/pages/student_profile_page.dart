@@ -154,7 +154,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
                             SizedBox(height: 2.5.h),
 
                             // Payment Information Section
-                            _buildSectionHeader('💳 Payment Information'),
+                            _buildSectionHeader("💳 Tutor's Bank Information"),
                             SizedBox(height: 1.5.h),
                             _buildPaymentInfoSection(user),
 

@@ -49,7 +49,7 @@ class DailyLimitReachedWidget extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             color: AppColors.error,
                             fontWeight: FontWeight.bold,
-                            fontSize: 12.sp,
+                            fontSize: 14.sp,
                           ),
                     ),
                     SizedBox(height: 0.5.h),
@@ -57,7 +57,7 @@ class DailyLimitReachedWidget extends StatelessWidget {
                       'You\'ve used all ${usage.dailyLimit} questions for today. Great job learning!',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppColors.textMedium,
-                            fontSize: 9.sp,
+                            fontSize: 12.sp,
                           ),
                     ),
                   ],
@@ -84,32 +84,13 @@ class DailyLimitReachedWidget extends StatelessWidget {
                   child: Text(
                     'Your questions reset at midnight. Come back tomorrow for more learning!',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontSize: 9.sp,
+                          fontSize: 14.sp,
                         ),
                   ),
                 ),
               ],
             ),
           ),
-          if (onStartNewSession != null) ...[
-            SizedBox(height: 1.5.h),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: onStartNewSession,
-                icon: const Icon(Icons.add_comment),
-                label: Text(
-                  'Start Fresh Conversation',
-                  style: TextStyle(fontSize: 10.sp),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primaryBlue,
-                  side: const BorderSide(color: AppColors.primaryBlue),
-                  padding: EdgeInsets.symmetric(vertical: 1.5.h),
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );

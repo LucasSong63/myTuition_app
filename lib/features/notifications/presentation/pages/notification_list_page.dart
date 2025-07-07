@@ -323,7 +323,7 @@ class _NotificationListPageState extends State<NotificationListPage> {
               _buildFilterOption('task_reminder', 'Task Reminders'),
               _buildFilterOption('tutor_notification', 'Tutor Notifications'),
               _buildFilterOption('class_announcement', 'Class Announcements'),
-              _buildFilterOption('test_notification', 'Test Notifications'),
+              // _buildFilterOption('test_notification', 'Test Notifications'),
             ],
           ),
         ),
@@ -427,13 +427,6 @@ class _NotificationListPageState extends State<NotificationListPage> {
               tooltip: 'Mark all as read',
               onPressed: _isMarkingAll ? null : _markAllAsRead,
             ),
-
-          // Refresh button
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: _isLoading ? null : _loadNotifications,
-          ),
         ],
       ),
       body: _buildBody(),

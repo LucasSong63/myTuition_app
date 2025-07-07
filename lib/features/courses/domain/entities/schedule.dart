@@ -51,9 +51,11 @@ class Schedule extends Equatable {
 
   bool get isExtension => type == ScheduleType.extension;
 
-  /// Check if this replacement schedule is expired (past its specific date)
+  /// Check if this schedule is expired (past its specific date)
+  /// Applies to both replacement and extension schedules
   bool get isExpired {
-    if (type != ScheduleType.replacement || specificDate == null) {
+    // Only replacement and extension schedules can expire
+    if ((type != ScheduleType.replacement && type != ScheduleType.extension) || specificDate == null) {
       return false;
     }
     final today = DateTime.now();
@@ -70,8 +72,8 @@ class Schedule extends Equatable {
   bool isRelevantForDate(DateTime date) {
     final checkDate = DateTime(date.year, date.month, date.day);
 
-    if (type == ScheduleType.replacement) {
-      // Replacement schedules are only relevant on their specific date
+    if (type == ScheduleType.replacement || type == ScheduleType.extension) {
+      // Replacement and extension schedules are only relevant on their specific date
       if (specificDate == null) return false;
       final scheduleDate = DateTime(
         specificDate!.year,
@@ -116,11 +118,13 @@ class Schedule extends Equatable {
 
   /// Get display subtitle with more details
   String get displaySubtitle {
-    if (type == ScheduleType.replacement && specificDate != null) {
+    if ((type == ScheduleType.replacement || type == ScheduleType.extension) && specificDate != null) {
       final dateStr =
           '${specificDate!.day}/${specificDate!.month}/${specificDate!.year}';
-      if (replacesDate != null) {
+      if (type == ScheduleType.replacement && replacesDate != null) {
         return 'Makeup for $replacesDate on $dateStr';
+      } else if (type == ScheduleType.extension) {
+        return 'Extension class on $dateStr';
       }
       return 'One-time class on $dateStr';
     }

@@ -377,7 +377,7 @@ class _ChatHistoryPageState extends State<ChatHistoryPage> {
               'Your previous conversations will appear here when you start new chat sessions.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppColors.textMedium,
-                    fontSize: 11.sp,
+                    fontSize: 15.sp,
                   ),
               textAlign: TextAlign.center,
             ),

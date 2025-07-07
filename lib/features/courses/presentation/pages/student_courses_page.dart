@@ -624,6 +624,17 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                       indicatorColor: AppColors.primaryBlue,
                       indicatorWeight: 3,
                       labelPadding: EdgeInsets.symmetric(horizontal: 2.w),
+                      indicator: const BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: AppColors.primaryBlue,
+                            width: 3.0,
+                          ),
+                        ),
+                      ),
+                      labelStyle: TextStyle(
+                          fontSize: 15.sp, fontWeight: FontWeight.w600),
+                      unselectedLabelStyle: TextStyle(fontSize: 12.sp),
                       tabs: daysWithSchedules.map((day) {
                         final isToday = day == _todayDayName;
                         final count = _schedulesByDay[day]?.length ?? 0;
@@ -637,7 +648,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                                   width: 1.5.w,
                                   height: 1.5.w,
                                   margin: EdgeInsets.only(right: 0.8.w),
-                                  decoration: BoxDecoration(
+                                  decoration: const BoxDecoration(
                                     color: AppColors.accentOrange,
                                     shape: BoxShape.circle,
                                   ),
@@ -648,7 +659,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                                   fontWeight: isToday
                                       ? FontWeight.bold
                                       : FontWeight.w500,
-                                  fontSize: 13.sp,
+                                  fontSize: 15.sp,
                                 ),
                               ),
                               SizedBox(width: 0.8.w),
@@ -1131,7 +1142,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                                         ? 'Replacement: ${DateFormat('d MMM').format(schedule.specificDate!)}'
                                         : '${schedule.day} • ${_formatTime(schedule.startTime)} - ${_formatTime(schedule.endTime)}',
                                     style: TextStyle(
-                                      fontSize: 13.sp,
+                                      fontSize: 14.sp,
                                       color: isReplacement
                                           ? AppColors.accentOrange
                                           : AppColors.textDark,
@@ -1145,7 +1156,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                                   children: [
                                     Icon(
                                       Icons.location_on,
-                                      size: 12.sp,
+                                      size: 14.sp,
                                       color: AppColors.textLight,
                                     ),
                                     SizedBox(width: 0.5.w),
@@ -1155,7 +1166,7 @@ class _StudentCoursesPageState extends State<StudentCoursesPage>
                                       child: Text(
                                         schedule.location,
                                         style: TextStyle(
-                                          fontSize: 13.sp,
+                                          fontSize: 14.sp,
                                           color: AppColors.textLight,
                                         ),
                                         overflow: TextOverflow.ellipsis,

@@ -473,16 +473,6 @@ class _TutorProfilePageState extends State<TutorProfilePage> {
               context.goNamed(RouteNames.tutorStudents);
             },
           ),
-          const Divider(height: 1),
-          ProfileMenuItem(
-            icon: Icons.assignment_outlined,
-            iconColor: AppColors.accentOrange,
-            title: 'Task Management',
-            subtitle: 'Create and manage assignments',
-            onTap: () {
-              context.goNamed(RouteNames.tutorTasks);
-            },
-          ),
         ],
       ),
     );
