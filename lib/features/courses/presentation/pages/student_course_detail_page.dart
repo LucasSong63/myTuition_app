@@ -100,8 +100,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
           }
 
           if (state is! CourseDetailsLoaded ||
-              (state is CourseDetailsLoaded &&
-                  state.course.id != widget.courseId)) {
+              (state.course.id != widget.courseId)) {
             context.read<CourseBloc>().add(
                   LoadCourseDetailsEvent(courseId: widget.courseId),
                 );
@@ -195,7 +194,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
                     ),
                   ),
                   labelStyle:
-                      TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600),
+                      TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600),
                   unselectedLabelStyle: TextStyle(fontSize: 12.sp),
                   tabs: const [
                     Tab(
@@ -274,7 +273,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
                       Text(
                         'Grade ${course.grade} • ${course.tutorName}',
                         style: TextStyle(
-                          fontSize: 12.sp,
+                          fontSize: 14.sp,
                           color: Colors.white.withOpacity(0.9),
                         ),
                       ),
@@ -290,7 +289,9 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
                 _buildStatCard('Class Size', '${course.enrollmentCount}',
                     Icons.people_outline),
                 SizedBox(width: 4.w),
-                _buildStatCard('Sessions', '${course.schedules.length}/week',
+                _buildStatCard(
+                    'Sessions',
+                    '${course.schedules.where((s) => s.isRegular && s.isActive).length}/week',
                     Icons.schedule_outlined),
                 SizedBox(width: 4.w),
                 _buildStatCard('Next Class',
@@ -355,7 +356,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 10.sp,
+                fontSize: 14.sp,
               ),
               textAlign: TextAlign.center,
             ),
@@ -363,7 +364,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
               label,
               style: TextStyle(
                 color: Colors.white.withOpacity(0.8),
-                fontSize: 8.sp,
+                fontSize: 13.sp,
               ),
               textAlign: TextAlign.center,
             ),
@@ -501,7 +502,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
           Text(
             value,
             style: TextStyle(
-              fontSize: 14.sp,
+              fontSize: 15.sp,
               fontWeight: FontWeight.bold,
               color: color,
             ),
@@ -509,7 +510,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
           Text(
             label,
             style: TextStyle(
-              fontSize: 10.sp,
+              fontSize: 13.sp,
               color: AppColors.textMedium,
             ),
             textAlign: TextAlign.center,
@@ -560,8 +561,8 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
             SizedBox(height: 1.h),
             _buildInfoRow('Class Size', '${course.enrollmentCount} students'),
             SizedBox(height: 1.h),
-            _buildInfoRow(
-                'Weekly Sessions', '${course.schedules.length} times'),
+            _buildInfoRow('Weekly Sessions',
+                '${course.schedules.where((s) => s.isRegular && s.isActive).length} times'),
             if (!course.isActive) ...[
               SizedBox(height: 2.h),
               Container(
@@ -606,7 +607,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
             style: TextStyle(
               fontWeight: FontWeight.w500,
               color: AppColors.textMedium,
-              fontSize: 12.sp,
+              fontSize: 14.sp,
             ),
           ),
         ),
@@ -615,7 +616,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
             value,
             style: TextStyle(
               fontWeight: FontWeight.w600,
-              fontSize: 12.sp,
+              fontSize: 14.sp,
             ),
           ),
         ),
@@ -643,7 +644,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
                     Text(
                       'Upcoming Events',
                       style: TextStyle(
-                        fontSize: 14.sp,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -901,7 +902,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
               SizedBox(height: 3.h),
             ],
             if (course.schedules
-                .any((s) => s.isReplacement && !s.isExpired)) ...[
+                .any((s) => s.isReplacement && !s.isExpired && s.isActive)) ...[
               Text(
                 'Upcoming Makeup Classes',
                 style: TextStyle(
@@ -911,7 +912,23 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
               ),
               SizedBox(height: 2.h),
               ...course.schedules
-                  .where((s) => s.isReplacement && !s.isExpired)
+                  .where((s) => s.isReplacement && !s.isExpired && s.isActive)
+                  .map((schedule) => _buildStudentScheduleCard(schedule))
+                  .toList(),
+              SizedBox(height: 3.h),
+            ],
+            if (course.schedules
+                .any((s) => s.isExtension && !s.isExpired && s.isActive)) ...[
+              Text(
+                'Extension Classes',
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 2.h),
+              ...course.schedules
+                  .where((s) => s.isExtension && !s.isExpired && s.isActive)
                   .map((schedule) => _buildStudentScheduleCard(schedule))
                   .toList(),
             ],
@@ -923,17 +940,23 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
 
   Widget _buildStudentScheduleCard(Schedule schedule) {
     final isReplacement = schedule.isReplacement;
-    final primaryColor = isReplacement
-        ? AppColors.accentOrange
-        : CourseDetailUtils.getSubjectColor(schedule.subject);
+    final isExtension = schedule.isExtension;
+    Color primaryColor;
+    if (isReplacement) {
+      primaryColor = AppColors.accentOrange;
+    } else if (isExtension) {
+      primaryColor = AppColors.accentTeal;
+    } else {
+      primaryColor = CourseDetailUtils.getSubjectColor(schedule.subject);
+    }
 
     return Card(
       margin: EdgeInsets.only(bottom: 2.h),
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: isReplacement
-            ? BorderSide(color: AppColors.accentOrange.withOpacity(0.3))
+        side: (isReplacement || isExtension)
+            ? BorderSide(color: primaryColor.withOpacity(0.3))
             : BorderSide.none,
       ),
       child: Padding(
@@ -955,6 +978,10 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
                       if (isReplacement) ...[
                         Icon(Icons.event_repeat,
                             size: 4.w, color: AppColors.accentOrange),
+                        SizedBox(width: 1.w),
+                      ] else if (isExtension) ...[
+                        Icon(Icons.add_circle_outline,
+                            size: 4.w, color: AppColors.accentTeal),
                         SizedBox(width: 1.w),
                       ],
                       Text(
@@ -988,7 +1015,8 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
               ],
             ),
             SizedBox(height: 2.h),
-            if (isReplacement && schedule.specificDate != null) ...[
+            if ((isReplacement || isExtension) &&
+                schedule.specificDate != null) ...[
               Row(
                 children: [
                   Icon(Icons.calendar_today,
@@ -999,7 +1027,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage>
                         .format(schedule.specificDate!),
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: AppColors.accentOrange,
+                      color: primaryColor,
                       fontSize: 12.sp,
                     ),
                   ),
