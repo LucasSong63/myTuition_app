@@ -727,27 +727,30 @@ Future<void> initFirebaseRemoteConfig() async {
 
   await remoteConfig.setConfigSettings(RemoteConfigSettings(
     fetchTimeout: const Duration(minutes: 1),
-    minimumFetchInterval: const Duration(seconds: 0), // For debugging only
+    minimumFetchInterval: const Duration(hours: 1), // Changed from 0 seconds
   ));
 
   await remoteConfig.setDefaults({
     'openai_api_key': '',
-    'openai_assistant_id': '',
+    'openai_assistant_id': 'asst_CVRSBwoL10MCk1y4AMOHEEnY', // Set your default assistant ID
     'daily_question_limit': 20,
   });
 
   try {
     // Add debugging
-    print('Fetching Remote Config...');
+    print('\n=== FETCHING REMOTE CONFIG ===');
     bool updated = await remoteConfig.fetchAndActivate();
     print('Remote Config fetch result: $updated');
 
-    // Check the actual value
+    // Check all values
     final apiKey = remoteConfig.getString('openai_api_key');
-    print(
-        'API Key found: ${apiKey.isNotEmpty ? "YES (${apiKey.length} chars)" : "NO"}');
-    print(
-        'First 10 chars: ${apiKey.length > 10 ? apiKey.substring(0, 10) : apiKey}');
+    final assistantId = remoteConfig.getString('openai_assistant_id');
+    final dailyLimit = remoteConfig.getInt('daily_question_limit');
+    
+    print('API Key found: ${apiKey.isNotEmpty ? "YES (${apiKey.length} chars)" : "NO"}');
+    print('Assistant ID: ${assistantId.isNotEmpty ? assistantId : "EMPTY - USING DEFAULT"}');
+    print('Daily limit: $dailyLimit');
+    print('==============================\n');
   } catch (e) {
     print('Remote Config fetch error: $e');
   }

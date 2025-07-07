@@ -266,7 +266,7 @@ class AIUsageWidget extends StatelessWidget {
                     Text(
                       'Total questions asked: ${aiUsage.totalQuestions}',
                       style: TextStyle(
-                        fontSize: 10.sp,
+                        fontSize: 12.sp,
                         color: AppColors.textMedium,
                       ),
                     ),

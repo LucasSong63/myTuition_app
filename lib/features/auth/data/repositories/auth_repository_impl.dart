@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:get_it/get_it.dart';
+import 'package:mytuition/core/services/fcm_service.dart';
+import 'package:mytuition/core/utils/logger.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/remote/firebase_auth_service.dart';
@@ -69,6 +72,15 @@ class AuthRepositoryImpl implements AuthRepository {
       // Convert Firestore data to User model
       final userData = docSnapshot.data() as Map<String, dynamic>;
 
+      // Ensure FCM token is saved after successful login
+      try {
+        final fcmService = GetIt.instance<FCMService>();
+        await fcmService.ensureTokenForAuthenticatedUser();
+      } catch (e) {
+        Logger.warning('FCM token update failed during login: $e');
+        // Don't fail login if FCM token update fails
+      }
+
       return UserModel.fromMap({
         'id': userId,
         'email': email,
@@ -82,6 +94,30 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> logout() async {
     try {
+      // Get current user ID before signing out
+      final currentUser = _authService.currentUser;
+      if (currentUser != null) {
+        // Remove FCM token before logout
+        try {
+          final fcmService = GetIt.instance<FCMService>();
+          await fcmService.removeTokenForUser(currentUser.uid);
+        } catch (e) {
+          Logger.error('Failed to remove FCM token during logout: $e');
+          // Continue with logout even if FCM token removal fails
+        }
+
+        // Update user status as offline
+        try {
+          await _firestore.collection('users').doc(currentUser.uid).update({
+            'isOnline': false,
+            'lastSeen': FieldValue.serverTimestamp(),
+          });
+        } catch (e) {
+          Logger.error('Failed to update user status during logout: $e');
+        }
+      }
+
+      // Sign out from Firebase Auth
       await _authService.signOut();
     } catch (e) {
       throw _handleAuthException(e);
@@ -173,6 +209,15 @@ class AuthRepositoryImpl implements AuthRepository {
           await _firestore.collection('users').doc(firebaseUser.uid).get();
       if (docSnapshot.exists) {
         final userData = docSnapshot.data() as Map<String, dynamic>;
+        
+        // Ensure FCM token is saved for authenticated user
+        try {
+          final fcmService = GetIt.instance<FCMService>();
+          await fcmService.ensureTokenForAuthenticatedUser();
+        } catch (e) {
+          Logger.warning('FCM token update failed when getting current user: $e');
+        }
+
         return UserModel.fromMap({
           'id': firebaseUser.uid,
           'email': firebaseUser.email ?? '',

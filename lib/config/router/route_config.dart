@@ -57,6 +57,9 @@ import '../../features/auth/presentation/bloc/auth_event.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
 import 'route_names.dart';
 
+// Global navigator key for navigation from services
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 /// App router configuration using GoRouter
 class AppRouter {
   // Use a private constructor so this class can't be instantiated

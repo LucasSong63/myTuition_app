@@ -1,316 +1,257 @@
 // lib/core/services/fcm_service.dart
 
-import 'dart:convert';
-
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:get_it/get_it.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:go_router/go_router.dart';
-import '../../features/notifications/domain/notification_manager.dart';
-
-// Global navigator key to use for navigation from outside of context
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
-// Background message handler must be a top-level function
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // Initialize Firebase
-  await Firebase.initializeApp();
-
-  print('Handling a background message: ${message.messageId}');
-}
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:mytuition/core/utils/logger.dart';
+import 'package:mytuition/core/services/notification_navigation_service.dart';
+import 'package:mytuition/config/router/route_config.dart';
 
 class FCMService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _flutterLocalNotifications =
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
-  // Notification channel for Android
-  static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
-    'high_importance_channel',
-    'High Importance Notifications',
-    description: 'This channel is used for important notifications.',
-    importance: Importance.high,
-  );
+  static const String _fcmTokenKey = 'fcmToken';
 
-  // Initialize and request permissions
+  // Singleton pattern
+  static final FCMService _instance = FCMService._internal();
+  factory FCMService() => _instance;
+  FCMService._internal();
+
+  /// Initialize FCM service
   Future<void> initialize() async {
-    print('Initializing FCM service...');
+    try {
+      // Request permission
+      await _requestPermission();
 
-    // Setup local notifications for foreground
-    await _setupLocalNotifications();
+      // Initialize local notifications
+      await _initializeLocalNotifications();
 
-    // Get FCM token
-    final token = await _messaging.getToken();
-    if (token != null) {
-      await _saveFCMToken(token);
-      print('FCM Token: $token');
-    } else {
-      print('Failed to get FCM token');
+      // Get and save initial token
+      await _saveTokenForCurrentUser();
+
+      // Listen for token refresh
+      _messaging.onTokenRefresh.listen(_onTokenRefresh);
+
+      // Handle foreground messages
+      FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+
+      // Handle notification taps when app is in background/terminated
+      FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+
+      // Check if app was opened from a terminated state via notification
+      final initialMessage = await _messaging.getInitialMessage();
+      if (initialMessage != null) {
+        _handleNotificationTap(initialMessage);
+      }
+
+      Logger.info('FCM Service initialized successfully');
+    } catch (e) {
+      Logger.error('Error initializing FCM service: $e');
     }
-
-    // Listen for token refreshes
-    _messaging.onTokenRefresh.listen(_saveFCMToken);
-
-    // Handle background messages
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-    // Handle foreground messages
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-
-    // Handle notification taps when app was terminated
-    FirebaseMessaging.instance.getInitialMessage().then(_handleInitialMessage);
-
-    // Handle notification taps when app was in background
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
-
-    print('FCM service initialized');
   }
 
-  // Setup local notifications for foreground display
-  Future<void> _setupLocalNotifications() async {
-    print('Setting up local notifications...');
-
-    // Create the Android notification channel
-    final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-        _flutterLocalNotifications.resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
-
-    if (androidImplementation != null) {
-      await androidImplementation.createNotificationChannel(_channel);
-    }
-
-    // Android initialization settings
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@drawable/ic_notification');
-
-    // Combined initialization settings with only Android
-    final InitializationSettings initializationSettings =
-        InitializationSettings(
-      android: initializationSettingsAndroid,
+  /// Request notification permissions
+  Future<void> _requestPermission() async {
+    final settings = await _messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+      provisional: false,
     );
 
-    // Initialize the plugin
-    await _flutterLocalNotifications.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse details) {
-        // Handle notification tap
-        _handleNotificationTap(details);
+    Logger.info('Notification permission status: ${settings.authorizationStatus}');
+  }
+
+  /// Initialize local notifications
+  Future<void> _initializeLocalNotifications() async {
+    const androidSettings = AndroidInitializationSettings('@drawable/ic_notification');
+    const iosSettings = DarwinInitializationSettings();
+    const initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+    );
+
+    await _localNotifications.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: (details) {
+        Logger.info('Local notification tapped: ${details.payload}');
       },
     );
 
-    print('Local notifications setup complete');
+    // Create notification channel for Android
+    const channel = AndroidNotificationChannel(
+      'high_importance_channel',
+      'High Importance Notifications',
+      description: 'This channel is used for important notifications.',
+      importance: Importance.high,
+    );
+
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
   }
 
-  // Save FCM token to Firestore
-  Future<void> _saveFCMToken(String token) async {
+  /// Save FCM token for current user
+  Future<void> _saveTokenForCurrentUser() async {
     try {
-      print('Saving FCM token to Firestore: $token');
-
-      // Get current user ID - you'll need to adapt this to your auth service
-      final String? userId = await _getCurrentUserId();
-
-      if (userId == null) {
-        print('Cannot save token: No user ID available');
+      final user = _auth.currentUser;
+      if (user == null) {
+        Logger.info('No authenticated user, skipping FCM token save');
         return;
       }
 
-      // Save token to Firestore
-      await FirebaseFirestore.instance.collection('users').doc(userId).update({
-        'fcmTokens': FieldValue.arrayUnion([token]),
+      final token = await _messaging.getToken();
+      if (token == null) {
+        Logger.error('Failed to get FCM token');
+        return;
+      }
+
+      await _saveTokenToFirestore(user.uid, token);
+      Logger.info('FCM token saved for user: ${user.uid}');
+    } catch (e) {
+      Logger.error('Error saving FCM token: $e');
+    }
+  }
+
+  /// Handle token refresh
+  Future<void> _onTokenRefresh(String token) async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        await _saveTokenToFirestore(user.uid, token);
+        Logger.info('FCM token refreshed for user: ${user.uid}');
+      }
+    } catch (e) {
+      Logger.error('Error handling token refresh: $e');
+    }
+  }
+
+  /// Save token to Firestore
+  Future<void> _saveTokenToFirestore(String userId, String token) async {
+    try {
+      // First, check if we have a user document
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      
+      if (!userDoc.exists) {
+        Logger.error('User document not found for FCM token update: $userId');
+        return;
+      }
+
+      // Update the user document with FCM token
+      await _firestore.collection('users').doc(userId).update({
+        _fcmTokenKey: token,
+        'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+        'lastActive': FieldValue.serverTimestamp(),
       });
 
-      print('FCM token saved successfully');
+      // Also update based on studentId if it exists
+      final userData = userDoc.data() as Map<String, dynamic>;
+      final studentId = userData['studentId'] as String?;
+      
+      if (studentId != null && studentId.isNotEmpty) {
+        // Find and update user document with this studentId
+        final studentQuery = await _firestore
+            .collection('users')
+            .where('studentId', isEqualTo: studentId)
+            .limit(1)
+            .get();
+
+        if (studentQuery.docs.isNotEmpty) {
+          await studentQuery.docs.first.reference.update({
+            _fcmTokenKey: token,
+            'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+            'lastActive': FieldValue.serverTimestamp(),
+          });
+        }
+      }
+
+      Logger.info('FCM token saved to Firestore');
     } catch (e) {
-      print('Error saving FCM token: $e');
+      Logger.error('Error saving token to Firestore: $e');
     }
   }
 
-  // Get current user ID - replace with your actual implementation
-  Future<String?> _getCurrentUserId() async {
-    // Get Firebase Auth UID
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null) {
-      return currentUser
-          .uid; // This will be the document ID (like "5mK8w62wQGPrBcr7OGVeYGUNtMj1")
-    }
+  /// Remove FCM token (for logout)
+  Future<void> removeTokenForUser(String userId) async {
+    try {
+      await _firestore.collection('users').doc(userId).update({
+        _fcmTokenKey: FieldValue.delete(),
+        'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+      });
 
-    // If not logged in, return null
-    return null;
+      // Also delete the token to prevent receiving notifications
+      await _messaging.deleteToken();
+      
+      Logger.info('FCM token removed for user: $userId');
+    } catch (e) {
+      Logger.error('Error removing FCM token: $e');
+    }
   }
 
-  // Handle foreground message display
-  Future<void> _handleForegroundMessage(RemoteMessage message) async {
-    print('Received foreground message: ${message.messageId}');
+  /// Handle foreground messages
+  void _handleForegroundMessage(RemoteMessage message) {
+    Logger.info('Foreground message received: ${message.messageId}');
 
-    // Create in-app notification using flutter_local_notifications
     final notification = message.notification;
     final android = message.notification?.android;
 
     if (notification != null && android != null) {
-      print('Notification: ${notification.title} - ${notification.body}');
-
-      // Show notification using local notifications plugin
-      await _flutterLocalNotifications.show(
+      _localNotifications.show(
         notification.hashCode,
         notification.title,
         notification.body,
         NotificationDetails(
           android: AndroidNotificationDetails(
-            _channel.id,
-            _channel.name,
-            channelDescription: _channel.description,
+            'high_importance_channel',
+            'High Importance Notifications',
+            channelDescription: 'This channel is used for important notifications.',
+            importance: Importance.high,
+            priority: Priority.high,
             icon: '@drawable/ic_notification',
           ),
+          iOS: const DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
         ),
-        payload: jsonEncode(message.data),
+        payload: message.data.toString(),
       );
+    }
+  }
 
-      // Also create an in-app notification in your system
-      try {
-        final notificationManager = GetIt.instance<NotificationManager>();
-        await notificationManager.createNotificationFromRemoteMessage(message);
-      } catch (e) {
-        print('Error creating in-app notification: $e');
+  /// Handle notification tap
+  void _handleNotificationTap(RemoteMessage message) {
+    Logger.info('Notification tapped: ${message.data}');
+    
+    // Get the current context from the navigator key
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      NotificationNavigationService().handleNotificationNavigation(
+        context,
+        message.data,
+      );
+    } else {
+      Logger.warning('No context available for notification navigation');
+    }
+  }
+
+  /// Ensure token is saved for authenticated user
+  /// This is called from AuthStateObserver when auth state changes
+  Future<void> ensureTokenForAuthenticatedUser() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        await _saveTokenForCurrentUser();
       }
+    } catch (e) {
+      Logger.error('Error ensuring FCM token for authenticated user: $e');
     }
-  }
-
-  // Handle notification tap from local notifications
-  void _handleNotificationTap(NotificationResponse details) {
-    print('Notification tapped: ${details.payload}');
-
-    // Parse payload and navigate
-    if (details.payload != null) {
-      try {
-        final data = jsonDecode(details.payload!);
-        _navigateBasedOnNotification(data);
-      } catch (e) {
-        print('Error parsing notification payload: $e');
-      }
-    }
-  }
-
-  // Handle message opened from terminated state
-  Future<void> _handleInitialMessage(RemoteMessage? message) async {
-    print('Initial message: ${message?.messageId}');
-
-    if (message != null) {
-      _navigateBasedOnNotification(message.data);
-    }
-  }
-
-  // Handle message opened from background state
-  void _handleMessageOpenedApp(RemoteMessage message) {
-    print('Message opened app: ${message.messageId}');
-    _navigateBasedOnNotification(message.data);
-  }
-
-  // Navigation logic based on notification data
-  void _navigateBasedOnNotification(Map<String, dynamic> data) {
-    print('Navigating based on notification: $data');
-
-    final type = data['type'];
-
-    // Make sure we have a valid navigator key context
-    if (navigatorKey.currentContext == null) {
-      print('No valid context for navigation');
-      return;
-    }
-
-    switch (type) {
-      case 'payment_reminder':
-      case 'payment_overdue':
-      case 'payment_confirmed':
-        // Navigate to payment details
-        final paymentId = data['paymentId'];
-        if (paymentId != null) {
-          GoRouter.of(navigatorKey.currentContext!)
-              .go('/payments/details/$paymentId');
-        } else {
-          GoRouter.of(navigatorKey.currentContext!).go('/payments');
-        }
-        break;
-
-      case 'task_reminder':
-      case 'task_overdue':
-      case 'task_feedback':
-        // Navigate to task details
-        final taskId = data['taskId'];
-        if (taskId != null) {
-          GoRouter.of(navigatorKey.currentContext!)
-              .go('/tasks/details/$taskId');
-        } else {
-          GoRouter.of(navigatorKey.currentContext!).go('/tasks');
-        }
-        break;
-
-      case 'schedule_change':
-        // Navigate to schedule view
-        GoRouter.of(navigatorKey.currentContext!).go('/schedule');
-        break;
-
-      default:
-        // Navigate to notification list
-        GoRouter.of(navigatorKey.currentContext!).go('/notifications');
-    }
-  }
-
-  // Subscribe to topic
-  Future<void> subscribeToTopic(String topic) async {
-    print('Subscribing to topic: $topic');
-    await _messaging.subscribeToTopic(topic);
-  }
-
-  // Unsubscribe from topic
-  Future<void> unsubscribeFromTopic(String topic) async {
-    print('Unsubscribing from topic: $topic');
-    await _messaging.unsubscribeFromTopic(topic);
-  }
-
-  // Subscribe to relevant topics for user
-  Future<void> subscribeToRelevantTopics(
-      String studentId, List<String> courses) async {
-    print('Subscribing to relevant topics for student: $studentId');
-
-    // Subscribe to student-specific topic
-    await subscribeToTopic('student-$studentId');
-
-    // Subscribe to course topics
-    for (final courseId in courses) {
-      await subscribeToTopic('course-$courseId');
-    }
-
-    // Subscribe to general topics
-    await subscribeToTopic('all-students');
-
-    print('Topic subscriptions complete');
-  }
-}
-
-// Extension method for NotificationManager to handle remote messages
-extension NotificationManagerExtension on NotificationManager {
-  Future<void> createNotificationFromRemoteMessage(
-      RemoteMessage message) async {
-    final notification = message.notification;
-    final data = message.data;
-
-    if (notification == null) return;
-
-    // Get student ID from data or use a default identifier
-    final studentId = data['studentId'] ?? data['userId'] ?? 'unknown';
-
-    // Create in-app notification
-    await sendStudentNotification(
-      studentId: studentId,
-      type: data['type'] ?? 'system_notification',
-      title: notification.title ?? 'New Notification',
-      message: notification.body ?? '',
-      data: data,
-    );
   }
 }

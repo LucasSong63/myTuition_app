@@ -16,6 +16,7 @@ class NotificationType {
   static const String paymentReminder = 'payment_reminder';
   static const String paymentConfirmed = 'payment_confirmed';
   static const String paymentOverdue = 'payment_overdue';
+  static const String paymentDueSoon = 'payment_due_soon';
 
   // Task related
   static const String taskCreated = 'task_created';
@@ -28,7 +29,11 @@ class NotificationType {
   // Class related
   static const String classAnnouncement = 'class_announcement';
   static const String scheduleChange = 'schedule_change';
+  static const String scheduleReplacement = 'schedule_replacement';
   static const String attendanceRecorded = 'attendance_recorded';
+  static const String attendanceAbsent = 'attendance_absent';
+  static const String attendanceExcused = 'attendance_excused';
+  static const String attendanceSummary = 'attendance_summary';
 
   // Communication
   static const String tutorNotification = 'tutor_notification';
@@ -54,6 +59,8 @@ class NotificationType {
         return Icons.check_circle;
       case paymentOverdue:
         return Icons.money_off;
+      case paymentDueSoon:
+        return Icons.payment;
 
       // Task related
       case taskCreated:
@@ -74,8 +81,12 @@ class NotificationType {
         return Icons.campaign;
       case scheduleChange:
         return Icons.event_available;
+      case scheduleReplacement:
+        return Icons.event_repeat;
       case attendanceRecorded:
         return Icons.fact_check;
+      case attendanceSummary:
+        return Icons.bar_chart;
 
       // Communication
       case tutorNotification:
@@ -110,6 +121,8 @@ class NotificationType {
         return AppColors.success;
       case paymentOverdue:
         return AppColors.error;
+      case paymentDueSoon:
+        return AppColors.accentOrange;
 
       // Task related
       case taskCreated:
@@ -130,8 +143,12 @@ class NotificationType {
         return AppColors.primaryBlue;
       case scheduleChange:
         return AppColors.accentTeal;
+      case scheduleReplacement:
+        return AppColors.warning;
       case attendanceRecorded:
         return AppColors.secondaryBlue;
+      case attendanceSummary:
+        return AppColors.primaryBlue;
 
       // Communication
       case tutorNotification:
@@ -166,6 +183,8 @@ class NotificationType {
         return 'Payment Confirmation';
       case paymentOverdue:
         return 'Payment Overdue';
+      case paymentDueSoon:
+        return 'Payment Due Soon';
 
       // Task related
       case taskCreated:
@@ -186,8 +205,12 @@ class NotificationType {
         return 'Class Announcement';
       case scheduleChange:
         return 'Schedule Change';
+      case scheduleReplacement:
+        return 'Replacement Class';
       case attendanceRecorded:
         return 'Attendance Recorded';
+      case attendanceSummary:
+        return 'Attendance Summary';
 
       // Communication
       case tutorNotification:
@@ -226,6 +249,7 @@ class NotificationType {
       paymentReminder,
       paymentConfirmed,
       paymentOverdue,
+      paymentDueSoon,
 
       // Task related
       taskCreated,
@@ -238,7 +262,9 @@ class NotificationType {
       // Class related
       classAnnouncement,
       scheduleChange,
+      scheduleReplacement,
       attendanceRecorded,
+      attendanceSummary,
 
       // Communication
       tutorNotification,
@@ -253,7 +279,7 @@ class NotificationType {
   static Map<String, List<String>> getTypesByCategory() {
     return {
       'Authentication': [registrationApproved, registrationRejected],
-      'Payments': [paymentReminder, paymentConfirmed, paymentOverdue],
+      'Payments': [paymentReminder, paymentConfirmed, paymentOverdue, paymentDueSoon],
       'Tasks': [
         taskCreated,
         taskReminder,
@@ -262,7 +288,7 @@ class NotificationType {
         taskFeedback,
         taskCompleted
       ],
-      'Classes': [classAnnouncement, scheduleChange, attendanceRecorded],
+      'Classes': [classAnnouncement, scheduleChange, scheduleReplacement, attendanceRecorded, attendanceSummary],
       'Communication': [tutorNotification, messageReceived],
       'System': [systemAnnouncement],
     };

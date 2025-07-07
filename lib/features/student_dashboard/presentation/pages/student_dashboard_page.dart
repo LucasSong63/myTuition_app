@@ -4,7 +4,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mytuition/features/notifications/presentation/widgets/notification_badge.dart';
 import 'package:mytuition/features/student_dashboard/presentation/widgets/upcoming_classes_widget.dart';
 import 'package:sizer/sizer.dart';
 import 'package:mytuition/config/theme/app_colors.dart';
@@ -84,6 +86,19 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
         backgroundColor: AppColors.primaryBlue,
         foregroundColor: AppColors.white,
         elevation: 0,
+        actions: [
+          // Notification Badge
+          NotificationBadge(
+            userId: widget.studentId,
+            badgeColor: AppColors.error,
+            iconColor: AppColors.white,
+            onTap: () {
+              context.push('/notifications');
+            },
+            semanticsLabel: 'Notifications',
+          ),
+          SizedBox(width: 2.w),
+        ],
       ),
       body: BlocBuilder<StudentDashboardBloc, StudentDashboardState>(
         builder: (context, state) {
@@ -272,6 +287,13 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
             _buildWelcomeSection(),
             SizedBox(height: 3.h),
 
+            // Quick Actions Row (includes Notifications)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4.w),
+              child: _buildQuickActions(),
+            ),
+            SizedBox(height: 3.h),
+
             // Stats cards grid
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 4.w),
@@ -388,6 +410,90 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActions() {
+    return SizedBox(
+      height: 10.h,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          _buildQuickActionCard(
+            icon: Icons.notifications_active,
+            label: 'Notifications',
+            color: AppColors.accentOrange,
+            onTap: () => context.push('/notifications'),
+          ),
+          SizedBox(width: 3.w),
+          _buildQuickActionCard(
+            icon: Icons.calendar_today,
+            label: 'Schedule',
+            color: AppColors.accentTeal,
+            onTap: () => context.push('/student/courses'),
+          ),
+          SizedBox(width: 3.w),
+          _buildQuickActionCard(
+            icon: Icons.assignment,
+            label: 'Tasks',
+            color: AppColors.secondaryBlue,
+            onTap: () => context.push('/student/tasks'),
+          ),
+          SizedBox(width: 3.w),
+          _buildQuickActionCard(
+            icon: Icons.psychology,
+            label: 'AI Tutor',
+            color: AppColors.primaryBlue,
+            onTap: () => context.push('/student/ai-chat'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionCard({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(3.w),
+      child: Container(
+        width: 22.w,
+        padding: EdgeInsets.all(3.w),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(3.w),
+          border: Border.all(
+            color: color.withOpacity(0.3),
+            width: 0.3.w,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: color,
+              size: 6.w,
+            ),
+            SizedBox(height: 1.h),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10.sp,
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }
