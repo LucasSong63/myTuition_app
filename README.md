@@ -22,16 +22,13 @@ MyTuition is a portfolio project that demonstrates the implementation of:
 - Daily question limit: 20 questions per student
 
 ### Class Management
-- Digital attendance tracking with NFC/QR code support
+- Digital attendance tracking with QR code support
 - Flexible class scheduling
-- Assignment tracking and submission
+- To-do Task tracking and submission
 - Progress monitoring
 - Push notifications for deadlines
 
 ### Communication
-- One-to-many chat system between tutor and students
-- File sharing capabilities
-- Message status tracking
 - Push notifications for new messages
 
 ### Offline Support
@@ -47,7 +44,6 @@ MyTuition is a portfolio project that demonstrates the implementation of:
 - **AI Integration**: OpenAI Assistant API
 - **State Management**: BLoC Pattern
 - **Architecture**: Clean Architecture
-- **Payment Processing**: Stripe (Test Mode)
 - **CI/CD**: Codemagic
 
 ## 📱 Implementation Highlights
